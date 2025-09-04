@@ -12,7 +12,11 @@ namespace Jamble {
     DEATH_FREEZE_TIME: 500,   // how long the wiggle runs
     SHOW_RESET_DELAY_MS: 150, // short beat before showing reset button
     PLAYER_START_OFFSET: 10,
-    DEATH_WIGGLE_DISTANCE: 1
+    DEATH_WIGGLE_DISTANCE: 1,
+    // Tree placement constraints (percent of game width)
+    TREE_EDGE_MARGIN_PCT: 10,
+    TREE_MIN_GAP_PCT: 20
   } as const;
-}
+ 
 
+}

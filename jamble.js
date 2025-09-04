@@ -13,7 +13,9 @@ var Jamble;
         DEATH_FREEZE_TIME: 500,
         SHOW_RESET_DELAY_MS: 150,
         PLAYER_START_OFFSET: 10,
-        DEATH_WIGGLE_DISTANCE: 1
+        DEATH_WIGGLE_DISTANCE: 1,
+        TREE_EDGE_MARGIN_PCT: 10,
+        TREE_MIN_GAP_PCT: 20
     };
 })(Jamble || (Jamble = {}));
 var Jamble;
@@ -225,6 +227,7 @@ var Jamble;
             this.deathWiggleTimer = null;
             this.showResetTimer = null;
             this.waitGroundForStart = false;
+            this.inCountdown = false;
             this.root = root;
             const gameEl = root.querySelector('.jamble-game');
             const playerEl = root.querySelector('.jamble-player');
@@ -232,9 +235,11 @@ var Jamble;
             const t2 = root.querySelector('.jamble-tree[data-tree="2"]');
             const cdEl = root.querySelector('.jamble-countdown');
             const resetBtn = root.querySelector('.jamble-reset');
-            const messageEl = root.querySelector('.jamble-message');
+            const messageEl = null;
             const levelEl = root.querySelector('.jamble-level');
-            if (!gameEl || !playerEl || !t1 || !t2 || !cdEl || !resetBtn) {
+            const startBtn = root.querySelector('.jamble-start');
+            const shuffleBtn = root.querySelector('.jamble-shuffle');
+            if (!gameEl || !playerEl || !t1 || !t2 || !cdEl || !resetBtn || !startBtn || !shuffleBtn) {
                 throw new Error('Jamble: missing required elements');
             }
             this.gameEl = gameEl;
@@ -243,7 +248,8 @@ var Jamble;
             this.tree2 = new Jamble.Obstacle(t2);
             this.countdown = new Jamble.Countdown(cdEl);
             this.resetBtn = resetBtn;
-            this.messageEl = messageEl;
+            this.startBtn = startBtn;
+            this.shuffleBtn = shuffleBtn;
             this.levelEl = levelEl;
             this.wiggle = new Jamble.Wiggle(this.player.el);
             this.onPointerDown = this.onPointerDown.bind(this);
@@ -279,25 +285,67 @@ var Jamble;
             }
             this.player.reset();
             this.resetBtn.style.display = 'none';
-            if (this.messageEl)
-                this.messageEl.textContent = 'Tap to jump';
             this.player.setFrozenStart();
             this.awaitingStartTap = true;
             this.waitGroundForStart = false;
+            this.inCountdown = false;
+            this.showIdleControls();
             this.direction = 1;
             this.level = 0;
             this.updateLevel();
         }
+        onStartClick() {
+            if (this.waitGroundForStart)
+                return;
+            if (!this.awaitingStartTap)
+                return;
+            this.awaitingStartTap = false;
+            this.player.setPrestart();
+            this.hideIdleControls();
+            this.countdown.start(Jamble.Const.START_FREEZE_TIME);
+            this.inCountdown = true;
+            this.startCountdownTimer = window.setTimeout(() => {
+                this.player.clearFrozenStart();
+                this.inCountdown = false;
+                this.startCountdownTimer = null;
+            }, Jamble.Const.START_FREEZE_TIME);
+        }
+        onShuffleClick() {
+            if (!this.awaitingStartTap || this.waitGroundForStart)
+                return;
+            this.shuffleTrees();
+        }
+        shuffleTrees() {
+            const min = Jamble.Const.TREE_EDGE_MARGIN_PCT;
+            const max = 100 - Jamble.Const.TREE_EDGE_MARGIN_PCT;
+            const gap = Jamble.Const.TREE_MIN_GAP_PCT;
+            const left1 = min + Math.random() * (max - min - gap);
+            const left2 = left1 + gap + Math.random() * (max - (left1 + gap));
+            this.tree1.el.style.left = left1.toFixed(1) + '%';
+            this.tree2.el.style.left = left2.toFixed(1) + '%';
+        }
         bind() {
             document.addEventListener('pointerdown', this.onPointerDown);
             this.resetBtn.addEventListener('click', () => this.reset());
+            this.startBtn.addEventListener('click', () => this.onStartClick());
+            this.shuffleBtn.addEventListener('click', () => this.onShuffleClick());
         }
         unbind() {
             document.removeEventListener('pointerdown', this.onPointerDown);
             this.resetBtn.removeEventListener('click', () => this.reset());
+            this.startBtn.removeEventListener('click', () => this.onStartClick());
+            this.shuffleBtn.removeEventListener('click', () => this.onShuffleClick());
+        }
+        showIdleControls() {
+            this.startBtn.style.display = 'block';
+            this.shuffleBtn.style.display = 'block';
+        }
+        hideIdleControls() {
+            this.startBtn.style.display = 'none';
+            this.shuffleBtn.style.display = 'none';
         }
         onPointerDown(e) {
-            if (e.target === this.resetBtn)
+            if (e.target === this.resetBtn || e.target === this.startBtn || e.target === this.shuffleBtn)
                 return;
             if (this.player.frozenDeath)
                 return;
@@ -305,16 +353,6 @@ var Jamble;
             const withinX = e.clientX >= rect.left && e.clientX <= rect.right;
             const withinY = e.clientY >= rect.top && e.clientY <= rect.bottom + rect.height * 2;
             if (withinX && withinY) {
-                if (this.awaitingStartTap) {
-                    this.awaitingStartTap = false;
-                    this.player.setPrestart();
-                    this.countdown.start(Jamble.Const.START_FREEZE_TIME);
-                    this.startCountdownTimer = window.setTimeout(() => {
-                        this.player.clearFrozenStart();
-                        this.startCountdownTimer = null;
-                    }, Jamble.Const.START_FREEZE_TIME);
-                    return;
-                }
                 if (!this.player.frozenStart && this.player.isJumping) {
                     const dashed = this.player.startDash();
                     if (!dashed)
@@ -383,6 +421,7 @@ var Jamble;
             if (this.waitGroundForStart && this.player.jumpHeight === 0 && !this.player.isJumping) {
                 this.waitGroundForStart = false;
                 this.awaitingStartTap = true;
+                this.showIdleControls();
             }
             if (!this.player.frozenStart && !this.player.frozenDeath && (this.collisionWith(this.tree1) || this.collisionWith(this.tree2))) {
                 this.player.setFrozenDeath();

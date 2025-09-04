@@ -12,7 +12,8 @@ namespace Jamble {
     private tree2: Obstacle;
     private countdown: Countdown;
     private resetBtn: HTMLButtonElement;
-    private messageEl: HTMLElement | null;
+    private startBtn: HTMLButtonElement;
+    private shuffleBtn: HTMLButtonElement;
     private wiggle: Wiggle;
     private lastTime: number | null = null;
     private rafId: number | null = null;
@@ -24,6 +25,7 @@ namespace Jamble {
     private deathWiggleTimer: number | null = null;
     private showResetTimer: number | null = null;
     private waitGroundForStart: boolean = false;
+    private inCountdown: boolean = false;
 
     constructor(root: HTMLElement){
       this.root = root;
@@ -33,10 +35,12 @@ namespace Jamble {
       const t2 = root.querySelector('.jamble-tree[data-tree="2"]') as HTMLElement | null;
       const cdEl = root.querySelector('.jamble-countdown') as HTMLElement | null;
       const resetBtn = root.querySelector('.jamble-reset') as HTMLButtonElement | null;
-      const messageEl = root.querySelector('.jamble-message') as HTMLElement | null;
+      const messageEl = null as unknown as HTMLElement | null;
       const levelEl = root.querySelector('.jamble-level') as HTMLElement | null;
+      const startBtn = root.querySelector('.jamble-start') as HTMLButtonElement | null;
+      const shuffleBtn = root.querySelector('.jamble-shuffle') as HTMLButtonElement | null;
 
-      if (!gameEl || !playerEl || !t1 || !t2 || !cdEl || !resetBtn){
+      if (!gameEl || !playerEl || !t1 || !t2 || !cdEl || !resetBtn || !startBtn || !shuffleBtn){
         throw new Error('Jamble: missing required elements');
       }
 
@@ -46,7 +50,8 @@ namespace Jamble {
       this.tree2 = new Obstacle(t2);
       this.countdown = new Countdown(cdEl);
       this.resetBtn = resetBtn;
-      this.messageEl = messageEl;
+      this.startBtn = startBtn;
+      this.shuffleBtn = shuffleBtn;
       this.levelEl = levelEl;
       this.wiggle = new Wiggle(this.player.el);
 
@@ -76,48 +81,83 @@ namespace Jamble {
       if (this.showResetTimer !== null) { window.clearTimeout(this.showResetTimer); this.showResetTimer = null; }
       this.player.reset();
       this.resetBtn.style.display = 'none';
-      if (this.messageEl) this.messageEl.textContent = 'Tap to jump';
       this.player.setFrozenStart();
       this.awaitingStartTap = true;
       this.waitGroundForStart = false;
+      this.inCountdown = false;
+      this.showIdleControls();
       this.direction = 1;
       this.level = 0;
       this.updateLevel();
     }
 
+    private onStartClick(): void {
+      if (this.waitGroundForStart) return; // cannot start until grounded at edge
+      if (!this.awaitingStartTap) return;
+      this.awaitingStartTap = false;
+      this.player.setPrestart();
+      this.hideIdleControls();
+      this.countdown.start(Const.START_FREEZE_TIME);
+      this.inCountdown = true;
+      this.startCountdownTimer = window.setTimeout(() => {
+        this.player.clearFrozenStart();
+        this.inCountdown = false;
+        this.startCountdownTimer = null;
+      }, Const.START_FREEZE_TIME);
+    }
+
+    private onShuffleClick(): void {
+      if (!this.awaitingStartTap || this.waitGroundForStart) return;
+      this.shuffleTrees();
+    }
+
+    private shuffleTrees(): void {
+      const min = Const.TREE_EDGE_MARGIN_PCT;
+      const max = 100 - Const.TREE_EDGE_MARGIN_PCT;
+      const gap = Const.TREE_MIN_GAP_PCT;
+      const left1 = min + Math.random() * (max - min - gap);
+      const left2 = left1 + gap + Math.random() * (max - (left1 + gap));
+      (this.tree1 as any).el.style.left = left1.toFixed(1) + '%';
+      (this.tree2 as any).el.style.left = left2.toFixed(1) + '%';
+    }
+
     private bind(): void {
       document.addEventListener('pointerdown', this.onPointerDown);
       this.resetBtn.addEventListener('click', () => this.reset());
+      this.startBtn.addEventListener('click', () => this.onStartClick());
+      this.shuffleBtn.addEventListener('click', () => this.onShuffleClick());
     }
     private unbind(): void {
       document.removeEventListener('pointerdown', this.onPointerDown);
       this.resetBtn.removeEventListener('click', () => this.reset());
+      this.startBtn.removeEventListener('click', () => this.onStartClick());
+      this.shuffleBtn.removeEventListener('click', () => this.onShuffleClick());
+    }
+
+    private showIdleControls(): void {
+      this.startBtn.style.display = 'block';
+      this.shuffleBtn.style.display = 'block';
+    }
+    private hideIdleControls(): void {
+      this.startBtn.style.display = 'none';
+      this.shuffleBtn.style.display = 'none';
     }
 
     private onPointerDown(e: PointerEvent): void {
-      if (e.target === this.resetBtn) return;
+      if (e.target === this.resetBtn || e.target === this.startBtn || e.target === this.shuffleBtn) return;
       if (this.player.frozenDeath) return;
       const rect = this.gameEl.getBoundingClientRect();
       const withinX = e.clientX >= rect.left && e.clientX <= rect.right;
       const withinY = e.clientY >= rect.top && e.clientY <= rect.bottom + rect.height * 2;
       if (withinX && withinY) {
-        if (this.awaitingStartTap) {
-          this.awaitingStartTap = false;
-          this.player.setPrestart();
-          this.countdown.start(Const.START_FREEZE_TIME);
-          this.startCountdownTimer = window.setTimeout(() => {
-            this.player.clearFrozenStart();
-            this.startCountdownTimer = null;
-          }, Const.START_FREEZE_TIME);
-          return;
-        }
+        // Note: starting countdown happens via Start button only
         if (!this.player.frozenStart && this.player.isJumping) {
           const dashed = this.player.startDash();
           if (!dashed) this.player.jump();
         } else if (!this.player.frozenStart) {
           this.player.jump();
         } else if (!this.waitGroundForStart) {
-          // Allow jumping during countdown (prestart), but not while waiting to ground at edges
+          // Allow jumping during idle and countdown; buttons are filtered above
           this.player.jump();
         }
       }
@@ -185,6 +225,7 @@ namespace Jamble {
       if (this.waitGroundForStart && this.player.jumpHeight === 0 && !this.player.isJumping){
         this.waitGroundForStart = false;
         this.awaitingStartTap = true;
+        this.showIdleControls();
       }
 
       // Collision: wiggle + freeze; show reset button, no auto reset

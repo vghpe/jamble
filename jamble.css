@@ -118,6 +118,28 @@
   color: #388e3c;
 }
 
+/* Idle controls: start + shuffle (visible only in idle), below the game */
+#jamble .jamble-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+#jamble .jamble-start,
+#jamble .jamble-shuffle {
+  display: none;
+  font-size: 20px;
+  background: #fff;
+  border: 2px solid #81c784;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  line-height: 36px;
+  color: #388e3c;
+}
+
 /* Message */
 #jamble .jamble-message {
   margin: 15px 0 0 0;
