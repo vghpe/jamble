@@ -60,6 +60,15 @@
         }
     }
     class Player {
+        idle() {
+            this.isJumping = false;
+            this.endDash();
+            this.velocity = 0;
+            this.jumpHeight = 0;
+            this.el.style.bottom = '0px';
+            this.el.style.transform = 'scaleY(1) scaleX(1)';
+            this.setFrozenStart();
+        }
         constructor(el) {
             this.isJumping = false;
             this.jumpHeight = 0;
@@ -186,6 +195,9 @@
             this.rafId = null;
             this.awaitingStartTap = false;
             this.startCountdownTimer = null;
+            this.direction = 1;
+            this.level = 0;
+            this.levelEl = null;
             this.root = root;
             const gameEl = root.querySelector('.jamble-game');
             const playerEl = root.querySelector('.jamble-player');
@@ -194,6 +206,7 @@
             const cdEl = root.querySelector('.jamble-countdown');
             const resetBtn = root.querySelector('.jamble-reset');
             const messageEl = root.querySelector('.jamble-message');
+            const levelEl = root.querySelector('.jamble-level');
             if (!gameEl || !playerEl || !t1 || !t2 || !cdEl || !resetBtn) {
                 throw new Error('Jamble: missing required elements');
             }
@@ -204,6 +217,7 @@
             this.countdown = new Countdown(cdEl);
             this.resetBtn = resetBtn;
             this.messageEl = messageEl;
+            this.levelEl = levelEl;
             this.wiggle = new Wiggle(this.player.el);
             this.onPointerDown = this.onPointerDown.bind(this);
             this.loop = this.loop.bind(this);
@@ -234,6 +248,9 @@
                 this.messageEl.textContent = 'Tap to jump';
             this.player.setFrozenStart();
             this.awaitingStartTap = true;
+            this.direction = 1;
+            this.level = 0;
+            this.updateLevel();
         }
         bind() {
             document.addEventListener('pointerdown', this.onPointerDown);
@@ -244,7 +261,7 @@
             this.resetBtn.removeEventListener('click', () => this.reset());
         }
         onPointerDown(e) {
-            if (this.player.won || e.target === this.resetBtn)
+            if (e.target === this.resetBtn)
                 return;
             const rect = this.gameEl.getBoundingClientRect();
             const withinX = e.clientX >= rect.left && e.clientX <= rect.right;
@@ -269,6 +286,13 @@
                 }
             }
         }
+        updateLevel() {
+            if (this.levelEl)
+                this.levelEl.textContent = String(this.level);
+        }
+        reachedLeft() {
+            return this.player.x <= Const.PLAYER_START_OFFSET;
+        }
         collisionWith(ob) {
             const pr = this.player.el.getBoundingClientRect();
             const tr = ob.rect();
@@ -286,25 +310,32 @@
             const cx = this.player.x + this.player.el.offsetWidth / 2;
             const cy = this.player.jumpHeight + this.player.el.offsetHeight + 10;
             this.countdown.updatePosition(cx, cy);
-            if (!this.player.won) {
-                if (!this.player.frozenStart && !this.player.frozenDeath) {
-                    let dx = Const.PLAYER_SPEED * deltaSec;
-                    if (this.player.isDashing)
-                        dx += Const.DASH_SPEED * deltaSec;
-                    this.player.moveX(dx);
-                    if (this.reachedRight()) {
-                        this.player.snapRight(this.gameEl.offsetWidth);
-                        this.player.won = true;
-                        this.resetBtn.style.display = 'block';
-                    }
+            if (!this.player.frozenStart && !this.player.frozenDeath) {
+                let speed = Const.PLAYER_SPEED + (this.player.isDashing ? Const.DASH_SPEED : 0);
+                const dx = speed * deltaSec * this.direction;
+                this.player.moveX(dx);
+                if (this.direction === 1 && this.reachedRight()) {
+                    this.player.snapRight(this.gameEl.offsetWidth);
+                    this.level += 1;
+                    this.updateLevel();
+                    this.player.idle();
+                    this.awaitingStartTap = true;
+                    this.direction = -1;
                 }
-                this.player.update(dt60);
-                this.player.updateDash(deltaSec * 1000);
-                if (!this.player.frozenStart && !this.player.frozenDeath && (this.collisionWith(this.tree1) || this.collisionWith(this.tree2))) {
-                    this.player.setFrozenDeath();
-                    this.wiggle.start(this.player.x);
-                    window.setTimeout(() => this.reset(), Const.DEATH_FREEZE_TIME);
+                else if (this.direction === -1 && this.reachedLeft()) {
+                    this.player.setX(Const.PLAYER_START_OFFSET);
+                    this.level += 1;
+                    this.updateLevel();
+                    this.player.idle();
+                    this.awaitingStartTap = true;
+                    this.direction = 1;
                 }
+            }
+            this.player.update(dt60);
+            this.player.updateDash(deltaSec * 1000);
+            if (!this.player.frozenStart && !this.player.frozenDeath && (this.collisionWith(this.tree1) || this.collisionWith(this.tree2))) {
+                this.reset();
+                this.resetBtn.style.display = 'block';
             }
             this.rafId = window.requestAnimationFrame(this.loop);
         }

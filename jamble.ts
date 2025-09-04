@@ -87,6 +87,17 @@
     private dashRemainingMs: number = 0;
     private dashAvailable: boolean = true;
 
+    // Switch to idle state at current position
+    idle(): void {
+      this.isJumping = false;
+      this.endDash();
+      this.velocity = 0;
+      this.jumpHeight = 0;
+      this.el.style.bottom = '0px';
+      this.el.style.transform = 'scaleY(1) scaleX(1)';
+      this.setFrozenStart();
+    }
+
     constructor(el: HTMLElement){
       this.el = el;
       this.reset();
@@ -220,6 +231,9 @@
     private rafId: number | null = null;
     private awaitingStartTap: boolean = false;
     private startCountdownTimer: number | null = null;
+    private direction: 1 | -1 = 1;
+    private level: number = 0;
+    private levelEl: HTMLElement | null = null;
 
     constructor(root: HTMLElement){
       this.root = root;
@@ -230,6 +244,7 @@
       const cdEl = root.querySelector('.jamble-countdown') as HTMLElement | null;
       const resetBtn = root.querySelector('.jamble-reset') as HTMLButtonElement | null;
       const messageEl = root.querySelector('.jamble-message') as HTMLElement | null;
+      const levelEl = root.querySelector('.jamble-level') as HTMLElement | null;
 
       if (!gameEl || !playerEl || !t1 || !t2 || !cdEl || !resetBtn){
         throw new Error('Jamble: missing required elements');
@@ -242,6 +257,7 @@
       this.countdown = new Countdown(cdEl);
       this.resetBtn = resetBtn;
       this.messageEl = messageEl;
+      this.levelEl = levelEl;
       this.wiggle = new Wiggle(this.player.el);
 
       this.onPointerDown = this.onPointerDown.bind(this);
@@ -275,6 +291,9 @@
       // Idle: wait for first tap to begin countdown.
       this.player.setFrozenStart();
       this.awaitingStartTap = true;
+      this.direction = 1;
+      this.level = 0;
+      this.updateLevel();
     }
 
     // Event binding helpers
@@ -289,7 +308,7 @@
 
     // Input: tap/click within an extended game area triggers jump
     private onPointerDown(e: PointerEvent): void {
-      if (this.player.won || e.target === this.resetBtn) return;
+      if (e.target === this.resetBtn) return;
       const rect = this.gameEl.getBoundingClientRect();
       const withinX = e.clientX >= rect.left && e.clientX <= rect.right;
       const withinY = e.clientY >= rect.top && e.clientY <= rect.bottom + rect.height * 2;
@@ -314,6 +333,14 @@
       }
     }
 
+    private updateLevel(): void {
+      if (this.levelEl) this.levelEl.textContent = String(this.level);
+    }
+
+    private reachedLeft(): boolean {
+      return this.player.x <= Const.PLAYER_START_OFFSET;
+    }
+
     // AABB collision between player and an obstacle
     private collisionWith(ob: Obstacle): boolean {
       const pr = this.player.el.getBoundingClientRect();
@@ -325,7 +352,7 @@
       return this.player.getRight(this.gameEl.offsetWidth) >= this.gameEl.offsetWidth;
     }
 
-    // Main RAF loop: move, apply physics, check collisions and win state
+    // Main RAF loop: move, apply physics, check collisions and side reaches
     private loop(ts: number): void {
       if (this.lastTime === null) this.lastTime = ts;
       const deltaSec = Math.min((ts - this.lastTime) / 1000, 0.05);
@@ -337,28 +364,36 @@
       const cy = this.player.jumpHeight + this.player.el.offsetHeight + 10;
       this.countdown.updatePosition(cx, cy);
 
-      if (!this.player.won){
-        if (!this.player.frozenStart && !this.player.frozenDeath){
-          // Base forward speed + dash boost while dashing
-          let dx = Const.PLAYER_SPEED * deltaSec;
-          if (this.player.isDashing) dx += Const.DASH_SPEED * deltaSec;
-          this.player.moveX(dx);
-          if (this.reachedRight()){
-            this.player.snapRight(this.gameEl.offsetWidth);
-            this.player.won = true;
-            this.resetBtn.style.display = 'block';
-          }
-        }
+      // Horizontal movement phase (no movement while frozen/idle)
+      if (!this.player.frozenStart && !this.player.frozenDeath){
+        let speed = Const.PLAYER_SPEED + (this.player.isDashing ? Const.DASH_SPEED : 0);
+        const dx = speed * deltaSec * this.direction;
+        this.player.moveX(dx);
 
-        this.player.update(dt60);
-        // Update dash timer using real milliseconds
-        this.player.updateDash(deltaSec * 1000);
-
-        if (!this.player.frozenStart && !this.player.frozenDeath && (this.collisionWith(this.tree1) || this.collisionWith(this.tree2))){
-          this.player.setFrozenDeath();
-          this.wiggle.start(this.player.x);
-          window.setTimeout(() => this.reset(), Const.DEATH_FREEZE_TIME);
+        // Handle reaching sides: enter idle, flip direction, and increment level
+        if (this.direction === 1 && this.reachedRight()){
+          this.player.snapRight(this.gameEl.offsetWidth);
+          this.level += 1; this.updateLevel();
+          this.player.idle();
+          this.awaitingStartTap = true;
+          this.direction = -1;
+        } else if (this.direction === -1 && this.reachedLeft()){
+          this.player.setX(Const.PLAYER_START_OFFSET);
+          this.level += 1; this.updateLevel();
+          this.player.idle();
+          this.awaitingStartTap = true;
+          this.direction = 1;
         }
+      }
+
+      // Vertical physics + dash timer
+      this.player.update(dt60);
+      this.player.updateDash(deltaSec * 1000);
+
+      // Collisions: full restart and show reset button
+      if (!this.player.frozenStart && !this.player.frozenDeath && (this.collisionWith(this.tree1) || this.collisionWith(this.tree2))){
+        this.reset();
+        this.resetBtn.style.display = 'block';
       }
       this.rafId = window.requestAnimationFrame(this.loop);
     }
