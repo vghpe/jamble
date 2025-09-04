@@ -13,6 +13,7 @@
         DASH_DURATION_MS: 220,
         START_FREEZE_TIME: 3000,
         DEATH_FREEZE_TIME: 500,
+        SHOW_RESET_DELAY_MS: 150,
         PLAYER_START_OFFSET: 10,
         DEATH_WIGGLE_DISTANCE: 1
     };
@@ -198,6 +199,8 @@
             this.direction = 1;
             this.level = 0;
             this.levelEl = null;
+            this.deathWiggleTimer = null;
+            this.showResetTimer = null;
             this.root = root;
             const gameEl = root.querySelector('.jamble-game');
             const playerEl = root.querySelector('.jamble-player');
@@ -242,6 +245,14 @@
                 window.clearTimeout(this.startCountdownTimer);
                 this.startCountdownTimer = null;
             }
+            if (this.deathWiggleTimer !== null) {
+                window.clearTimeout(this.deathWiggleTimer);
+                this.deathWiggleTimer = null;
+            }
+            if (this.showResetTimer !== null) {
+                window.clearTimeout(this.showResetTimer);
+                this.showResetTimer = null;
+            }
             this.player.reset();
             this.resetBtn.style.display = 'none';
             if (this.messageEl)
@@ -262,6 +273,8 @@
         }
         onPointerDown(e) {
             if (e.target === this.resetBtn)
+                return;
+            if (this.player.frozenDeath)
                 return;
             const rect = this.gameEl.getBoundingClientRect();
             const withinX = e.clientX >= rect.left && e.clientX <= rect.right;
@@ -334,8 +347,25 @@
             this.player.update(dt60);
             this.player.updateDash(deltaSec * 1000);
             if (!this.player.frozenStart && !this.player.frozenDeath && (this.collisionWith(this.tree1) || this.collisionWith(this.tree2))) {
-                this.reset();
-                this.resetBtn.style.display = 'block';
+                this.player.setFrozenDeath();
+                if (this.deathWiggleTimer !== null) {
+                    window.clearTimeout(this.deathWiggleTimer);
+                    this.deathWiggleTimer = null;
+                }
+                if (this.showResetTimer !== null) {
+                    window.clearTimeout(this.showResetTimer);
+                    this.showResetTimer = null;
+                }
+                this.wiggle.start(this.player.x);
+                this.deathWiggleTimer = window.setTimeout(() => {
+                    this.wiggle.stop();
+                    this.player.el.style.left = this.player.x + 'px';
+                    this.deathWiggleTimer = null;
+                }, Const.DEATH_FREEZE_TIME);
+                this.showResetTimer = window.setTimeout(() => {
+                    this.resetBtn.style.display = 'block';
+                    this.showResetTimer = null;
+                }, Const.SHOW_RESET_DELAY_MS);
             }
             this.rafId = window.requestAnimationFrame(this.loop);
         }

@@ -17,7 +17,8 @@
     DASH_SPEED: 280,          // extra px/s while dashing
     DASH_DURATION_MS: 220,    // how long a dash lasts
     START_FREEZE_TIME: 3000,
-    DEATH_FREEZE_TIME: 500,
+    DEATH_FREEZE_TIME: 500,   // how long the wiggle runs
+    SHOW_RESET_DELAY_MS: 150, // short beat before showing reset button
     PLAYER_START_OFFSET: 10,
     DEATH_WIGGLE_DISTANCE: 1
   } as const;
@@ -234,6 +235,8 @@
     private direction: 1 | -1 = 1;
     private level: number = 0;
     private levelEl: HTMLElement | null = null;
+    private deathWiggleTimer: number | null = null;
+    private showResetTimer: number | null = null;
 
     constructor(root: HTMLElement){
       this.root = root;
@@ -285,6 +288,8 @@
       this.wiggle.stop();
       this.countdown.hide();
       if (this.startCountdownTimer !== null) { window.clearTimeout(this.startCountdownTimer); this.startCountdownTimer = null; }
+      if (this.deathWiggleTimer !== null) { window.clearTimeout(this.deathWiggleTimer); this.deathWiggleTimer = null; }
+      if (this.showResetTimer !== null) { window.clearTimeout(this.showResetTimer); this.showResetTimer = null; }
       this.player.reset();
       this.resetBtn.style.display = 'none';
       if (this.messageEl) this.messageEl.textContent = 'Tap to jump';
@@ -309,6 +314,7 @@
     // Input: tap/click within an extended game area triggers jump
     private onPointerDown(e: PointerEvent): void {
       if (e.target === this.resetBtn) return;
+      if (this.player.frozenDeath) return; // ignore taps while dead
       const rect = this.gameEl.getBoundingClientRect();
       const withinX = e.clientX >= rect.left && e.clientX <= rect.right;
       const withinY = e.clientY >= rect.top && e.clientY <= rect.bottom + rect.height * 2;
@@ -390,10 +396,25 @@
       this.player.update(dt60);
       this.player.updateDash(deltaSec * 1000);
 
-      // Collisions: full restart and show reset button
+      // Collisions: run wiggle, freeze in place, then show reset button (no auto reset)
       if (!this.player.frozenStart && !this.player.frozenDeath && (this.collisionWith(this.tree1) || this.collisionWith(this.tree2))){
-        this.reset();
-        this.resetBtn.style.display = 'block';
+        this.player.setFrozenDeath();
+        // Start wiggle around current x; ensure old timers are cleared
+        if (this.deathWiggleTimer !== null) { window.clearTimeout(this.deathWiggleTimer); this.deathWiggleTimer = null; }
+        if (this.showResetTimer !== null) { window.clearTimeout(this.showResetTimer); this.showResetTimer = null; }
+        this.wiggle.start(this.player.x);
+        // Stop wiggle after configured time and keep frozen
+        this.deathWiggleTimer = window.setTimeout(() => {
+          this.wiggle.stop();
+          // Restore element left to canonical x to avoid drift
+          this.player.el.style.left = this.player.x + 'px';
+          this.deathWiggleTimer = null;
+        }, Const.DEATH_FREEZE_TIME);
+        // Reveal reset button after a short beat
+        this.showResetTimer = window.setTimeout(() => {
+          this.resetBtn.style.display = 'block';
+          this.showResetTimer = null;
+        }, Const.SHOW_RESET_DELAY_MS);
       }
       this.rafId = window.requestAnimationFrame(this.loop);
     }
