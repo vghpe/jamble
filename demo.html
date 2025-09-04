@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Jamble Demo</title>
+    <link rel="stylesheet" href="./jamble.css" />
+  </head>
+  <body>
+    <h1 style="text-align:center;font-family:system-ui,sans-serif">Jamble Demo</h1>
+    <div id="jamble">
+      <div class="jamble-game">
+        <div class="jamble-player jamble-frozen-start"></div>
+        <div class="jamble-tree" data-tree="1" style="left: 35%"></div>
+        <div class="jamble-tree" data-tree="2" style="left: 65%"></div>
+        <div class="jamble-countdown">3</div>
+        <button class="jamble-reset" title="Reset">↻</button>
+      </div>
+      <div class="jamble-message">Tap to jump</div>
+    </div>
+
+    <script src="./jamble.js"></script>
+    <script>
+      (function(){
+        if (!window.Jamble || !window.Jamble.Game) return;
+        var root = document.getElementById('jamble');
+        var game = new window.Jamble.Game(root);
+        game.start();
+      })();
+    </script>
+  </body>
+  </html>
+
