@@ -87,6 +87,9 @@ namespace Jamble {
       if (!this.isDashing) return;
       this.isDashing = false;
       this.dashRemainingMs = 0;
+      // After dashing, immediately transition to downward motion
+      // If we were moving upward, flip to a slight downward velocity
+      if (this.velocity > 0) this.velocity = -0.1;
       this.el.classList.remove('jamble-dashing');
     }
 

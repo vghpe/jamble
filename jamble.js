@@ -174,6 +174,8 @@ var Jamble;
                 return;
             this.isDashing = false;
             this.dashRemainingMs = 0;
+            if (this.velocity > 0)
+                this.velocity = -0.1;
             this.el.classList.remove('jamble-dashing');
         }
         update(dt60) {
