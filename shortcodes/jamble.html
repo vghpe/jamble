@@ -1,0 +1,31 @@
+{{/*
+  Jamble shortcode
+  Optional parameter:
+    - path: subfolder under /static to load assets from (default: "jamble")
+  Example:
+    {{< jamble >}}                         -> loads /jamble/jamble.css|js
+    {{< jamble path="games/jamble" >}}    -> loads /games/jamble/jamble.css|js
+*/}}
+{{ $base := .Get "path" | default "games/jamble" }}
+
+<div id="jamble">
+  <div class="jamble-game">
+    <div class="jamble-player jamble-frozen-start"></div>
+    <div class="jamble-tree" data-tree="1" style="left: 35%"></div>
+    <div class="jamble-tree" data-tree="2" style="left: 65%"></div>
+    <div class="jamble-countdown">3</div>
+    <button class="jamble-reset" title="Reset">↻</button>
+  </div>
+  <div class="jamble-message">Tap to jump</div>
+</div>
+
+<link rel="stylesheet" href="{{ printf "/%s/jamble.css" $base | relURL }}">
+<script src="{{ printf "/%s/jamble.js" $base | relURL }}"></script>
+<script>
+  (function(){
+    if (!window.Jamble || !window.Jamble.Game) return;
+    var root = document.getElementById('jamble');
+    var game = new window.Jamble.Game(root);
+    game.start();
+  })();
+  </script>

@@ -1,0 +1,112 @@
+/* Root container */
+#jamble {
+  width: 100%;
+  max-width: 500px;
+  margin: 10px auto 0;
+  font-family: inherit;
+}
+
+/* Game area */
+#jamble .jamble-game {
+  position: relative;
+  width: 100%;
+  height: 100px;
+  background: #e8f5e9;
+  overflow: hidden;
+  border: 2px solid #81c784;
+  text-align: center;
+  border-radius: 6px;
+  touch-action: manipulation;
+}
+
+/* Player */
+#jamble .jamble-player {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  border-radius: 4px;
+  transform-origin: center bottom;
+  transition: transform 0.1s ease-out;
+}
+
+#jamble .jamble-frozen-start { background: #fffde7; box-shadow: inset 0 0 0 2px #fbc02d; }
+#jamble .jamble-normal       { background: #4db6ac; box-shadow: none; }
+#jamble .jamble-frozen-death { background: #ef9a9a; box-shadow: none; }
+
+/* Trees */
+#jamble .jamble-tree {
+  position: absolute;
+  bottom: 0;
+  width: 10px;
+  height: 30px;
+  background: #8d6e63;
+  border-radius: 2px;
+}
+
+#jamble .jamble-tree::after {
+  content: "";
+  position: absolute;
+  bottom: 20px;
+  left: -5px;
+  width: 20px;
+  height: 20px;
+  background: #66bb6a;
+  border-radius: 50%;
+}
+
+/* Countdown */
+#jamble .jamble-countdown {
+  position: absolute;
+  display: none;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fbc02d;
+  pointer-events: none;
+  transform: translate(-50%, 0) scale(1);
+  opacity: 0;
+}
+
+@keyframes jambleCountdownAnim {
+  0%   { opacity: 0; transform: translate(-50%, 0) scale(0.9); }
+  15%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  70%  { opacity: 1; transform: translate(-50%, 0) scale(1.05); }
+  100% { opacity: 0; transform: translate(-50%, 0) scale(1.5); }
+}
+
+#jamble .jamble-animate {
+  animation-name: jambleCountdownAnim;
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: forwards;
+}
+
+/* Reset button */
+#jamble .jamble-reset {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+  background: #fff;
+  border: 2px solid #81c784;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  line-height: 36px;
+  color: #388e3c;
+}
+
+/* Message */
+#jamble .jamble-message {
+  margin: 15px 0 0 0;
+  font-size: 16px;
+  color: #37474f;
+  text-align: center;
+  line-height: 1.4em;
+  min-height: 2em;
+}
+
