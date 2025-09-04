@@ -23,6 +23,7 @@ namespace Jamble {
     private levelEl: HTMLElement | null = null;
     private deathWiggleTimer: number | null = null;
     private showResetTimer: number | null = null;
+    private waitGroundForStart: boolean = false;
 
     constructor(root: HTMLElement){
       this.root = root;
@@ -78,6 +79,7 @@ namespace Jamble {
       if (this.messageEl) this.messageEl.textContent = 'Tap to jump';
       this.player.setFrozenStart();
       this.awaitingStartTap = true;
+      this.waitGroundForStart = false;
       this.direction = 1;
       this.level = 0;
       this.updateLevel();
@@ -112,7 +114,10 @@ namespace Jamble {
         if (!this.player.frozenStart && this.player.isJumping) {
           const dashed = this.player.startDash();
           if (!dashed) this.player.jump();
-        } else {
+        } else if (!this.player.frozenStart) {
+          this.player.jump();
+        } else if (!this.waitGroundForStart) {
+          // Allow jumping during countdown (prestart), but not while waiting to ground at edges
           this.player.jump();
         }
       }
@@ -153,14 +158,21 @@ namespace Jamble {
         if (this.direction === 1 && this.reachedRight()){
           this.player.snapRight(this.gameEl.offsetWidth);
           this.level += 1; this.updateLevel();
-          this.player.idle();
-          this.awaitingStartTap = true;
+          // Apply idle visuals, freeze horizontal movement
+          this.player.setFrozenStart();
+          // Ensure downward motion starts immediately
+          if (this.player.velocity > 0) this.player.velocity = -0.1;
+          // Wait until grounded before allowing start tap
+          this.waitGroundForStart = true;
+          this.awaitingStartTap = false;
           this.direction = -1;
         } else if (this.direction === -1 && this.reachedLeft()){
           this.player.setX(Const.PLAYER_START_OFFSET);
           this.level += 1; this.updateLevel();
-          this.player.idle();
-          this.awaitingStartTap = true;
+          this.player.setFrozenStart();
+          if (this.player.velocity > 0) this.player.velocity = -0.1;
+          this.waitGroundForStart = true;
+          this.awaitingStartTap = false;
           this.direction = 1;
         }
       }
@@ -168,6 +180,12 @@ namespace Jamble {
       // Vertical physics and dash timer
       this.player.update(dt60);
       this.player.updateDash(deltaSec * 1000);
+
+      // If we reached a side while airborne, wait to grant start until grounded
+      if (this.waitGroundForStart && this.player.jumpHeight === 0 && !this.player.isJumping){
+        this.waitGroundForStart = false;
+        this.awaitingStartTap = true;
+      }
 
       // Collision: wiggle + freeze; show reset button, no auto reset
       if (!this.player.frozenStart && !this.player.frozenDeath && (this.collisionWith(this.tree1) || this.collisionWith(this.tree2))){

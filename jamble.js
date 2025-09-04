@@ -224,6 +224,7 @@ var Jamble;
             this.levelEl = null;
             this.deathWiggleTimer = null;
             this.showResetTimer = null;
+            this.waitGroundForStart = false;
             this.root = root;
             const gameEl = root.querySelector('.jamble-game');
             const playerEl = root.querySelector('.jamble-player');
@@ -282,6 +283,7 @@ var Jamble;
                 this.messageEl.textContent = 'Tap to jump';
             this.player.setFrozenStart();
             this.awaitingStartTap = true;
+            this.waitGroundForStart = false;
             this.direction = 1;
             this.level = 0;
             this.updateLevel();
@@ -318,7 +320,10 @@ var Jamble;
                     if (!dashed)
                         this.player.jump();
                 }
-                else {
+                else if (!this.player.frozenStart) {
+                    this.player.jump();
+                }
+                else if (!this.waitGroundForStart) {
                     this.player.jump();
                 }
             }
@@ -354,21 +359,31 @@ var Jamble;
                     this.player.snapRight(this.gameEl.offsetWidth);
                     this.level += 1;
                     this.updateLevel();
-                    this.player.idle();
-                    this.awaitingStartTap = true;
+                    this.player.setFrozenStart();
+                    if (this.player.velocity > 0)
+                        this.player.velocity = -0.1;
+                    this.waitGroundForStart = true;
+                    this.awaitingStartTap = false;
                     this.direction = -1;
                 }
                 else if (this.direction === -1 && this.reachedLeft()) {
                     this.player.setX(Jamble.Const.PLAYER_START_OFFSET);
                     this.level += 1;
                     this.updateLevel();
-                    this.player.idle();
-                    this.awaitingStartTap = true;
+                    this.player.setFrozenStart();
+                    if (this.player.velocity > 0)
+                        this.player.velocity = -0.1;
+                    this.waitGroundForStart = true;
+                    this.awaitingStartTap = false;
                     this.direction = 1;
                 }
             }
             this.player.update(dt60);
             this.player.updateDash(deltaSec * 1000);
+            if (this.waitGroundForStart && this.player.jumpHeight === 0 && !this.player.isJumping) {
+                this.waitGroundForStart = false;
+                this.awaitingStartTap = true;
+            }
             if (!this.player.frozenStart && !this.player.frozenDeath && (this.collisionWith(this.tree1) || this.collisionWith(this.tree2))) {
                 this.player.setFrozenDeath();
                 if (this.deathWiggleTimer !== null) {
