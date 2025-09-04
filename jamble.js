@@ -1,9 +1,7 @@
 "use strict";
-(function () {
-    function clamp(v, min, max) {
-        return Math.max(min, Math.min(max, v));
-    }
-    const Const = {
+var Jamble;
+(function (Jamble) {
+    Jamble.Const = {
         JUMP_STRENGTH: 7,
         GRAVITY_UP: 0.32,
         GRAVITY_MID: 0.4,
@@ -17,6 +15,9 @@
         PLAYER_START_OFFSET: 10,
         DEATH_WIGGLE_DISTANCE: 1
     };
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
     class Countdown {
         constructor(el) {
             this.timeout = null;
@@ -60,21 +61,46 @@
             this.el.style.bottom = y + 'px';
         }
     }
-    class Player {
-        idle() {
-            this.isJumping = false;
-            this.endDash();
-            this.velocity = 0;
-            this.jumpHeight = 0;
-            this.el.style.bottom = '0px';
-            this.el.style.transform = 'scaleY(1) scaleX(1)';
-            this.setFrozenStart();
+    Jamble.Countdown = Countdown;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class Obstacle {
+        constructor(el) { this.el = el; }
+        rect() { return this.el.getBoundingClientRect(); }
+    }
+    Jamble.Obstacle = Obstacle;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class Wiggle {
+        constructor(playerEl) {
+            this.interval = null;
+            this.playerEl = playerEl;
         }
+        start(x) {
+            let direction = 1;
+            this.stop();
+            this.interval = window.setInterval(() => {
+                this.playerEl.style.left = (x + direction * Jamble.Const.DEATH_WIGGLE_DISTANCE) + 'px';
+                direction *= -1;
+            }, 100);
+        }
+        stop() { if (this.interval !== null) {
+            window.clearInterval(this.interval);
+            this.interval = null;
+        } }
+    }
+    Jamble.Wiggle = Wiggle;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class Player {
         constructor(el) {
             this.isJumping = false;
             this.jumpHeight = 0;
             this.velocity = 0;
-            this.x = Const.PLAYER_START_OFFSET;
+            this.x = Jamble.Const.PLAYER_START_OFFSET;
             this.won = false;
             this.frozenStart = true;
             this.frozenDeath = false;
@@ -88,7 +114,7 @@
             this.isJumping = false;
             this.jumpHeight = 0;
             this.velocity = 0;
-            this.x = Const.PLAYER_START_OFFSET;
+            this.x = Jamble.Const.PLAYER_START_OFFSET;
             this.won = false;
             this.frozenStart = true;
             this.frozenDeath = false;
@@ -101,16 +127,29 @@
             this.el.className = 'jamble-player jamble-frozen-start';
         }
         setNormal() { this.el.className = 'jamble-player jamble-normal'; }
-        setFrozenStart() { this.frozenStart = true; this.el.className = 'jamble-player jamble-frozen-start'; }
+        setFrozenStart() { this.frozenStart = true; this.el.className = 'jamble-player jamble-player-idle'; }
+        setPrestart() { this.frozenStart = true; this.el.className = 'jamble-player jamble-player-prestart'; }
         clearFrozenStart() { this.frozenStart = false; this.setNormal(); }
         setFrozenDeath() { this.frozenDeath = true; this.el.className = 'jamble-player jamble-frozen-death'; }
+        idle() {
+            this.isJumping = false;
+            this.endDash();
+            this.velocity = 0;
+            this.jumpHeight = 0;
+            this.el.style.bottom = '0px';
+            this.el.style.transform = 'scaleY(1) scaleX(1)';
+            this.setFrozenStart();
+        }
         getRight(_gameWidth) { return this.x + this.el.offsetWidth; }
-        snapRight(gameWidth) { this.x = gameWidth - this.el.offsetWidth; this.el.style.left = this.x + 'px'; }
+        snapRight(gameWidth) {
+            this.x = gameWidth - this.el.offsetWidth - Jamble.Const.PLAYER_START_OFFSET;
+            this.el.style.left = this.x + 'px';
+        }
         jump() {
             if (this.isJumping || this.frozenDeath)
                 return;
             this.isJumping = true;
-            this.velocity = Const.JUMP_STRENGTH;
+            this.velocity = Jamble.Const.JUMP_STRENGTH;
         }
         startDash() {
             if (this.frozenStart || this.frozenDeath || !this.isJumping)
@@ -118,7 +157,7 @@
             if (this.isDashing || !this.dashAvailable)
                 return false;
             this.isDashing = true;
-            this.dashRemainingMs = Const.DASH_DURATION_MS;
+            this.dashRemainingMs = Jamble.Const.DASH_DURATION_MS;
             this.dashAvailable = false;
             this.el.classList.add('jamble-dashing');
             return true;
@@ -143,11 +182,11 @@
             if (!this.frozenDeath && this.isJumping) {
                 this.jumpHeight += this.velocity * dt60;
                 if (this.velocity > 2)
-                    this.velocity -= Const.GRAVITY_UP * dt60;
+                    this.velocity -= Jamble.Const.GRAVITY_UP * dt60;
                 else if (this.velocity > -2)
-                    this.velocity -= Const.GRAVITY_MID * dt60;
+                    this.velocity -= Jamble.Const.GRAVITY_MID * dt60;
                 else
-                    this.velocity -= Const.GRAVITY_DOWN * dt60;
+                    this.velocity -= Jamble.Const.GRAVITY_DOWN * dt60;
                 if (this.jumpHeight <= 0) {
                     this.jumpHeight = 0;
                     this.isJumping = false;
@@ -168,28 +207,10 @@
         moveX(dx) { this.x += dx; this.el.style.left = this.x + 'px'; }
         setX(x) { this.x = x; this.el.style.left = this.x + 'px'; }
     }
-    class Obstacle {
-        constructor(el) { this.el = el; }
-        rect() { return this.el.getBoundingClientRect(); }
-    }
-    class Wiggle {
-        constructor(playerEl) {
-            this.interval = null;
-            this.playerEl = playerEl;
-        }
-        start(x) {
-            let direction = 1;
-            this.stop();
-            this.interval = window.setInterval(() => {
-                this.playerEl.style.left = (x + direction * Const.DEATH_WIGGLE_DISTANCE) + 'px';
-                direction *= -1;
-            }, 100);
-        }
-        stop() { if (this.interval !== null) {
-            window.clearInterval(this.interval);
-            this.interval = null;
-        } }
-    }
+    Jamble.Player = Player;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
     class Game {
         constructor(root) {
             this.lastTime = null;
@@ -214,14 +235,14 @@
                 throw new Error('Jamble: missing required elements');
             }
             this.gameEl = gameEl;
-            this.player = new Player(playerEl);
-            this.tree1 = new Obstacle(t1);
-            this.tree2 = new Obstacle(t2);
-            this.countdown = new Countdown(cdEl);
+            this.player = new Jamble.Player(playerEl);
+            this.tree1 = new Jamble.Obstacle(t1);
+            this.tree2 = new Jamble.Obstacle(t2);
+            this.countdown = new Jamble.Countdown(cdEl);
             this.resetBtn = resetBtn;
             this.messageEl = messageEl;
             this.levelEl = levelEl;
-            this.wiggle = new Wiggle(this.player.el);
+            this.wiggle = new Jamble.Wiggle(this.player.el);
             this.onPointerDown = this.onPointerDown.bind(this);
             this.loop = this.loop.bind(this);
         }
@@ -282,11 +303,12 @@
             if (withinX && withinY) {
                 if (this.awaitingStartTap) {
                     this.awaitingStartTap = false;
-                    this.countdown.start(Const.START_FREEZE_TIME);
+                    this.player.setPrestart();
+                    this.countdown.start(Jamble.Const.START_FREEZE_TIME);
                     this.startCountdownTimer = window.setTimeout(() => {
                         this.player.clearFrozenStart();
                         this.startCountdownTimer = null;
-                    }, Const.START_FREEZE_TIME);
+                    }, Jamble.Const.START_FREEZE_TIME);
                     return;
                 }
                 if (!this.player.frozenStart && this.player.isJumping) {
@@ -303,17 +325,16 @@
             if (this.levelEl)
                 this.levelEl.textContent = String(this.level);
         }
-        reachedLeft() {
-            return this.player.x <= Const.PLAYER_START_OFFSET;
-        }
         collisionWith(ob) {
             const pr = this.player.el.getBoundingClientRect();
             const tr = ob.rect();
             return pr.left < tr.right && pr.right > tr.left && pr.bottom > tr.top;
         }
         reachedRight() {
-            return this.player.getRight(this.gameEl.offsetWidth) >= this.gameEl.offsetWidth;
+            const rightLimit = this.gameEl.offsetWidth - Jamble.Const.PLAYER_START_OFFSET;
+            return this.player.getRight(this.gameEl.offsetWidth) >= rightLimit;
         }
+        reachedLeft() { return this.player.x <= Jamble.Const.PLAYER_START_OFFSET; }
         loop(ts) {
             if (this.lastTime === null)
                 this.lastTime = ts;
@@ -324,7 +345,7 @@
             const cy = this.player.jumpHeight + this.player.el.offsetHeight + 10;
             this.countdown.updatePosition(cx, cy);
             if (!this.player.frozenStart && !this.player.frozenDeath) {
-                let speed = Const.PLAYER_SPEED + (this.player.isDashing ? Const.DASH_SPEED : 0);
+                const speed = Jamble.Const.PLAYER_SPEED + (this.player.isDashing ? Jamble.Const.DASH_SPEED : 0);
                 const dx = speed * deltaSec * this.direction;
                 this.player.moveX(dx);
                 if (this.direction === 1 && this.reachedRight()) {
@@ -336,7 +357,7 @@
                     this.direction = -1;
                 }
                 else if (this.direction === -1 && this.reachedLeft()) {
-                    this.player.setX(Const.PLAYER_START_OFFSET);
+                    this.player.setX(Jamble.Const.PLAYER_START_OFFSET);
                     this.level += 1;
                     this.updateLevel();
                     this.player.idle();
@@ -361,14 +382,17 @@
                     this.wiggle.stop();
                     this.player.el.style.left = this.player.x + 'px';
                     this.deathWiggleTimer = null;
-                }, Const.DEATH_FREEZE_TIME);
+                }, Jamble.Const.DEATH_FREEZE_TIME);
                 this.showResetTimer = window.setTimeout(() => {
                     this.resetBtn.style.display = 'block';
                     this.showResetTimer = null;
-                }, Const.SHOW_RESET_DELAY_MS);
+                }, Jamble.Const.SHOW_RESET_DELAY_MS);
             }
             this.rafId = window.requestAnimationFrame(this.loop);
         }
     }
-    window.Jamble = { Game };
+    Jamble.Game = Game;
+})(Jamble || (Jamble = {}));
+(function () {
+    window.Jamble = { Game: Jamble.Game };
 })();

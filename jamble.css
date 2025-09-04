@@ -33,6 +33,8 @@
 }
 
 #jamble .jamble-frozen-start { background: #fffde7; box-shadow: none; }
+#jamble .jamble-player-idle { background: #fffde7; box-shadow: inset 0 0 0 2px #fbc02d; }
+#jamble .jamble-player-prestart { background: #fbc02d; box-shadow: inset 0 0 0 2px #fbc02d; }
 #jamble .jamble-normal       { background: #4db6ac; box-shadow: none; }
 #jamble .jamble-player.jamble-dashing { background: #3da298; box-shadow: none; }
 
