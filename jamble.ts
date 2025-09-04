@@ -13,6 +13,9 @@
     GRAVITY_MID: 0.4,
     GRAVITY_DOWN: 0.65,
     PLAYER_SPEED: 130,
+    // Dash tuning
+    DASH_SPEED: 280,          // extra px/s while dashing
+    DASH_DURATION_MS: 220,    // how long a dash lasts
     START_FREEZE_TIME: 3000,
     DEATH_FREEZE_TIME: 500,
     PLAYER_START_OFFSET: 10,
@@ -79,6 +82,10 @@
     public won: boolean = false;
     public frozenStart: boolean = true;
     public frozenDeath: boolean = false;
+    // Dash state
+    public isDashing: boolean = false;
+    private dashRemainingMs: number = 0;
+    private dashAvailable: boolean = true;
 
     constructor(el: HTMLElement){
       this.el = el;
@@ -94,6 +101,9 @@
       this.won = false;
       this.frozenStart = true;
       this.frozenDeath = false;
+      this.isDashing = false;
+      this.dashRemainingMs = 0;
+      this.dashAvailable = true;
       this.el.style.left = this.x + 'px';
       this.el.style.bottom = this.jumpHeight + 'px';
       this.el.style.transform = 'scaleY(1) scaleX(1)';
@@ -117,8 +127,32 @@
       this.velocity = Const.JUMP_STRENGTH;
     }
 
+    // Dash: launch horizontally for a brief time. Only mid-air and once per airtime.
+    startDash(): boolean {
+      if (this.frozenStart || this.frozenDeath || !this.isJumping) return false;
+      if (this.isDashing || !this.dashAvailable) return false;
+      this.isDashing = true;
+      this.dashRemainingMs = Const.DASH_DURATION_MS;
+      this.dashAvailable = false;
+      this.el.classList.add('jamble-dashing');
+      return true;
+    }
+    updateDash(deltaMs: number): void {
+      if (!this.isDashing) return;
+      this.dashRemainingMs -= deltaMs;
+      if (this.dashRemainingMs <= 0) this.endDash();
+    }
+    endDash(): void {
+      if (!this.isDashing) return;
+      this.isDashing = false;
+      this.dashRemainingMs = 0;
+      this.el.classList.remove('jamble-dashing');
+    }
+
     // Update vertical motion and apply squash/stretch
     update(dt60: number): void {
+      // While dashing, freeze vertical motion (no gravity)
+      if (this.isDashing) return;
       if (!this.frozenDeath && this.isJumping){
         this.jumpHeight += this.velocity * dt60;
         if (this.velocity > 2) this.velocity -= Const.GRAVITY_UP * dt60;
@@ -128,6 +162,9 @@
         if (this.jumpHeight <= 0){
           this.jumpHeight = 0;
           this.isJumping = false;
+          // Touching ground resets dash availability
+          this.endDash();
+          this.dashAvailable = true;
           this.el.style.transform = 'scaleY(0.6) scaleX(1.4)';
           window.setTimeout(() => { this.el.style.transform = 'scaleY(1) scaleX(1)'; }, 150);
         } else {
@@ -181,6 +218,8 @@
     private wiggle: Wiggle;
     private lastTime: number | null = null;
     private rafId: number | null = null;
+    private awaitingStartTap: boolean = false;
+    private startCountdownTimer: number | null = null;
 
     constructor(root: HTMLElement){
       this.root = root;
@@ -229,12 +268,13 @@
     reset(): void {
       this.wiggle.stop();
       this.countdown.hide();
+      if (this.startCountdownTimer !== null) { window.clearTimeout(this.startCountdownTimer); this.startCountdownTimer = null; }
       this.player.reset();
       this.resetBtn.style.display = 'none';
       if (this.messageEl) this.messageEl.textContent = 'Tap to jump';
+      // Idle: wait for first tap to begin countdown.
       this.player.setFrozenStart();
-      this.countdown.start(Const.START_FREEZE_TIME);
-      window.setTimeout(() => this.player.clearFrozenStart(), Const.START_FREEZE_TIME);
+      this.awaitingStartTap = true;
     }
 
     // Event binding helpers
@@ -253,7 +293,25 @@
       const rect = this.gameEl.getBoundingClientRect();
       const withinX = e.clientX >= rect.left && e.clientX <= rect.right;
       const withinY = e.clientY >= rect.top && e.clientY <= rect.bottom + rect.height * 2;
-      if (withinX && withinY) this.player.jump();
+      if (withinX && withinY) {
+        // First tap: start countdown, do not jump yet
+        if (this.awaitingStartTap) {
+          this.awaitingStartTap = false;
+          this.countdown.start(Const.START_FREEZE_TIME);
+          this.startCountdownTimer = window.setTimeout(() => {
+            this.player.clearFrozenStart();
+            this.startCountdownTimer = null;
+          }, Const.START_FREEZE_TIME);
+          return;
+        }
+        // If mid-air and not in start freeze, trigger dash; otherwise jump.
+        if (!this.player.frozenStart && this.player.isJumping) {
+          const dashed = this.player.startDash();
+          if (!dashed) this.player.jump();
+        } else {
+          this.player.jump();
+        }
+      }
     }
 
     // AABB collision between player and an obstacle
@@ -281,7 +339,10 @@
 
       if (!this.player.won){
         if (!this.player.frozenStart && !this.player.frozenDeath){
-          this.player.moveX(Const.PLAYER_SPEED * deltaSec);
+          // Base forward speed + dash boost while dashing
+          let dx = Const.PLAYER_SPEED * deltaSec;
+          if (this.player.isDashing) dx += Const.DASH_SPEED * deltaSec;
+          this.player.moveX(dx);
           if (this.reachedRight()){
             this.player.snapRight(this.gameEl.offsetWidth);
             this.player.won = true;
@@ -290,6 +351,8 @@
         }
 
         this.player.update(dt60);
+        // Update dash timer using real milliseconds
+        this.player.updateDash(deltaSec * 1000);
 
         if (!this.player.frozenStart && !this.player.frozenDeath && (this.collisionWith(this.tree1) || this.collisionWith(this.tree2))){
           this.player.setFrozenDeath();

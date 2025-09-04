@@ -9,6 +9,8 @@
         GRAVITY_MID: 0.4,
         GRAVITY_DOWN: 0.65,
         PLAYER_SPEED: 130,
+        DASH_SPEED: 280,
+        DASH_DURATION_MS: 220,
         START_FREEZE_TIME: 3000,
         DEATH_FREEZE_TIME: 500,
         PLAYER_START_OFFSET: 10,
@@ -66,6 +68,9 @@
             this.won = false;
             this.frozenStart = true;
             this.frozenDeath = false;
+            this.isDashing = false;
+            this.dashRemainingMs = 0;
+            this.dashAvailable = true;
             this.el = el;
             this.reset();
         }
@@ -77,6 +82,9 @@
             this.won = false;
             this.frozenStart = true;
             this.frozenDeath = false;
+            this.isDashing = false;
+            this.dashRemainingMs = 0;
+            this.dashAvailable = true;
             this.el.style.left = this.x + 'px';
             this.el.style.bottom = this.jumpHeight + 'px';
             this.el.style.transform = 'scaleY(1) scaleX(1)';
@@ -94,7 +102,34 @@
             this.isJumping = true;
             this.velocity = Const.JUMP_STRENGTH;
         }
+        startDash() {
+            if (this.frozenStart || this.frozenDeath || !this.isJumping)
+                return false;
+            if (this.isDashing || !this.dashAvailable)
+                return false;
+            this.isDashing = true;
+            this.dashRemainingMs = Const.DASH_DURATION_MS;
+            this.dashAvailable = false;
+            this.el.classList.add('jamble-dashing');
+            return true;
+        }
+        updateDash(deltaMs) {
+            if (!this.isDashing)
+                return;
+            this.dashRemainingMs -= deltaMs;
+            if (this.dashRemainingMs <= 0)
+                this.endDash();
+        }
+        endDash() {
+            if (!this.isDashing)
+                return;
+            this.isDashing = false;
+            this.dashRemainingMs = 0;
+            this.el.classList.remove('jamble-dashing');
+        }
         update(dt60) {
+            if (this.isDashing)
+                return;
             if (!this.frozenDeath && this.isJumping) {
                 this.jumpHeight += this.velocity * dt60;
                 if (this.velocity > 2)
@@ -106,6 +141,8 @@
                 if (this.jumpHeight <= 0) {
                     this.jumpHeight = 0;
                     this.isJumping = false;
+                    this.endDash();
+                    this.dashAvailable = true;
                     this.el.style.transform = 'scaleY(0.6) scaleX(1.4)';
                     window.setTimeout(() => { this.el.style.transform = 'scaleY(1) scaleX(1)'; }, 150);
                 }
@@ -147,6 +184,8 @@
         constructor(root) {
             this.lastTime = null;
             this.rafId = null;
+            this.awaitingStartTap = false;
+            this.startCountdownTimer = null;
             this.root = root;
             const gameEl = root.querySelector('.jamble-game');
             const playerEl = root.querySelector('.jamble-player');
@@ -185,13 +224,16 @@
         reset() {
             this.wiggle.stop();
             this.countdown.hide();
+            if (this.startCountdownTimer !== null) {
+                window.clearTimeout(this.startCountdownTimer);
+                this.startCountdownTimer = null;
+            }
             this.player.reset();
             this.resetBtn.style.display = 'none';
             if (this.messageEl)
                 this.messageEl.textContent = 'Tap to jump';
             this.player.setFrozenStart();
-            this.countdown.start(Const.START_FREEZE_TIME);
-            window.setTimeout(() => this.player.clearFrozenStart(), Const.START_FREEZE_TIME);
+            this.awaitingStartTap = true;
         }
         bind() {
             document.addEventListener('pointerdown', this.onPointerDown);
@@ -207,8 +249,25 @@
             const rect = this.gameEl.getBoundingClientRect();
             const withinX = e.clientX >= rect.left && e.clientX <= rect.right;
             const withinY = e.clientY >= rect.top && e.clientY <= rect.bottom + rect.height * 2;
-            if (withinX && withinY)
-                this.player.jump();
+            if (withinX && withinY) {
+                if (this.awaitingStartTap) {
+                    this.awaitingStartTap = false;
+                    this.countdown.start(Const.START_FREEZE_TIME);
+                    this.startCountdownTimer = window.setTimeout(() => {
+                        this.player.clearFrozenStart();
+                        this.startCountdownTimer = null;
+                    }, Const.START_FREEZE_TIME);
+                    return;
+                }
+                if (!this.player.frozenStart && this.player.isJumping) {
+                    const dashed = this.player.startDash();
+                    if (!dashed)
+                        this.player.jump();
+                }
+                else {
+                    this.player.jump();
+                }
+            }
         }
         collisionWith(ob) {
             const pr = this.player.el.getBoundingClientRect();
@@ -229,7 +288,10 @@
             this.countdown.updatePosition(cx, cy);
             if (!this.player.won) {
                 if (!this.player.frozenStart && !this.player.frozenDeath) {
-                    this.player.moveX(Const.PLAYER_SPEED * deltaSec);
+                    let dx = Const.PLAYER_SPEED * deltaSec;
+                    if (this.player.isDashing)
+                        dx += Const.DASH_SPEED * deltaSec;
+                    this.player.moveX(dx);
                     if (this.reachedRight()) {
                         this.player.snapRight(this.gameEl.offsetWidth);
                         this.player.won = true;
@@ -237,6 +299,7 @@
                     }
                 }
                 this.player.update(dt60);
+                this.player.updateDash(deltaSec * 1000);
                 if (!this.player.frozenStart && !this.player.frozenDeath && (this.collisionWith(this.tree1) || this.collisionWith(this.tree2))) {
                     this.player.setFrozenDeath();
                     this.wiggle.start(this.player.x);
