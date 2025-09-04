@@ -1,3 +1,4 @@
+/// <reference path="./constants.ts" />
 namespace Jamble {
   export class Wiggle {
     private playerEl: HTMLElement;
@@ -14,4 +15,3 @@ namespace Jamble {
     stop(): void { if (this.interval !== null){ window.clearInterval(this.interval); this.interval = null; } }
   }
 }
-

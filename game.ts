@@ -1,3 +1,8 @@
+/// <reference path="./constants.ts" />
+/// <reference path="./player.ts" />
+/// <reference path="./obstacle.ts" />
+/// <reference path="./countdown.ts" />
+/// <reference path="./wiggle.ts" />
 namespace Jamble {
   export class Game {
     private root: HTMLElement;

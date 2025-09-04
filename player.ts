@@ -1,3 +1,4 @@
+/// <reference path="./constants.ts" />
 namespace Jamble {
   export class Player {
     public el: HTMLElement;

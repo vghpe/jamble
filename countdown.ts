@@ -1,3 +1,4 @@
+/// <reference path="./constants.ts" />
 namespace Jamble {
   export class Countdown {
     private el: HTMLElement;
@@ -44,4 +45,3 @@ namespace Jamble {
     }
   }
 }
-

@@ -5,4 +5,3 @@ namespace Jamble {
     rect(): DOMRect { return this.el.getBoundingClientRect(); }
   }
 }
-
