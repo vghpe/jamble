@@ -32,6 +32,7 @@
             <label for="dbg-profile" style="font-size:12px;color:#555">Profile</label>
             <select id="dbg-profile" style="min-width:200px"></select>
             <button id="dbg-save" type="button">Save</button>
+            <button id="dbg-saveAs" type="button">Save As…</button>
             <button id="dbg-revert" type="button">Revert changes</button>
           </div>
           <div style="display:flex;gap:12px;align-items:center">
@@ -95,6 +96,7 @@
         var saveBtn = document.getElementById('dbg-save');
         var profileSel = document.getElementById('dbg-profile');
         var revertBtn = document.getElementById('dbg-revert');
+        var saveAsBtn = document.getElementById('dbg-saveAs');
         var dirtyEl = document.getElementById('dbg-dirty');
 
         var baselineJSON = null; // stringified snapshot of last loaded/saved profile
@@ -193,9 +195,11 @@
           // no need to change baseline; current now equals baseline, so dirty clears
           updateDirty();
         }
+        var profilesCache = [];
         function populateProfiles(){
           fetch('/__profiles').then(function(r){ return r.json(); }).then(function(data){
             var list = (data && data.profiles) || [];
+            profilesCache = list.slice();
             if (!profileSel) return;
             profileSel.innerHTML = '';
             list.forEach(function(name){
@@ -209,6 +213,38 @@
             updateSaveEnabled();
           }).catch(function(err){ console.error(err); });
         }
+        function suggestName(){
+          var active = window.Jamble.Settings.activeName || 'default.json';
+          if (active.toLowerCase() === 'default.json') return 'my-profile.json';
+          if (active.toLowerCase().endsWith('.json')) return active.slice(0, -5) + '-copy.json';
+          return active + '-copy.json';
+        }
+        function validateFileName(name){
+          if (!name) return null;
+          name = String(name).trim();
+          if (!name.toLowerCase().endsWith('.json')) name += '.json';
+          if (name.includes('/') || name.includes('\\')) return null;
+          if (name.toLowerCase() === 'default.json') return null;
+          return name;
+        }
+        function saveAsProfile(){
+          var name = prompt('Save as filename (saved under dist/profiles/):', suggestName());
+          name = validateFileName(name);
+          if (!name){ alert('Invalid filename. Must be a .json under dist/profiles and not "default.json".'); return; }
+          var exists = profilesCache.indexOf(name) !== -1;
+          if (exists && !confirm('"' + name + '" already exists. Overwrite?')) return;
+          fetch('/__profiles/' + encodeURIComponent(name), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(window.Jamble.Settings.toJSON())
+          }).then(function(res){ if (!res.ok) throw new Error('Save failed'); return res.text(); })
+            .then(function(){
+              // Load the saved profile to set activeName/baseline and refresh dropdown
+              var url = 'dist/profiles/' + name;
+              window.Jamble.Settings.loadFrom(url).then(function(){ populateProfiles(); syncFromSettings(); markBaseline(); });
+            })
+            .catch(function(err){ console.error(err); });
+        }
         function loadSelectedProfile(){
           if (!profileSel || !profileSel.value) return;
           var url = 'dist/profiles/' + profileSel.value;
@@ -217,6 +253,7 @@
         if (saveBtn) saveBtn.addEventListener('click', saveProfile);
         if (revertBtn) revertBtn.addEventListener('click', revertProfile);
         if (profileSel) profileSel.addEventListener('change', loadSelectedProfile);
+        if (saveAsBtn) saveAsBtn.addEventListener('click', saveAsProfile);
 
         // Prevent debug interactions from triggering game pointer handler
         var dbg = document.getElementById('jamble-debug');
