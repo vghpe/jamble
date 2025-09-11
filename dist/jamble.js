@@ -204,7 +204,7 @@ var Jamble;
             if (this.isJumping || this.frozenDeath)
                 return;
             this.isJumping = true;
-            this.velocity = Jamble.Const.JUMP_STRENGTH;
+            this.velocity = Jamble.Settings.current.jumpStrength;
         }
         startDash() {
             if (this.frozenStart || this.frozenDeath || !this.isJumping)
@@ -443,7 +443,8 @@ var Jamble;
             const cy = this.player.jumpHeight + this.player.el.offsetHeight + 10;
             this.countdown.updatePosition(cx, cy);
             if (!this.player.frozenStart && !this.player.frozenDeath) {
-                const speed = Jamble.Const.PLAYER_SPEED + (this.player.isDashing ? Jamble.Const.DASH_SPEED : 0);
+                const base = Jamble.Settings.current.playerSpeed;
+                const speed = base + (this.player.isDashing ? Jamble.Const.DASH_SPEED : 0);
                 const dx = speed * deltaSec * this.direction;
                 this.player.moveX(dx);
                 if (this.direction === 1 && this.reachedRight()) {

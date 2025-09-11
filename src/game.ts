@@ -191,7 +191,8 @@ namespace Jamble {
 
       // Horizontal movement when not frozen/dead
       if (!this.player.frozenStart && !this.player.frozenDeath){
-        const speed = Const.PLAYER_SPEED + (this.player.isDashing ? Const.DASH_SPEED : 0);
+        const base = Jamble.Settings.current.playerSpeed;
+        const speed = base + (this.player.isDashing ? Const.DASH_SPEED : 0);
         const dx = speed * deltaSec * this.direction;
         this.player.moveX(dx);
 

@@ -65,7 +65,7 @@ namespace Jamble {
     jump(): void {
       if (this.isJumping || this.frozenDeath) return;
       this.isJumping = true;
-      this.velocity = Const.JUMP_STRENGTH;
+      this.velocity = Jamble.Settings.current.jumpStrength;
     }
 
     // Dash: launch horizontally for a brief time. Only mid-air and once per airtime.
