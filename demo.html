@@ -27,6 +27,17 @@
     <div id="jamble-debug" style="position:fixed;left:50%;bottom:12px;transform:translateX(-50%);width:calc(100% - 24px);max-width:500px;font-family:system-ui,sans-serif;z-index:1000">
       <details open>
         <summary>Debug</summary>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0 4px 0;gap:8px">
+          <div style="display:flex;gap:8px;align-items:center">
+            <label for="dbg-profile" style="font-size:12px;color:#555">Profile</label>
+            <select id="dbg-profile" style="min-width:200px"></select>
+            <button id="dbg-save" type="button">Save</button>
+            <button id="dbg-revert" type="button">Revert changes</button>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center">
+            <div id="dbg-dirty" style="font-size:12px;color:#a00;min-width:120px;text-align:right;visibility:hidden">Unsaved changes</div>
+          </div>
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;margin-top:8px">
           <!-- Column 1: Movement & Mode -->
           <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center">
@@ -81,6 +92,12 @@
         var landSYEl = document.getElementById('dbg-landSY');
         var landSXEl = document.getElementById('dbg-landSX');
         var landEaseEl = document.getElementById('dbg-landEase');
+        var saveBtn = document.getElementById('dbg-save');
+        var profileSel = document.getElementById('dbg-profile');
+        var revertBtn = document.getElementById('dbg-revert');
+        var dirtyEl = document.getElementById('dbg-dirty');
+
+        var baselineJSON = null; // stringified snapshot of last loaded/saved profile
 
         function clamp(n, min, max){ n = Number(n); if (Number.isNaN(n)) return min; return Math.max(min, Math.min(max, n)); }
         function syncFromSettings(){
@@ -96,6 +113,24 @@
           if (landSYEl) landSYEl.value = String(s.landScaleY);
           if (landSXEl) landSXEl.value = String(s.landScaleX);
           if (landEaseEl) landEaseEl.value = String(s.landEaseMs);
+          // do not change baseline here; use markBaseline() when profile load/reset/save happens
+          updateDirty();
+          updateSaveEnabled();
+        }
+        function markBaseline(){ baselineJSON = JSON.stringify(window.Jamble.Settings.toJSON()); updateDirty(); updateSaveEnabled(); }
+        function updateSaveEnabled(){
+          if (!saveBtn) return;
+          var name = (window.Jamble.Settings && window.Jamble.Settings.activeName) || 'default.json';
+          saveBtn.disabled = (name === 'default.json');
+          saveBtn.title = saveBtn.disabled ? 'Cannot save over default.json' : '';
+        }
+        function updateDirty(){
+          if (!dirtyEl) return;
+          try {
+            var now = JSON.stringify(window.Jamble.Settings.toJSON());
+            var isDirty = baselineJSON !== null && now !== baselineJSON;
+            dirtyEl.style.visibility = isDirty ? 'visible' : 'hidden';
+          } catch(_e){ dirtyEl.style.visibility = 'hidden'; }
         }
         function onInput(){
           var j = jumpEl ? clamp(jumpEl.value, 1, 30) : undefined;
@@ -120,6 +155,7 @@
           if (lsx !== undefined) patch.landScaleX = Number(lsx);
           if (le !== undefined) patch.landEaseMs = Math.round(Number(le));
           window.Jamble.Settings.update(patch);
+          updateDirty();
         }
         if (jumpEl) jumpEl.addEventListener('input', onInput);
         if (speedEl) speedEl.addEventListener('input', onInput);
@@ -133,6 +169,55 @@
         if (landSXEl) landSXEl.addEventListener('input', onInput);
         if (landEaseEl) landEaseEl.addEventListener('input', onInput);
 
+        // Save/Load/Reset wiring
+        function saveProfile(){
+          var name = window.Jamble.Settings.activeName || 'default.json';
+          if (name === 'default.json') return; // block saving over default
+          fetch('/__profiles/' + encodeURIComponent(name), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(window.Jamble.Settings.toJSON())
+          }).then(function(res){ if (!res.ok) throw new Error('Save failed'); return res.text(); })
+            .then(function(){
+              // Update store baseline to the newly saved values so Revert matches the save
+              if (window.Jamble && window.Jamble.Settings && window.Jamble.Settings.markBaseline){
+                window.Jamble.Settings.markBaseline(name);
+              }
+              markBaseline();
+            })
+            .catch(function(err){ console.error(err); });
+        }
+        function revertProfile(){
+          window.Jamble.Settings.revertToProfile();
+          syncFromSettings();
+          // no need to change baseline; current now equals baseline, so dirty clears
+          updateDirty();
+        }
+        function populateProfiles(){
+          fetch('/__profiles').then(function(r){ return r.json(); }).then(function(data){
+            var list = (data && data.profiles) || [];
+            if (!profileSel) return;
+            profileSel.innerHTML = '';
+            list.forEach(function(name){
+              var opt = document.createElement('option');
+              opt.value = name; opt.textContent = name; profileSel.appendChild(opt);
+            });
+            // Try to select the active one
+            var active = window.Jamble.Settings.activeName || 'default.json';
+            var found = Array.from(profileSel.options).some(function(o){ return o.value === active; });
+            profileSel.value = found ? active : (list[0] || '');
+            updateSaveEnabled();
+          }).catch(function(err){ console.error(err); });
+        }
+        function loadSelectedProfile(){
+          if (!profileSel || !profileSel.value) return;
+          var url = 'dist/profiles/' + profileSel.value;
+          window.Jamble.Settings.loadFrom(url).then(function(){ syncFromSettings(); markBaseline(); });
+        }
+        if (saveBtn) saveBtn.addEventListener('click', saveProfile);
+        if (revertBtn) revertBtn.addEventListener('click', revertProfile);
+        if (profileSel) profileSel.addEventListener('change', loadSelectedProfile);
+
         // Prevent debug interactions from triggering game pointer handler
         var dbg = document.getElementById('jamble-debug');
         if (dbg){
@@ -142,7 +227,8 @@
 
         // Initial sync and after settings load (HTTP mode)
         syncFromSettings();
-        window.addEventListener('jamble:settingsLoaded', syncFromSettings);
+        // Establish initial baseline after the initial HTTP load finishes
+        window.addEventListener('jamble:settingsLoaded', function(){ syncFromSettings(); markBaseline(); populateProfiles(); });
       })();
     </script>
   </body>

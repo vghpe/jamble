@@ -48,14 +48,26 @@ var Jamble;
     class SettingsStore {
         constructor(initial) {
             this._loadedFrom = null;
+            this._activeName = null;
+            this._profileBaseline = null;
             this._current = { ...embeddedDefaults, ...(initial !== null && initial !== void 0 ? initial : {}) };
         }
         get current() { return this._current; }
         get source() { return this._loadedFrom; }
+        get activeName() { return this._activeName; }
         update(patch) {
             this._current = { ...this._current, ...patch };
         }
         reset() { this._current = { ...embeddedDefaults }; }
+        markBaseline(name) {
+            this._activeName = name;
+            this._profileBaseline = { ...this._current };
+        }
+        revertToProfile() {
+            if (this._profileBaseline) {
+                this._current = { ...this._profileBaseline };
+            }
+        }
         async loadFrom(url) {
             try {
                 const res = await fetch(url, { cache: 'no-cache' });
@@ -64,10 +76,21 @@ var Jamble;
                 const data = await res.json();
                 this._current = { ...embeddedDefaults, ...data };
                 this._loadedFrom = url;
+                try {
+                    const u = new URL(url, (typeof location !== 'undefined' ? location.href : undefined));
+                    const parts = u.pathname.split('/');
+                    this._activeName = parts[parts.length - 1] || url;
+                }
+                catch (_e) {
+                    this._activeName = url;
+                }
+                this._profileBaseline = { ...this._current };
             }
             catch (_err) {
                 this._current = { ...embeddedDefaults };
                 this._loadedFrom = null;
+                this._activeName = null;
+                this._profileBaseline = { ...this._current };
             }
         }
         toJSON() { return { ...this._current }; }
@@ -553,21 +576,10 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 (function () {
     window.Jamble = { Game: Jamble.Game, Settings: Jamble.Settings };
-    var proto = (typeof location !== 'undefined' ? location.protocol : '');
-    var isHttp = proto === 'http:' || proto === 'https:';
-    if (isHttp) {
-        Jamble.Settings.loadFrom('dist/profiles/default.json').finally(function () {
-            try {
-                window.dispatchEvent(new CustomEvent('jamble:settingsLoaded'));
-            }
-            catch (_e) { }
-        });
-    }
-    else {
-        Jamble.Settings.reset();
+    Jamble.Settings.loadFrom('dist/profiles/default.json').finally(function () {
         try {
             window.dispatchEvent(new CustomEvent('jamble:settingsLoaded'));
         }
         catch (_e) { }
-    }
+    });
 })();

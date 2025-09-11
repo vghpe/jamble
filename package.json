@@ -5,9 +5,9 @@
   "main": "jamble.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build:jamble": "mkdir -p dist dist/profiles && tsc -p tsconfig.json && cp src/jamble.css dist/jamble.css && cp src/profiles/default.json dist/profiles/default.json",
+    "build:jamble": "mkdir -p dist dist/profiles && tsc -p tsconfig.json && cp src/jamble.css dist/jamble.css && cp src/profiles/*.json dist/profiles/",
     "watch": "tsc -w -p tsconfig.json",
-    "serve": "python3 -m http.server --directory . 8080"
+    "serve": "python3 devserver.py 8080"
   },
   "repository": {
     "type": "git",

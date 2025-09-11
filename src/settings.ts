@@ -71,6 +71,8 @@ namespace Jamble {
   export class SettingsStore {
     private _current: SettingsShape;
     private _loadedFrom: string | null = null;
+    private _activeName: string | null = null;
+    private _profileBaseline: SettingsShape | null = null;
 
     constructor(initial?: Partial<SettingsShape>){
       this._current = { ...embeddedDefaults, ...(initial ?? {}) };
@@ -78,12 +80,26 @@ namespace Jamble {
 
     get current(): SettingsShape { return this._current; }
     get source(): string | null { return this._loadedFrom; }
+    get activeName(): string | null { return this._activeName; }
 
     update(patch: Partial<SettingsShape>): void {
       this._current = { ...this._current, ...patch };
     }
 
     reset(): void { this._current = { ...embeddedDefaults }; }
+
+    /** Marks the current settings as the active profile baseline, with an optional name label. */
+    markBaseline(name: string | null): void {
+      this._activeName = name;
+      this._profileBaseline = { ...this._current };
+    }
+
+    /** Revert current settings to the active profile baseline, if any. */
+    revertToProfile(): void {
+      if (this._profileBaseline){
+        this._current = { ...this._profileBaseline };
+      }
+    }
 
     async loadFrom(url: string): Promise<void> {
       try {
@@ -92,10 +108,19 @@ namespace Jamble {
         const data = await res.json();
         this._current = { ...embeddedDefaults, ...data };
         this._loadedFrom = url;
+        // Derive a simple active name from the URL path (filename)
+        try {
+          const u = new URL(url, (typeof location !== 'undefined' ? location.href : undefined));
+          const parts = u.pathname.split('/');
+          this._activeName = parts[parts.length - 1] || url;
+        } catch(_e){ this._activeName = url; }
+        this._profileBaseline = { ...this._current };
       } catch(_err){
         // Fallback silently to embedded
         this._current = { ...embeddedDefaults };
         this._loadedFrom = null;
+        this._activeName = null;
+        this._profileBaseline = { ...this._current };
       }
     }
 
