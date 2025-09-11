@@ -11,6 +11,7 @@
   },
   "files": [
     "src/constants.ts",
+    "src/settings.ts",
     "src/countdown.ts",
     "src/obstacle.ts",
     "src/wiggle.ts",

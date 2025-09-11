@@ -20,6 +20,59 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
+    const embeddedDefaults = {
+        jumpStrength: 7,
+        gravityUp: 0.32,
+        gravityMid: 0.4,
+        gravityDown: 0.65,
+        playerSpeed: 130,
+        dashSpeed: 280,
+        dashDurationMs: 220,
+        startFreezeTime: 3000,
+        deathFreezeTime: 500,
+        showResetDelayMs: 150,
+        playerStartOffset: 10,
+        deathWiggleDistance: 1,
+        treeEdgeMarginPct: 10,
+        treeMinGapPct: 20,
+        mode: 'idle',
+        squashEnabled: true,
+        stretchFactor: 0.05,
+        squashFactor: 0.02,
+        landSquashDurationMs: 150,
+    };
+    class SettingsStore {
+        constructor(initial) {
+            this._loadedFrom = null;
+            this._current = { ...embeddedDefaults, ...(initial !== null && initial !== void 0 ? initial : {}) };
+        }
+        get current() { return this._current; }
+        get source() { return this._loadedFrom; }
+        update(patch) {
+            this._current = { ...this._current, ...patch };
+        }
+        reset() { this._current = { ...embeddedDefaults }; }
+        async loadFrom(url) {
+            try {
+                const res = await fetch(url, { cache: 'no-cache' });
+                if (!res.ok)
+                    throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this._current = { ...embeddedDefaults, ...data };
+                this._loadedFrom = url;
+            }
+            catch (_err) {
+                this._current = { ...embeddedDefaults };
+                this._loadedFrom = null;
+            }
+        }
+        toJSON() { return { ...this._current }; }
+    }
+    Jamble.SettingsStore = SettingsStore;
+    Jamble.Settings = new SettingsStore();
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
     class Countdown {
         constructor(el) {
             this.timeout = null;
@@ -450,5 +503,13 @@ var Jamble;
     Jamble.Game = Game;
 })(Jamble || (Jamble = {}));
 (function () {
-    window.Jamble = { Game: Jamble.Game };
+    window.Jamble = { Game: Jamble.Game, Settings: Jamble.Settings };
+    var proto = (typeof location !== 'undefined' ? location.protocol : '');
+    var isHttp = proto === 'http:' || proto === 'https:';
+    if (isHttp) {
+        Jamble.Settings.loadFrom('dist/profiles/default.json');
+    }
+    else {
+        Jamble.Settings.reset();
+    }
 })();
