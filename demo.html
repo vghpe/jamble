@@ -23,6 +23,19 @@
       </div>
     </div>
 
+    <!-- Minimal Debug Panel -->
+    <div id="jamble-debug" style="max-width:500px;margin:12px auto;font-family:system-ui,sans-serif">
+      <details open>
+        <summary>Debug</summary>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:8px">
+          <label for="dbg-jump">Jump strength</label>
+          <input id="dbg-jump" type="number" step="0.1" min="1" max="30" style="width:100px">
+          <label for="dbg-speed">Player speed</label>
+          <input id="dbg-speed" type="number" step="1" min="10" max="600" style="width:100px">
+        </div>
+      </details>
+    </div>
+
     <script src="./dist/jamble.js"></script>
     <script>
       (function(){
@@ -30,6 +43,31 @@
         var root = document.getElementById('jamble');
         var game = new window.Jamble.Game(root);
         game.start();
+
+        // Debug bindings
+        var jumpEl = document.getElementById('dbg-jump');
+        var speedEl = document.getElementById('dbg-speed');
+
+        function clamp(n, min, max){ n = Number(n); if (Number.isNaN(n)) return min; return Math.max(min, Math.min(max, n)); }
+        function syncFromSettings(){
+          var s = window.Jamble.Settings.current;
+          if (jumpEl) jumpEl.value = String(s.jumpStrength);
+          if (speedEl) speedEl.value = String(s.playerSpeed);
+        }
+        function onInput(){
+          var j = jumpEl ? clamp(jumpEl.value, 1, 30) : undefined;
+          var p = speedEl ? clamp(speedEl.value, 10, 600) : undefined;
+          var patch = {};
+          if (j !== undefined) patch.jumpStrength = Number(j);
+          if (p !== undefined) patch.playerSpeed = Number(p);
+          window.Jamble.Settings.update(patch);
+        }
+        if (jumpEl) jumpEl.addEventListener('input', onInput);
+        if (speedEl) speedEl.addEventListener('input', onInput);
+
+        // Initial sync and after settings load (HTTP mode)
+        syncFromSettings();
+        window.addEventListener('jamble:settingsLoaded', syncFromSettings);
       })();
     </script>
   </body>
