@@ -24,7 +24,7 @@
     </div>
 
     <!-- Minimal Debug Panel -->
-    <div id="jamble-debug" style="max-width:500px;margin:12px auto;font-family:system-ui,sans-serif">
+    <div id="jamble-debug" style="position:fixed;left:50%;bottom:12px;transform:translateX(-50%);width:calc(100% - 24px);max-width:500px;font-family:system-ui,sans-serif;z-index:1000">
       <details open>
         <summary>Debug</summary>
         <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:8px">
@@ -64,6 +64,13 @@
         }
         if (jumpEl) jumpEl.addEventListener('input', onInput);
         if (speedEl) speedEl.addEventListener('input', onInput);
+
+        // Prevent debug interactions from triggering game pointer handler
+        var dbg = document.getElementById('jamble-debug');
+        if (dbg){
+          dbg.addEventListener('pointerdown', function(ev){ ev.stopPropagation(); });
+          dbg.addEventListener('click', function(ev){ ev.stopPropagation(); });
+        }
 
         // Initial sync and after settings load (HTTP mode)
         syncFromSettings();
