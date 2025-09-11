@@ -8,7 +8,7 @@ namespace Jamble {
       let direction = 1;
       this.stop();
       this.interval = window.setInterval(() => {
-        this.playerEl.style.left = (x + direction * Const.DEATH_WIGGLE_DISTANCE) + 'px';
+        this.playerEl.style.left = (x + direction * Jamble.Settings.current.deathWiggleDistance) + 'px';
         direction *= -1;
       }, 100);
     }

@@ -164,7 +164,7 @@ var Jamble;
             let direction = 1;
             this.stop();
             this.interval = window.setInterval(() => {
-                this.playerEl.style.left = (x + direction * Jamble.Const.DEATH_WIGGLE_DISTANCE) + 'px';
+                this.playerEl.style.left = (x + direction * Jamble.Settings.current.deathWiggleDistance) + 'px';
                 direction *= -1;
             }, 100);
         }
@@ -182,7 +182,7 @@ var Jamble;
             this.isJumping = false;
             this.jumpHeight = 0;
             this.velocity = 0;
-            this.x = Jamble.Const.PLAYER_START_OFFSET;
+            this.x = Jamble.Settings.current.playerStartOffset;
             this.won = false;
             this.frozenStart = true;
             this.frozenDeath = false;
@@ -196,7 +196,7 @@ var Jamble;
             this.isJumping = false;
             this.jumpHeight = 0;
             this.velocity = 0;
-            this.x = Jamble.Const.PLAYER_START_OFFSET;
+            this.x = Jamble.Settings.current.playerStartOffset;
             this.won = false;
             this.frozenStart = true;
             this.frozenDeath = false;
@@ -224,7 +224,7 @@ var Jamble;
         }
         getRight(_gameWidth) { return this.x + this.el.offsetWidth; }
         snapRight(gameWidth) {
-            this.x = gameWidth - this.el.offsetWidth - Jamble.Const.PLAYER_START_OFFSET;
+            this.x = gameWidth - this.el.offsetWidth - Jamble.Settings.current.playerStartOffset;
             this.el.style.left = this.x + 'px';
         }
         jump() {
@@ -239,7 +239,7 @@ var Jamble;
             if (this.isDashing || !this.dashAvailable)
                 return false;
             this.isDashing = true;
-            this.dashRemainingMs = Jamble.Const.DASH_DURATION_MS;
+            this.dashRemainingMs = Jamble.Settings.current.dashDurationMs;
             this.dashAvailable = false;
             this.el.classList.add('jamble-dashing');
             return true;
@@ -266,11 +266,11 @@ var Jamble;
             if (!this.frozenDeath && this.isJumping) {
                 this.jumpHeight += this.velocity * dt60;
                 if (this.velocity > 2)
-                    this.velocity -= Jamble.Const.GRAVITY_UP * dt60;
+                    this.velocity -= Jamble.Settings.current.gravityUp * dt60;
                 else if (this.velocity > -2)
-                    this.velocity -= Jamble.Const.GRAVITY_MID * dt60;
+                    this.velocity -= Jamble.Settings.current.gravityMid * dt60;
                 else
-                    this.velocity -= Jamble.Const.GRAVITY_DOWN * dt60;
+                    this.velocity -= Jamble.Settings.current.gravityDown * dt60;
                 if (this.jumpHeight <= 0) {
                     this.jumpHeight = 0;
                     this.isJumping = false;
@@ -402,13 +402,13 @@ var Jamble;
             this.awaitingStartTap = false;
             this.player.setPrestart();
             this.hideIdleControls();
-            this.countdown.start(Jamble.Const.START_FREEZE_TIME);
+            this.countdown.start(Jamble.Settings.current.startFreezeTime);
             this.inCountdown = true;
             this.startCountdownTimer = window.setTimeout(() => {
                 this.player.clearFrozenStart();
                 this.inCountdown = false;
                 this.startCountdownTimer = null;
-            }, Jamble.Const.START_FREEZE_TIME);
+            }, Jamble.Settings.current.startFreezeTime);
         }
         onShuffleClick() {
             if (!this.awaitingStartTap || this.waitGroundForStart)
@@ -416,9 +416,9 @@ var Jamble;
             this.shuffleTrees();
         }
         shuffleTrees() {
-            const min = Jamble.Const.TREE_EDGE_MARGIN_PCT;
-            const max = 100 - Jamble.Const.TREE_EDGE_MARGIN_PCT;
-            const gap = Jamble.Const.TREE_MIN_GAP_PCT;
+            const min = Jamble.Settings.current.treeEdgeMarginPct;
+            const max = 100 - Jamble.Settings.current.treeEdgeMarginPct;
+            const gap = Jamble.Settings.current.treeMinGapPct;
             const left1 = min + Math.random() * (max - min - gap);
             const left2 = left1 + gap + Math.random() * (max - (left1 + gap));
             this.tree1.el.style.left = left1.toFixed(1) + '%';
@@ -476,10 +476,10 @@ var Jamble;
             return pr.left < tr.right && pr.right > tr.left && pr.bottom > tr.top;
         }
         reachedRight() {
-            const rightLimit = this.gameEl.offsetWidth - Jamble.Const.PLAYER_START_OFFSET;
+            const rightLimit = this.gameEl.offsetWidth - Jamble.Settings.current.playerStartOffset;
             return this.player.getRight(this.gameEl.offsetWidth) >= rightLimit;
         }
-        reachedLeft() { return this.player.x <= Jamble.Const.PLAYER_START_OFFSET; }
+        reachedLeft() { return this.player.x <= Jamble.Settings.current.playerStartOffset; }
         loop(ts) {
             if (this.lastTime === null)
                 this.lastTime = ts;
@@ -497,7 +497,7 @@ var Jamble;
             }
             if (!this.player.frozenStart && !this.player.frozenDeath) {
                 const base = Jamble.Settings.current.playerSpeed;
-                const speed = base + (this.player.isDashing ? Jamble.Const.DASH_SPEED : 0);
+                const speed = base + (this.player.isDashing ? Jamble.Settings.current.dashSpeed : 0);
                 const dx = speed * deltaSec * this.direction;
                 this.player.moveX(dx);
                 if (this.direction === 1 && this.reachedRight()) {
@@ -521,7 +521,7 @@ var Jamble;
                     this.direction = -1;
                 }
                 else if (this.direction === -1 && this.reachedLeft()) {
-                    this.player.setX(Jamble.Const.PLAYER_START_OFFSET);
+                    this.player.setX(Jamble.Settings.current.playerStartOffset);
                     this.level += 1;
                     this.updateLevel();
                     if (Jamble.Settings.current.mode === 'idle') {
@@ -563,11 +563,11 @@ var Jamble;
                     this.wiggle.stop();
                     this.player.el.style.left = this.player.x + 'px';
                     this.deathWiggleTimer = null;
-                }, Jamble.Const.DEATH_FREEZE_TIME);
+                }, Jamble.Settings.current.deathFreezeTime);
                 this.showResetTimer = window.setTimeout(() => {
                     this.resetBtn.style.display = 'block';
                     this.showResetTimer = null;
-                }, Jamble.Const.SHOW_RESET_DELAY_MS);
+                }, Jamble.Settings.current.showResetDelayMs);
             }
             this.rafId = window.requestAnimationFrame(this.loop);
         }

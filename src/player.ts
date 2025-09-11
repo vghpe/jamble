@@ -5,7 +5,7 @@ namespace Jamble {
     public isJumping: boolean = false;
     public jumpHeight: number = 0;
     public velocity: number = 0;
-    public x: number = Const.PLAYER_START_OFFSET;
+    public x: number = Jamble.Settings.current.playerStartOffset;
     public won: boolean = false;
     public frozenStart: boolean = true;
     public frozenDeath: boolean = false;
@@ -22,7 +22,7 @@ namespace Jamble {
       this.isJumping = false;
       this.jumpHeight = 0;
       this.velocity = 0;
-      this.x = Const.PLAYER_START_OFFSET;
+      this.x = Jamble.Settings.current.playerStartOffset;
       this.won = false;
       this.frozenStart = true;
       this.frozenDeath = false;
@@ -57,7 +57,7 @@ namespace Jamble {
     getRight(_gameWidth: number): number { return this.x + this.el.offsetWidth; }
     snapRight(gameWidth: number): void {
       // Stop with the same offset as the left side
-      this.x = gameWidth - this.el.offsetWidth - Const.PLAYER_START_OFFSET;
+      this.x = gameWidth - this.el.offsetWidth - Jamble.Settings.current.playerStartOffset;
       this.el.style.left = this.x + 'px';
     }
 
@@ -73,7 +73,7 @@ namespace Jamble {
       if (this.frozenStart || this.frozenDeath || !this.isJumping) return false;
       if (this.isDashing || !this.dashAvailable) return false;
       this.isDashing = true;
-      this.dashRemainingMs = Const.DASH_DURATION_MS;
+      this.dashRemainingMs = Jamble.Settings.current.dashDurationMs;
       this.dashAvailable = false;
       this.el.classList.add('jamble-dashing');
       return true;
@@ -99,9 +99,9 @@ namespace Jamble {
       if (this.isDashing) return;
       if (!this.frozenDeath && this.isJumping){
         this.jumpHeight += this.velocity * dt60;
-        if (this.velocity > 2) this.velocity -= Const.GRAVITY_UP * dt60;
-        else if (this.velocity > -2) this.velocity -= Const.GRAVITY_MID * dt60;
-        else this.velocity -= Const.GRAVITY_DOWN * dt60;
+        if (this.velocity > 2) this.velocity -= Jamble.Settings.current.gravityUp * dt60;
+        else if (this.velocity > -2) this.velocity -= Jamble.Settings.current.gravityMid * dt60;
+        else this.velocity -= Jamble.Settings.current.gravityDown * dt60;
 
         if (this.jumpHeight <= 0){
           this.jumpHeight = 0;
