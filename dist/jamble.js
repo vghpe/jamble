@@ -40,6 +40,10 @@ var Jamble;
         stretchFactor: 0.05,
         squashFactor: 0.02,
         landSquashDurationMs: 150,
+        landScaleY: 0.6,
+        landScaleX: 1.4,
+        airTransformSmoothingMs: 100,
+        landEaseMs: 100,
     };
     class SettingsStore {
         constructor(initial) {
@@ -250,9 +254,16 @@ var Jamble;
                     this.endDash();
                     this.dashAvailable = true;
                     if (Jamble.Settings.current.squashEnabled) {
-                        this.el.style.transform = 'scaleY(0.6) scaleX(1.4)';
+                        const sy = Jamble.Settings.current.landScaleY;
+                        const sx = Jamble.Settings.current.landScaleX;
+                        this.el.style.transition = 'transform 0ms linear';
+                        this.el.style.transform = 'scaleY(' + sy + ') scaleX(' + sx + ')';
                         const dur = Math.max(0, Jamble.Settings.current.landSquashDurationMs);
-                        window.setTimeout(() => { this.el.style.transform = 'scaleY(1) scaleX(1)'; }, dur);
+                        window.setTimeout(() => {
+                            const ease = Math.max(0, Jamble.Settings.current.landEaseMs);
+                            this.el.style.transition = 'transform ' + ease + 'ms ease-out';
+                            this.el.style.transform = 'scaleY(1) scaleX(1)';
+                        }, dur);
                     }
                     else {
                         this.el.style.transform = 'scaleY(1) scaleX(1)';
@@ -261,8 +272,10 @@ var Jamble;
                 else {
                     if (Jamble.Settings.current.squashEnabled) {
                         const v = Math.max(0, this.velocity);
-                        const stretch = 1 + v * 0.05;
-                        const squash = 1 - v * 0.02;
+                        const stretch = 1 + v * Jamble.Settings.current.stretchFactor;
+                        const squash = 1 - v * Jamble.Settings.current.squashFactor;
+                        const airMs = Math.max(0, Jamble.Settings.current.airTransformSmoothingMs);
+                        this.el.style.transition = 'transform ' + airMs + 'ms ease-out';
                         this.el.style.transform = 'scaleY(' + stretch + ') scaleX(' + squash + ')';
                     }
                     else {

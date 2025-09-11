@@ -27,15 +27,36 @@
     <div id="jamble-debug" style="position:fixed;left:50%;bottom:12px;transform:translateX(-50%);width:calc(100% - 24px);max-width:500px;font-family:system-ui,sans-serif;z-index:1000">
       <details open>
         <summary>Debug</summary>
-        <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:8px">
-          <label for="dbg-jump">Jump strength</label>
-          <input id="dbg-jump" type="number" step="0.1" min="1" max="30" style="width:100px">
-          <label for="dbg-speed">Player speed</label>
-          <input id="dbg-speed" type="number" step="1" min="10" max="600" style="width:100px">
-          <label for="dbg-mode">Ping-pong mode</label>
-          <input id="dbg-mode" type="checkbox" style="width:auto">
-          <label for="dbg-squash">Squash animation</label>
-          <input id="dbg-squash" type="checkbox" style="width:auto">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;margin-top:8px">
+          <!-- Column 1: Movement & Mode -->
+          <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center">
+            <label for="dbg-jump">Jump strength</label>
+            <input id="dbg-jump" type="number" step="0.1" min="1" max="30" style="width:100px">
+            <label for="dbg-speed">Player speed</label>
+            <input id="dbg-speed" type="number" step="1" min="10" max="600" style="width:100px">
+            <label for="dbg-mode">Ping-pong mode</label>
+            <input id="dbg-mode" type="checkbox" style="width:auto">
+            <label for="dbg-squash">Squash animation</label>
+            <input id="dbg-squash" type="checkbox" style="width:auto">
+          </div>
+
+          <!-- Column 2: Animation Params -->
+          <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center">
+            <label for="dbg-stretch">J stretch factor</label>
+            <input id="dbg-stretch" type="number" step="0.005" min="0" max="0.2" style="width:100px">
+            <label for="dbg-squashFactor">J squash factor</label>
+            <input id="dbg-squashFactor" type="number" step="0.005" min="0" max="0.1" style="width:100px">
+            <label for="dbg-airMs">J smooth (ms)</label>
+            <input id="dbg-airMs" type="number" step="10" min="0" max="500" style="width:100px">
+            <label for="dbg-landMs">Landing squash (ms)</label>
+            <input id="dbg-landMs" type="number" step="10" min="0" max="1000" style="width"="100px">
+            <label for="dbg-landSY">L squash scale Y</label>
+            <input id="dbg-landSY" type="number" step="0.05" min="0.2" max="2" style="width:100px">
+            <label for="dbg-landSX">L squash scale X</label>
+            <input id="dbg-landSX" type="number" step="0.05" min="0.5" max="3" style="width:100px">
+            <label for="dbg-landEase">L ease (ms)</label>
+            <input id="dbg-landEase" type="number" step="10" min="0" max="1000" style="width:100px">
+          </div>
         </div>
       </details>
     </div>
@@ -53,6 +74,13 @@
         var speedEl = document.getElementById('dbg-speed');
         var modeEl = document.getElementById('dbg-mode');
         var squashEl = document.getElementById('dbg-squash');
+        var stretchEl = document.getElementById('dbg-stretch');
+        var squashFactorEl = document.getElementById('dbg-squashFactor');
+        var airMsEl = document.getElementById('dbg-airMs');
+        var landMsEl = document.getElementById('dbg-landMs');
+        var landSYEl = document.getElementById('dbg-landSY');
+        var landSXEl = document.getElementById('dbg-landSX');
+        var landEaseEl = document.getElementById('dbg-landEase');
 
         function clamp(n, min, max){ n = Number(n); if (Number.isNaN(n)) return min; return Math.max(min, Math.min(max, n)); }
         function syncFromSettings(){
@@ -61,21 +89,49 @@
           if (speedEl) speedEl.value = String(s.playerSpeed);
           if (modeEl) modeEl.checked = (s.mode === 'pingpong');
           if (squashEl) squashEl.checked = !!s.squashEnabled;
+          if (stretchEl) stretchEl.value = String(s.stretchFactor);
+          if (squashFactorEl) squashFactorEl.value = String(s.squashFactor);
+          if (airMsEl) airMsEl.value = String(s.airTransformSmoothingMs);
+          if (landMsEl) landMsEl.value = String(s.landSquashDurationMs);
+          if (landSYEl) landSYEl.value = String(s.landScaleY);
+          if (landSXEl) landSXEl.value = String(s.landScaleX);
+          if (landEaseEl) landEaseEl.value = String(s.landEaseMs);
         }
         function onInput(){
           var j = jumpEl ? clamp(jumpEl.value, 1, 30) : undefined;
           var p = speedEl ? clamp(speedEl.value, 10, 600) : undefined;
+          var st = stretchEl ? clamp(stretchEl.value, 0, 0.2) : undefined;
+          var sq = squashFactorEl ? clamp(squashFactorEl.value, 0, 0.1) : undefined;
+          var am = airMsEl ? clamp(airMsEl.value, 0, 500) : undefined;
+          var lm = landMsEl ? clamp(landMsEl.value, 0, 1000) : undefined;
+          var lsy = landSYEl ? clamp(landSYEl.value, 0.2, 2) : undefined;
+          var lsx = landSXEl ? clamp(landSXEl.value, 0.5, 3) : undefined;
+          var le = landEaseEl ? clamp(landEaseEl.value, 0, 1000) : undefined;
           var patch = {};
           if (j !== undefined) patch.jumpStrength = Number(j);
           if (p !== undefined) patch.playerSpeed = Number(p);
           if (modeEl) patch.mode = modeEl.checked ? 'pingpong' : 'idle';
           if (squashEl) patch.squashEnabled = !!squashEl.checked;
+          if (st !== undefined) patch.stretchFactor = Number(st);
+          if (sq !== undefined) patch.squashFactor = Number(sq);
+          if (am !== undefined) patch.airTransformSmoothingMs = Math.round(Number(am));
+          if (lm !== undefined) patch.landSquashDurationMs = Math.round(Number(lm));
+          if (lsy !== undefined) patch.landScaleY = Number(lsy);
+          if (lsx !== undefined) patch.landScaleX = Number(lsx);
+          if (le !== undefined) patch.landEaseMs = Math.round(Number(le));
           window.Jamble.Settings.update(patch);
         }
         if (jumpEl) jumpEl.addEventListener('input', onInput);
         if (speedEl) speedEl.addEventListener('input', onInput);
         if (modeEl) modeEl.addEventListener('change', onInput);
         if (squashEl) squashEl.addEventListener('change', onInput);
+        if (stretchEl) stretchEl.addEventListener('input', onInput);
+        if (squashFactorEl) squashFactorEl.addEventListener('input', onInput);
+        if (airMsEl) airMsEl.addEventListener('input', onInput);
+        if (landMsEl) landMsEl.addEventListener('input', onInput);
+        if (landSYEl) landSYEl.addEventListener('input', onInput);
+        if (landSXEl) landSXEl.addEventListener('input', onInput);
+        if (landEaseEl) landEaseEl.addEventListener('input', onInput);
 
         // Prevent debug interactions from triggering game pointer handler
         var dbg = document.getElementById('jamble-debug');

@@ -17,6 +17,9 @@
   "squashEnabled": true,
   "stretchFactor": 0.05,
   "squashFactor": 0.02,
-  "landSquashDurationMs": 150
+  "landSquashDurationMs": 150,
+  "landScaleY": 0.6,
+  "landScaleX": 1.4,
+  "airTransformSmoothingMs": 100,
+  "landEaseMs": 100
 }
-

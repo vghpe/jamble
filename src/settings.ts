@@ -34,6 +34,12 @@ namespace Jamble {
     stretchFactor: number; // scaleY = 1 + velocityUp * stretchFactor
     squashFactor: number;  // scaleX = 1 - velocityUp * squashFactor
     landSquashDurationMs: number;
+    landScaleY: number; // landing squash vertical scale
+    landScaleX: number; // landing squash horizontal scale
+
+    // Timing (smoothing/ease) — physics remain authoritative
+    airTransformSmoothingMs: number; // in-air transform transition smoothing
+    landEaseMs: number;              // transition time when returning to normal after landing
   }
 
   const embeddedDefaults: SettingsShape = {
@@ -56,6 +62,10 @@ namespace Jamble {
     stretchFactor: 0.05,
     squashFactor: 0.02,
     landSquashDurationMs: 150,
+    landScaleY: 0.6,
+    landScaleX: 1.4,
+    airTransformSmoothingMs: 100,
+    landEaseMs: 100,
   };
 
   export class SettingsStore {
@@ -95,4 +105,3 @@ namespace Jamble {
   // Global settings singleton for convenience
   export const Settings = new SettingsStore();
 }
-
