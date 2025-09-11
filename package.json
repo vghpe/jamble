@@ -1,0 +1,27 @@
+{
+  "name": "jamble",
+  "version": "1.0.0",
+  "description": "",
+  "main": "jamble.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:jamble": "mkdir -p dist && tsc -p tsconfig.json && cp src/jamble.css dist/jamble.css",
+    "watch": "tsc -w -p tsconfig.json",
+    "serve": "python3 -m http.server --directory . 8080"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vghpe/jamble.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/vghpe/jamble/issues"
+  },
+  "homepage": "https://github.com/vghpe/jamble#readme",
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}
