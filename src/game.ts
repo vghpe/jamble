@@ -189,6 +189,14 @@ namespace Jamble {
       const cy = this.player.jumpHeight + this.player.el.offsetHeight + 10;
       this.countdown.updatePosition(cx, cy);
 
+      // If mode switched to pingpong while idling, resume immediately
+      if (Jamble.Settings.current.mode === 'pingpong' && this.player.frozenStart && !this.inCountdown && !this.player.frozenDeath){
+        this.awaitingStartTap = false;
+        this.waitGroundForStart = false;
+        this.hideIdleControls();
+        this.player.clearFrozenStart();
+      }
+
       // Horizontal movement when not frozen/dead
       if (!this.player.frozenStart && !this.player.frozenDeath){
         const base = Jamble.Settings.current.playerSpeed;
@@ -199,21 +207,36 @@ namespace Jamble {
         if (this.direction === 1 && this.reachedRight()){
           this.player.snapRight(this.gameEl.offsetWidth);
           this.level += 1; this.updateLevel();
-          // Apply idle visuals, freeze horizontal movement
-          this.player.setFrozenStart();
-          // Ensure downward motion starts immediately
-          if (this.player.velocity > 0) this.player.velocity = -0.1;
-          // Wait until grounded before allowing start tap
-          this.waitGroundForStart = true;
-          this.awaitingStartTap = false;
+          if (Jamble.Settings.current.mode === 'idle'){
+            // Apply idle visuals, freeze horizontal movement
+            this.player.setFrozenStart();
+            // Ensure downward motion starts immediately
+            if (this.player.velocity > 0) this.player.velocity = -0.1;
+            // Wait until grounded before allowing start tap
+            this.waitGroundForStart = true;
+            this.awaitingStartTap = false;
+          } else {
+            // Ping-pong: reverse immediately, keep moving
+            if (this.player.velocity > 0) this.player.velocity = -0.1;
+            this.awaitingStartTap = false;
+            this.waitGroundForStart = false;
+            this.hideIdleControls();
+          }
           this.direction = -1;
         } else if (this.direction === -1 && this.reachedLeft()){
           this.player.setX(Const.PLAYER_START_OFFSET);
           this.level += 1; this.updateLevel();
-          this.player.setFrozenStart();
-          if (this.player.velocity > 0) this.player.velocity = -0.1;
-          this.waitGroundForStart = true;
-          this.awaitingStartTap = false;
+          if (Jamble.Settings.current.mode === 'idle'){
+            this.player.setFrozenStart();
+            if (this.player.velocity > 0) this.player.velocity = -0.1;
+            this.waitGroundForStart = true;
+            this.awaitingStartTap = false;
+          } else {
+            if (this.player.velocity > 0) this.player.velocity = -0.1;
+            this.awaitingStartTap = false;
+            this.waitGroundForStart = false;
+            this.hideIdleControls();
+          }
           this.direction = 1;
         }
       }
@@ -223,7 +246,7 @@ namespace Jamble {
       this.player.updateDash(deltaSec * 1000);
 
       // If we reached a side while airborne, wait to grant start until grounded
-      if (this.waitGroundForStart && this.player.jumpHeight === 0 && !this.player.isJumping){
+      if (Jamble.Settings.current.mode === 'idle' && this.waitGroundForStart && this.player.jumpHeight === 0 && !this.player.isJumping){
         this.waitGroundForStart = false;
         this.awaitingStartTap = true;
         this.showIdleControls();

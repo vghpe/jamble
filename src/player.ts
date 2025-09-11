@@ -109,13 +109,22 @@ namespace Jamble {
           // Touching ground resets dash availability
           this.endDash();
           this.dashAvailable = true;
-          this.el.style.transform = 'scaleY(0.6) scaleX(1.4)';
-          window.setTimeout(() => { this.el.style.transform = 'scaleY(1) scaleX(1)'; }, 150);
+          if (Jamble.Settings.current.squashEnabled){
+            this.el.style.transform = 'scaleY(0.6) scaleX(1.4)';
+            const dur = Math.max(0, Jamble.Settings.current.landSquashDurationMs);
+            window.setTimeout(() => { this.el.style.transform = 'scaleY(1) scaleX(1)'; }, dur);
+          } else {
+            this.el.style.transform = 'scaleY(1) scaleX(1)';
+          }
         } else {
-          const v = Math.max(0, this.velocity);
-          const stretch = 1 + v * 0.05;
-          const squash = 1 - v * 0.02;
-          this.el.style.transform = 'scaleY(' + stretch + ') scaleX(' + squash + ')';
+          if (Jamble.Settings.current.squashEnabled){
+            const v = Math.max(0, this.velocity);
+            const stretch = 1 + v * 0.05; // later: Settings.current.stretchFactor
+            const squash = 1 - v * 0.02;  // later: Settings.current.squashFactor
+            this.el.style.transform = 'scaleY(' + stretch + ') scaleX(' + squash + ')';
+          } else {
+            this.el.style.transform = 'scaleY(1) scaleX(1)';
+          }
         }
         this.el.style.bottom = this.jumpHeight + 'px';
       }

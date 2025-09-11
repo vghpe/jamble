@@ -32,6 +32,10 @@
           <input id="dbg-jump" type="number" step="0.1" min="1" max="30" style="width:100px">
           <label for="dbg-speed">Player speed</label>
           <input id="dbg-speed" type="number" step="1" min="10" max="600" style="width:100px">
+          <label for="dbg-mode">Ping-pong mode</label>
+          <input id="dbg-mode" type="checkbox" style="width:auto">
+          <label for="dbg-squash">Squash animation</label>
+          <input id="dbg-squash" type="checkbox" style="width:auto">
         </div>
       </details>
     </div>
@@ -47,12 +51,16 @@
         // Debug bindings
         var jumpEl = document.getElementById('dbg-jump');
         var speedEl = document.getElementById('dbg-speed');
+        var modeEl = document.getElementById('dbg-mode');
+        var squashEl = document.getElementById('dbg-squash');
 
         function clamp(n, min, max){ n = Number(n); if (Number.isNaN(n)) return min; return Math.max(min, Math.min(max, n)); }
         function syncFromSettings(){
           var s = window.Jamble.Settings.current;
           if (jumpEl) jumpEl.value = String(s.jumpStrength);
           if (speedEl) speedEl.value = String(s.playerSpeed);
+          if (modeEl) modeEl.checked = (s.mode === 'pingpong');
+          if (squashEl) squashEl.checked = !!s.squashEnabled;
         }
         function onInput(){
           var j = jumpEl ? clamp(jumpEl.value, 1, 30) : undefined;
@@ -60,10 +68,14 @@
           var patch = {};
           if (j !== undefined) patch.jumpStrength = Number(j);
           if (p !== undefined) patch.playerSpeed = Number(p);
+          if (modeEl) patch.mode = modeEl.checked ? 'pingpong' : 'idle';
+          if (squashEl) patch.squashEnabled = !!squashEl.checked;
           window.Jamble.Settings.update(patch);
         }
         if (jumpEl) jumpEl.addEventListener('input', onInput);
         if (speedEl) speedEl.addEventListener('input', onInput);
+        if (modeEl) modeEl.addEventListener('change', onInput);
+        if (squashEl) squashEl.addEventListener('change', onInput);
 
         // Prevent debug interactions from triggering game pointer handler
         var dbg = document.getElementById('jamble-debug');

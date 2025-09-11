@@ -249,14 +249,25 @@ var Jamble;
                     this.isJumping = false;
                     this.endDash();
                     this.dashAvailable = true;
-                    this.el.style.transform = 'scaleY(0.6) scaleX(1.4)';
-                    window.setTimeout(() => { this.el.style.transform = 'scaleY(1) scaleX(1)'; }, 150);
+                    if (Jamble.Settings.current.squashEnabled) {
+                        this.el.style.transform = 'scaleY(0.6) scaleX(1.4)';
+                        const dur = Math.max(0, Jamble.Settings.current.landSquashDurationMs);
+                        window.setTimeout(() => { this.el.style.transform = 'scaleY(1) scaleX(1)'; }, dur);
+                    }
+                    else {
+                        this.el.style.transform = 'scaleY(1) scaleX(1)';
+                    }
                 }
                 else {
-                    const v = Math.max(0, this.velocity);
-                    const stretch = 1 + v * 0.05;
-                    const squash = 1 - v * 0.02;
-                    this.el.style.transform = 'scaleY(' + stretch + ') scaleX(' + squash + ')';
+                    if (Jamble.Settings.current.squashEnabled) {
+                        const v = Math.max(0, this.velocity);
+                        const stretch = 1 + v * 0.05;
+                        const squash = 1 - v * 0.02;
+                        this.el.style.transform = 'scaleY(' + stretch + ') scaleX(' + squash + ')';
+                    }
+                    else {
+                        this.el.style.transform = 'scaleY(1) scaleX(1)';
+                    }
                 }
                 this.el.style.bottom = this.jumpHeight + 'px';
             }
@@ -442,6 +453,12 @@ var Jamble;
             const cx = this.player.x + this.player.el.offsetWidth / 2;
             const cy = this.player.jumpHeight + this.player.el.offsetHeight + 10;
             this.countdown.updatePosition(cx, cy);
+            if (Jamble.Settings.current.mode === 'pingpong' && this.player.frozenStart && !this.inCountdown && !this.player.frozenDeath) {
+                this.awaitingStartTap = false;
+                this.waitGroundForStart = false;
+                this.hideIdleControls();
+                this.player.clearFrozenStart();
+            }
             if (!this.player.frozenStart && !this.player.frozenDeath) {
                 const base = Jamble.Settings.current.playerSpeed;
                 const speed = base + (this.player.isDashing ? Jamble.Const.DASH_SPEED : 0);
@@ -451,28 +468,46 @@ var Jamble;
                     this.player.snapRight(this.gameEl.offsetWidth);
                     this.level += 1;
                     this.updateLevel();
-                    this.player.setFrozenStart();
-                    if (this.player.velocity > 0)
-                        this.player.velocity = -0.1;
-                    this.waitGroundForStart = true;
-                    this.awaitingStartTap = false;
+                    if (Jamble.Settings.current.mode === 'idle') {
+                        this.player.setFrozenStart();
+                        if (this.player.velocity > 0)
+                            this.player.velocity = -0.1;
+                        this.waitGroundForStart = true;
+                        this.awaitingStartTap = false;
+                    }
+                    else {
+                        if (this.player.velocity > 0)
+                            this.player.velocity = -0.1;
+                        this.awaitingStartTap = false;
+                        this.waitGroundForStart = false;
+                        this.hideIdleControls();
+                    }
                     this.direction = -1;
                 }
                 else if (this.direction === -1 && this.reachedLeft()) {
                     this.player.setX(Jamble.Const.PLAYER_START_OFFSET);
                     this.level += 1;
                     this.updateLevel();
-                    this.player.setFrozenStart();
-                    if (this.player.velocity > 0)
-                        this.player.velocity = -0.1;
-                    this.waitGroundForStart = true;
-                    this.awaitingStartTap = false;
+                    if (Jamble.Settings.current.mode === 'idle') {
+                        this.player.setFrozenStart();
+                        if (this.player.velocity > 0)
+                            this.player.velocity = -0.1;
+                        this.waitGroundForStart = true;
+                        this.awaitingStartTap = false;
+                    }
+                    else {
+                        if (this.player.velocity > 0)
+                            this.player.velocity = -0.1;
+                        this.awaitingStartTap = false;
+                        this.waitGroundForStart = false;
+                        this.hideIdleControls();
+                    }
                     this.direction = 1;
                 }
             }
             this.player.update(dt60);
             this.player.updateDash(deltaSec * 1000);
-            if (this.waitGroundForStart && this.player.jumpHeight === 0 && !this.player.isJumping) {
+            if (Jamble.Settings.current.mode === 'idle' && this.waitGroundForStart && this.player.jumpHeight === 0 && !this.player.isJumping) {
                 this.waitGroundForStart = false;
                 this.awaitingStartTap = true;
                 this.showIdleControls();
