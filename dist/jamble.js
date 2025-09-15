@@ -1,25 +1,6 @@
 "use strict";
 var Jamble;
 (function (Jamble) {
-    Jamble.Const = {
-        JUMP_STRENGTH: 7,
-        GRAVITY_UP: 0.32,
-        GRAVITY_MID: 0.4,
-        GRAVITY_DOWN: 0.65,
-        PLAYER_SPEED: 130,
-        DASH_SPEED: 280,
-        DASH_DURATION_MS: 220,
-        START_FREEZE_TIME: 3000,
-        DEATH_FREEZE_TIME: 500,
-        SHOW_RESET_DELAY_MS: 150,
-        PLAYER_START_OFFSET: 10,
-        DEATH_WIGGLE_DISTANCE: 1,
-        TREE_EDGE_MARGIN_PCT: 10,
-        TREE_MIN_GAP_PCT: 20
-    };
-})(Jamble || (Jamble = {}));
-var Jamble;
-(function (Jamble) {
     const embeddedDefaults = {
         jumpStrength: 7,
         gravityUp: 0.32,
@@ -165,38 +146,6 @@ var Jamble;
         }
     }
     Jamble.CooldownTimer = CooldownTimer;
-    class ChargesPool {
-        constructor(options) {
-            var _a;
-            this.lastUseMs = 0;
-            this.max = Math.max(0, options.max);
-            this.regenMs = Math.max(0, options.regenMs);
-            this.charges = Math.min(this.max, Math.max(0, (_a = options.initial) !== null && _a !== void 0 ? _a : this.max));
-        }
-        get count() { return this.charges; }
-        tryUse(nowMs) {
-            this.tick(nowMs);
-            if (this.charges <= 0)
-                return false;
-            this.charges -= 1;
-            this.lastUseMs = nowMs;
-            return true;
-        }
-        tick(nowMs) {
-            if (this.charges >= this.max || this.regenMs <= 0)
-                return;
-            const elapsed = nowMs - this.lastUseMs;
-            if (elapsed <= 0)
-                return;
-            const gained = Math.floor(elapsed / this.regenMs);
-            if (gained > 0) {
-                this.charges = Math.min(this.max, this.charges + gained);
-                this.lastUseMs += gained * this.regenMs;
-            }
-        }
-        refillAll() { this.charges = this.max; this.lastUseMs = 0; }
-    }
-    Jamble.ChargesPool = ChargesPool;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
@@ -440,6 +389,10 @@ var Jamble;
     class Obstacle {
         constructor(el) { this.el = el; }
         rect() { return this.el.getBoundingClientRect(); }
+        setLeftPct(pct) {
+            const n = Math.max(0, Math.min(100, pct));
+            this.el.style.left = n.toFixed(1) + '%';
+        }
     }
     Jamble.Obstacle = Obstacle;
 })(Jamble || (Jamble = {}));
@@ -496,7 +449,7 @@ var Jamble;
             this.el.style.left = this.x + 'px';
             this.el.style.bottom = this.jumpHeight + 'px';
             this.el.style.transform = 'scaleY(1) scaleX(1)';
-            this.el.className = 'jamble-player jamble-frozen-start';
+            this.el.className = 'jamble-player jamble-player-idle';
         }
         setNormal() { this.el.className = 'jamble-player jamble-normal'; }
         setFrozenStart() { this.frozenStart = true; this.el.className = 'jamble-player jamble-player-idle'; }
@@ -630,7 +583,6 @@ var Jamble;
             const t2 = root.querySelector('.jamble-tree[data-tree="2"]');
             const cdEl = root.querySelector('.jamble-countdown');
             const resetBtn = root.querySelector('.jamble-reset');
-            const messageEl = null;
             const levelEl = root.querySelector('.jamble-level');
             const startBtn = root.querySelector('.jamble-start');
             const shuffleBtn = root.querySelector('.jamble-shuffle');
@@ -652,6 +604,9 @@ var Jamble;
             this.levelEl = levelEl;
             this.wiggle = new Jamble.Wiggle(this.player.el);
             this.onPointerDown = this.onPointerDown.bind(this);
+            this.onStartClick = this.onStartClick.bind(this);
+            this.onShuffleClick = this.onShuffleClick.bind(this);
+            this.reset = this.reset.bind(this);
             this.loop = this.loop.bind(this);
             const caps = {
                 requestJump: (strength) => {
@@ -768,20 +723,20 @@ var Jamble;
             const gap = Jamble.Settings.current.treeMinGapPct;
             const left1 = min + Math.random() * (max - min - gap);
             const left2 = left1 + gap + Math.random() * (max - (left1 + gap));
-            this.tree1.el.style.left = left1.toFixed(1) + '%';
-            this.tree2.el.style.left = left2.toFixed(1) + '%';
+            this.tree1.setLeftPct(left1);
+            this.tree2.setLeftPct(left2);
         }
         bind() {
             document.addEventListener('pointerdown', this.onPointerDown);
-            this.resetBtn.addEventListener('click', () => this.reset());
-            this.startBtn.addEventListener('click', () => this.onStartClick());
-            this.shuffleBtn.addEventListener('click', () => this.onShuffleClick());
+            this.resetBtn.addEventListener('click', this.reset);
+            this.startBtn.addEventListener('click', this.onStartClick);
+            this.shuffleBtn.addEventListener('click', this.onShuffleClick);
         }
         unbind() {
             document.removeEventListener('pointerdown', this.onPointerDown);
-            this.resetBtn.removeEventListener('click', () => this.reset());
-            this.startBtn.removeEventListener('click', () => this.onStartClick());
-            this.shuffleBtn.removeEventListener('click', () => this.onShuffleClick());
+            this.resetBtn.removeEventListener('click', this.reset);
+            this.startBtn.removeEventListener('click', this.onStartClick);
+            this.shuffleBtn.removeEventListener('click', this.onShuffleClick);
         }
         showIdleControls() {
             this.startBtn.style.display = 'block';

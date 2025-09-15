@@ -1,4 +1,3 @@
-/// <reference path="./constants.ts" />
 namespace Jamble {
   export class Wiggle {
     private playerEl: HTMLElement;

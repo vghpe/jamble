@@ -1,4 +1,3 @@
-/// <reference path="./constants.ts" />
 namespace Jamble {
   export class Player {
     public el: HTMLElement;
@@ -32,7 +31,7 @@ namespace Jamble {
       this.el.style.left = this.x + 'px';
       this.el.style.bottom = this.jumpHeight + 'px';
       this.el.style.transform = 'scaleY(1) scaleX(1)';
-      this.el.className = 'jamble-player jamble-frozen-start';
+      this.el.className = 'jamble-player jamble-player-idle';
     }
 
     // Visual state helpers

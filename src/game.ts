@@ -1,4 +1,3 @@
-/// <reference path="./constants.ts" />
 /// <reference path="./player.ts" />
 /// <reference path="./obstacle.ts" />
 /// <reference path="./countdown.ts" />
@@ -45,7 +44,6 @@ namespace Jamble {
       const t2 = root.querySelector('.jamble-tree[data-tree="2"]') as HTMLElement | null;
       const cdEl = root.querySelector('.jamble-countdown') as HTMLElement | null;
       const resetBtn = root.querySelector('.jamble-reset') as HTMLButtonElement | null;
-      const messageEl = null as unknown as HTMLElement | null;
       const levelEl = root.querySelector('.jamble-level') as HTMLElement | null;
       const startBtn = root.querySelector('.jamble-start') as HTMLButtonElement | null;
       const shuffleBtn = root.querySelector('.jamble-shuffle') as HTMLButtonElement | null;
@@ -70,6 +68,9 @@ namespace Jamble {
       this.wiggle = new Wiggle(this.player.el);
 
       this.onPointerDown = this.onPointerDown.bind(this);
+      this.onStartClick = this.onStartClick.bind(this);
+      this.onShuffleClick = this.onShuffleClick.bind(this);
+      this.reset = this.reset.bind(this);
       this.loop = this.loop.bind(this);
 
       // Capabilities facade for skills
@@ -178,21 +179,21 @@ namespace Jamble {
       const gap = Jamble.Settings.current.treeMinGapPct;
       const left1 = min + Math.random() * (max - min - gap);
       const left2 = left1 + gap + Math.random() * (max - (left1 + gap));
-      (this.tree1 as any).el.style.left = left1.toFixed(1) + '%';
-      (this.tree2 as any).el.style.left = left2.toFixed(1) + '%';
+      this.tree1.setLeftPct(left1);
+      this.tree2.setLeftPct(left2);
     }
 
     private bind(): void {
       document.addEventListener('pointerdown', this.onPointerDown);
-      this.resetBtn.addEventListener('click', () => this.reset());
-      this.startBtn.addEventListener('click', () => this.onStartClick());
-      this.shuffleBtn.addEventListener('click', () => this.onShuffleClick());
+      this.resetBtn.addEventListener('click', this.reset);
+      this.startBtn.addEventListener('click', this.onStartClick);
+      this.shuffleBtn.addEventListener('click', this.onShuffleClick);
     }
     private unbind(): void {
       document.removeEventListener('pointerdown', this.onPointerDown);
-      this.resetBtn.removeEventListener('click', () => this.reset());
-      this.startBtn.removeEventListener('click', () => this.onStartClick());
-      this.shuffleBtn.removeEventListener('click', () => this.onShuffleClick());
+      this.resetBtn.removeEventListener('click', this.reset);
+      this.startBtn.removeEventListener('click', this.onStartClick);
+      this.shuffleBtn.removeEventListener('click', this.onShuffleClick);
     }
 
     private showIdleControls(): void {

@@ -10,7 +10,6 @@
     "outFile": "dist/jamble.js"
   },
   "files": [
-    "src/constants.ts",
     "src/settings.ts",
     "src/skills/types.ts",
     "src/skills/utils.ts",
