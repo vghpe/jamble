@@ -52,26 +52,33 @@
           <!-- Jump Config -->
           <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;background:#f9fff9;padding:8px;border-radius:6px;border:1px solid #cdeccd">
             <div style="grid-column:1 / -1; font-weight:600; color:#2e7d32">Skill: Jump</div>
+            <div style="grid-column:1 / -1; text-align:right; font-size:12px; color:#2e7d32"><span id="sk-jumpStatus">Inherited</span></div>
             <label for="sk-jumpStrength">Strength</label>
             <input id="sk-jumpStrength" type="number" step="0.1" min="1" max="30" style="width:100px">
+            <span id="sk-jumpStrengthPreview" style="justify-self:start;font-size:12px;color:#555"></span>
             <label for="sk-jumpCd">Cooldown (ms)</label>
             <input id="sk-jumpCd" type="number" step="10" min="0" max="2000" style="width:100px">
+            <span id="sk-jumpCdPreview" style="justify-self:start;font-size:12px;color:#555"></span>
             <label for="sk-jumpPreset">Preset</label>
             <select id="sk-jumpPreset" style="width:140px"></select>
-            <button id="sk-applyJumpPreset" type="button">Apply</button>
+            <button id="sk-applyJumpPreset" type="button" disabled>Apply</button>
           </div>
           <!-- Dash Config -->
           <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;background:#f9fff9;padding:8px;border-radius:6px;border:1px solid #cdeccd">
             <div style="grid-column:1 / -1; font-weight:600; color:#2e7d32">Skill: Dash</div>
+            <div style="grid-column:1 / -1; text-align:right; font-size:12px; color:#2e7d32"><span id="sk-dashStatus">Inherited</span></div>
             <label for="sk-dashSpeed">Speed</label>
             <input id="sk-dashSpeed" type="number" step="5" min="0" max="1000" style="width:100px">
+            <span id="sk-dashSpeedPreview" style="justify-self:start;font-size:12px;color:#555"></span>
             <label for="sk-dashDur">Duration (ms)</label>
             <input id="sk-dashDur" type="number" step="10" min="0" max="2000" style="width:100px">
+            <span id="sk-dashDurPreview" style="justify-self:start;font-size:12px;color:#555"></span>
             <label for="sk-dashCd">Cooldown (ms)</label>
             <input id="sk-dashCd" type="number" step="10" min="0" max="2000" style="width:100px">
+            <span id="sk-dashCdPreview" style="justify-self:start;font-size:12px;color:#555"></span>
             <label for="sk-dashPreset">Preset</label>
             <select id="sk-dashPreset" style="width:140px"></select>
-            <button id="sk-applyDashPreset" type="button">Apply</button>
+            <button id="sk-applyDashPreset" type="button" disabled>Apply</button>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;align-items:start;margin-top:8px">
@@ -185,11 +192,21 @@
         var sjCdEl = document.getElementById('sk-jumpCd');
         var sjPresetSel = document.getElementById('sk-jumpPreset');
         var sjApplyBtn = document.getElementById('sk-applyJumpPreset');
+        var sjStrengthPreview = document.getElementById('sk-jumpStrengthPreview');
+        var sjCdPreview = document.getElementById('sk-jumpCdPreview');
+        var sjStatus = document.getElementById('sk-jumpStatus');
         var sdSpeedEl = document.getElementById('sk-dashSpeed');
         var sdDurEl = document.getElementById('sk-dashDur');
         var sdCdEl = document.getElementById('sk-dashCd');
         var sdPresetSel = document.getElementById('sk-dashPreset');
         var sdApplyBtn = document.getElementById('sk-applyDashPreset');
+        var sdSpeedPreview = document.getElementById('sk-dashSpeedPreview');
+        var sdDurPreview = document.getElementById('sk-dashDurPreview');
+        var sdCdPreview = document.getElementById('sk-dashCdPreview');
+        var sdStatus = document.getElementById('sk-dashStatus');
+
+        // Track active preset names per-skill (UI only)
+        var activePresets = { jump: null, dash: null };
 
         var baselineJSON = null; // stringified snapshot of last loaded/saved profile
 
@@ -200,8 +217,7 @@
           if (speedEl) speedEl.value = String(s.playerSpeed);
           if (modeEl) modeEl.checked = (s.mode === 'pingpong');
           if (squashEl) squashEl.checked = !!s.squashEnabled;
-          if (dashSpeedEl) dashSpeedEl.value = String(s.dashSpeed);
-          if (dashDurEl) dashDurEl.value = String(s.dashDurationMs);
+          // dashSpeed/duration are per-skill now; keep legacy fields unused
           if (stretchEl) stretchEl.value = String(s.stretchFactor);
           if (squashFactorEl) squashFactorEl.value = String(s.squashFactor);
           if (airMsEl) airMsEl.value = String(s.airTransformSmoothingMs);
@@ -234,10 +250,82 @@
           updateDirty();
           updateSaveEnabled();
         }
+        // Apply Settings.skills (configs + loadout) to the live SkillManager
+        function applySkillsFromSettings(){
+          var mgr = game.getSkillManager();
+          var jc = (window.Jamble.Settings.skills && window.Jamble.Settings.skills.configs && window.Jamble.Settings.skills.configs.jump) || null;
+          var dc = (window.Jamble.Settings.skills && window.Jamble.Settings.skills.configs && window.Jamble.Settings.skills.configs.dash) || null;
+          if (jc) mgr.setConfig('jump', jc);
+          if (dc) mgr.setConfig('dash', dc);
+          mgr.clear();
+          var load = (window.Jamble.Settings.skills && window.Jamble.Settings.skills.loadout) || { movement: ['jump','dash'], utility: [], ultimate: [] };
+          (load.movement||[]).forEach(function(id){ try { mgr.equip(id); } catch(e){} });
+        }
         function populateSkillPresets(){
           var mgr = game.getSkillManager();
-          mgr.listPresets('jump').then(function(x){ if (sjPresetSel){ sjPresetSel.innerHTML=''; (x&&x.presets||[]).forEach(function(n){ var o=document.createElement('option'); o.value=n; o.textContent=n; sjPresetSel.appendChild(o); }); }});
-          mgr.listPresets('dash').then(function(x){ if (sdPresetSel){ sdPresetSel.innerHTML=''; (x&&x.presets||[]).forEach(function(n){ var o=document.createElement('option'); o.value=n; o.textContent=n; sdPresetSel.appendChild(o); }); }});
+          mgr.listPresets('jump').then(function(x){ if (sjPresetSel){ sjPresetSel.innerHTML=''; var none=document.createElement('option'); none.value=''; none.textContent='(none)'; sjPresetSel.appendChild(none); (x&&x.presets||[]).forEach(function(n){ var o=document.createElement('option'); o.value=n; o.textContent=n; sjPresetSel.appendChild(o); }); sjPresetSel.value = activePresets.jump || ''; sjApplyBtn.disabled = !sjPresetSel.value; }});
+          mgr.listPresets('dash').then(function(x){ if (sdPresetSel){ sdPresetSel.innerHTML=''; var none=document.createElement('option'); none.value=''; none.textContent='(none)'; sdPresetSel.appendChild(none); (x&&x.presets||[]).forEach(function(n){ var o=document.createElement('option'); o.value=n; o.textContent=n; sdPresetSel.appendChild(o); }); sdPresetSel.value = activePresets.dash || ''; sdApplyBtn.disabled = !sdPresetSel.value; }});
+        }
+        function updatePresetPreviews(){
+          var mgr = game.getSkillManager();
+          // Jump preview
+          if (sjPresetSel && sjPresetSel.value){
+            fetch('dist/skill-presets/jump/' + encodeURIComponent(sjPresetSel.value)).then(r=>r.json()).then(function(j){
+              if (sjStrengthPreview) sjStrengthPreview.textContent = '(preset: '+ (j.strength ?? '-') +')';
+              if (sjCdPreview) sjCdPreview.textContent = '(preset: '+ (j.cooldownMs ?? 0) +')';
+            });
+          } else {
+            if (sjStrengthPreview) sjStrengthPreview.textContent = '';
+            if (sjCdPreview) sjCdPreview.textContent = '';
+          }
+          // Dash preview
+          if (sdPresetSel && sdPresetSel.value){
+            fetch('dist/skill-presets/dash/' + encodeURIComponent(sdPresetSel.value)).then(r=>r.json()).then(function(d){
+              if (sdSpeedPreview) sdSpeedPreview.textContent = '(preset: '+ (d.speed ?? '-') +')';
+              if (sdDurPreview) sdDurPreview.textContent = '(preset: '+ (d.durationMs ?? '-') +')';
+              if (sdCdPreview) sdCdPreview.textContent = '(preset: '+ (d.cooldownMs ?? 0) +')';
+            });
+          } else {
+            if (sdSpeedPreview) sdSpeedPreview.textContent = '';
+            if (sdDurPreview) sdDurPreview.textContent = '';
+            if (sdCdPreview) sdCdPreview.textContent = '';
+          }
+        }
+        function updatePresetStatus(){
+          // Jump status
+          var jc = window.Jamble.Settings.skills.configs.jump || {};
+          if (!activePresets.jump){
+            if (sjStatus) sjStatus.textContent = 'Inherited';
+            if (sjApplyBtn) sjApplyBtn.textContent = 'Apply';
+          } else {
+            if (sjStatus) sjStatus.textContent = 'Active: ' + activePresets.jump;
+            // Compare against selected preset preview to toggle Apply/Revert label
+            if (sjPresetSel && sjPresetSel.value === activePresets.jump){
+              // Check adjusted
+              fetch('dist/skill-presets/jump/' + encodeURIComponent(activePresets.jump)).then(r=>r.json()).then(function(p){
+                var adjusted = ((''+(jc.strength)).trim() !== (''+(p.strength)).trim()) || (Number(jc.cooldownMs||0) !== Number(p.cooldownMs||0));
+                if (sjStatus) sjStatus.textContent = adjusted ? ('Adjusted from ' + activePresets.jump) : ('Active: ' + activePresets.jump);
+                if (sjApplyBtn) { sjApplyBtn.textContent = adjusted ? 'Revert' : 'Reapply'; sjApplyBtn.disabled = false; }
+              });
+            } else {
+              if (sjApplyBtn) { sjApplyBtn.textContent = 'Apply'; sjApplyBtn.disabled = !(sjPresetSel && sjPresetSel.value); }
+            }
+          }
+          // Dash status
+          var dc = window.Jamble.Settings.skills.configs.dash || {};
+          if (!activePresets.dash){ if (sdStatus) sdStatus.textContent = 'Inherited'; if (sdApplyBtn) sdApplyBtn.textContent = 'Apply'; }
+          else {
+            if (sdStatus) sdStatus.textContent = 'Active: ' + activePresets.dash;
+            if (sdPresetSel && sdPresetSel.value === activePresets.dash){
+              fetch('dist/skill-presets/dash/' + encodeURIComponent(activePresets.dash)).then(r=>r.json()).then(function(p){
+                var adjusted = (Number(dc.speed) !== Number(p.speed)) || (Number(dc.durationMs) !== Number(p.durationMs)) || (Number(dc.cooldownMs) !== Number(p.cooldownMs));
+                if (sdStatus) sdStatus.textContent = adjusted ? ('Adjusted from ' + activePresets.dash) : ('Active: ' + activePresets.dash);
+                if (sdApplyBtn) { sdApplyBtn.textContent = adjusted ? 'Revert' : 'Reapply'; sdApplyBtn.disabled = false; }
+              });
+            } else {
+              if (sdApplyBtn) { sdApplyBtn.textContent = 'Apply'; sdApplyBtn.disabled = !(sdPresetSel && sdPresetSel.value); }
+            }
+          }
         }
         function onEquipChange(){
           var load = window.Jamble.Settings.skills.loadout;
@@ -249,6 +337,7 @@
           mgr.clear();
           (load.movement||[]).forEach(function(id){ try{ mgr.equip(id);}catch(e){} });
           updateDirty();
+          updatePresetStatus();
         }
         function onJumpCfg(){
           var cfg = window.Jamble.Settings.skills.configs.jump || {};
@@ -258,6 +347,7 @@
           var mgr = game.getSkillManager();
           mgr.patchConfig('jump', cfg); mgr.unequip('jump'); mgr.equip('jump');
           updateDirty();
+          updatePresetStatus();
         }
         function onDashCfg(){
           var cfg = window.Jamble.Settings.skills.configs.dash || {};
@@ -268,9 +358,36 @@
           var mgr = game.getSkillManager();
           mgr.patchConfig('dash', cfg); mgr.unequip('dash'); mgr.equip('dash');
           updateDirty();
+          updatePresetStatus();
         }
-        function applyJumpPreset(){ if (!sjPresetSel || !sjPresetSel.value) return; var mgr=game.getSkillManager(); mgr.applyPreset('jump', sjPresetSel.value).then(function(){ var cfg=mgr.getConfig('jump')||{}; window.Jamble.Settings.skills.configs.jump = cfg; syncFromSettings(); mgr.unequip('jump'); mgr.equip('jump'); updateDirty(); }); }
-        function applyDashPreset(){ if (!sdPresetSel || !sdPresetSel.value) return; var mgr=game.getSkillManager(); mgr.applyPreset('dash', sdPresetSel.value).then(function(){ var cfg=mgr.getConfig('dash')||{}; window.Jamble.Settings.skills.configs.dash = cfg; syncFromSettings(); mgr.unequip('dash'); mgr.equip('dash'); updateDirty(); }); }
+        function applyJumpPreset(){ if (!sjPresetSel) return; var name=sjPresetSel.value; if (!name) return; var mgr=game.getSkillManager(); mgr.applyPreset('jump', name).then(function(){ var cfg=mgr.getConfig('jump')||{}; window.Jamble.Settings.skills.configs.jump = cfg; activePresets.jump = name; syncFromSettings(); mgr.unequip('jump'); mgr.equip('jump'); updateDirty(); updatePresetStatus(); }); }
+        function applyDashPreset(){ if (!sdPresetSel) return; var name=sdPresetSel.value; if (!name) return; var mgr=game.getSkillManager(); mgr.applyPreset('dash', name).then(function(){ var cfg=mgr.getConfig('dash')||{}; window.Jamble.Settings.skills.configs.dash = cfg; activePresets.dash = name; syncFromSettings(); mgr.unequip('dash'); mgr.equip('dash'); updateDirty(); updatePresetStatus(); }); }
+        async function unapplyPreset(skillId){
+          // Load baseline config for this skill from the active profile file; fallback to defaults
+          var active = window.Jamble.Settings.activeName || 'default.json';
+          try {
+            var res = await fetch('dist/profiles/' + encodeURIComponent(active));
+            var data = await res.json();
+            var cfg = (data && data.skills && data.skills.configs && data.skills.configs[skillId]) || null;
+            if (!cfg){
+              // fallback to legacy/current defaults
+              if (skillId === 'jump') cfg = { strength: window.Jamble.Settings.current.jumpStrength, cooldownMs: 0 };
+              else if (skillId === 'dash') cfg = { speed: window.Jamble.Settings.current.dashSpeed, durationMs: window.Jamble.Settings.current.dashDurationMs, cooldownMs: 150 };
+            }
+            if (cfg){
+              window.Jamble.Settings.skills.configs[skillId] = cfg;
+              var mgr = game.getSkillManager();
+              mgr.setConfig(skillId, cfg);
+              mgr.unequip(skillId); mgr.equip(skillId);
+              syncFromSettings();
+              updateDirty();
+            }
+          } catch(_e){ /* ignore */ }
+          if (skillId === 'jump') activePresets.jump = null; else if (skillId === 'dash') activePresets.dash = null;
+          updatePresetStatus();
+        }
+        if (sjPresetSel) sjPresetSel.addEventListener('change', function(){ if (!sjPresetSel.value){ unapplyPreset('jump'); } updatePresetPreviews(); updatePresetStatus(); sjApplyBtn.disabled = !sjPresetSel.value; });
+        if (sdPresetSel) sdPresetSel.addEventListener('change', function(){ if (!sdPresetSel.value){ unapplyPreset('dash'); } updatePresetPreviews(); updatePresetStatus(); sdApplyBtn.disabled = !sdPresetSel.value; });
         function markBaseline(){ baselineJSON = JSON.stringify(window.Jamble.Settings.toJSON()); updateDirty(); updateSaveEnabled(); }
         function updateSaveEnabled(){
           if (!saveBtn) return;
@@ -389,8 +506,9 @@
         function revertProfile(){
           window.Jamble.Settings.revertToProfile();
           syncFromSettings();
-          // no need to change baseline; current now equals baseline, so dirty clears
+          applySkillsFromSettings();
           updateDirty();
+          updatePresetStatus();
         }
         var profilesCache = [];
         function populateProfiles(){
@@ -438,14 +556,14 @@
             .then(function(){
               // Load the saved profile to set activeName/baseline and refresh dropdown
               var url = 'dist/profiles/' + name;
-              window.Jamble.Settings.loadFrom(url).then(function(){ populateProfiles(); syncFromSettings(); markBaseline(); });
+              window.Jamble.Settings.loadFrom(url).then(function(){ populateProfiles(); syncFromSettings(); applySkillsFromSettings(); markBaseline(); updatePresetStatus(); });
             })
             .catch(function(err){ console.error(err); });
         }
         function loadSelectedProfile(){
           if (!profileSel || !profileSel.value) return;
           var url = 'dist/profiles/' + profileSel.value;
-          window.Jamble.Settings.loadFrom(url).then(function(){ syncFromSettings(); markBaseline(); });
+          window.Jamble.Settings.loadFrom(url).then(function(){ syncFromSettings(); applySkillsFromSettings(); markBaseline(); updatePresetStatus(); });
         }
         if (saveBtn) saveBtn.addEventListener('click', saveProfile);
         if (revertBtn) revertBtn.addEventListener('click', revertProfile);
@@ -462,7 +580,7 @@
         // Initial sync and after settings load (HTTP mode)
         syncFromSettings();
         // Establish initial baseline after the initial HTTP load finishes
-        window.addEventListener('jamble:settingsLoaded', function(){ syncFromSettings(); markBaseline(); populateProfiles(); populateSkillPresets(); });
+        window.addEventListener('jamble:settingsLoaded', function(){ syncFromSettings(); applySkillsFromSettings(); markBaseline(); populateProfiles(); populateSkillPresets(); updatePresetStatus(); });
       })();
     </script>
   </body>

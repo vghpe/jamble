@@ -79,6 +79,7 @@ namespace Jamble {
     private _activeName: string | null = null;
     private _profileBaseline: SettingsShape | null = null;
     private _skills: SkillsProfile = { loadout: { movement: ['jump','dash'], utility: [], ultimate: [] }, configs: {} };
+    private _skillsBaseline: SkillsProfile | null = null;
 
     constructor(initial?: Partial<SettingsShape>){
       this._current = { ...embeddedDefaults, ...(initial ?? {}) };
@@ -99,12 +100,30 @@ namespace Jamble {
     markBaseline(name: string | null): void {
       this._activeName = name;
       this._profileBaseline = { ...this._current };
+      // deep copy skills baseline
+      this._skillsBaseline = {
+        loadout: {
+          movement: [...(this._skills.loadout.movement || [])],
+          utility: [...(this._skills.loadout.utility || [])],
+          ultimate: [...(this._skills.loadout.ultimate || [])],
+        },
+        configs: JSON.parse(JSON.stringify(this._skills.configs || {}))
+      };
     }
 
     /** Revert current settings to the active profile baseline, if any. */
     revertToProfile(): void {
-      if (this._profileBaseline){
-        this._current = { ...this._profileBaseline };
+      if (this._profileBaseline){ this._current = { ...this._profileBaseline }; }
+      if (this._skillsBaseline){
+        // deep copy back
+        this._skills = {
+          loadout: {
+            movement: [...(this._skillsBaseline.loadout.movement || [])],
+            utility: [...(this._skillsBaseline.loadout.utility || [])],
+            ultimate: [...(this._skillsBaseline.loadout.ultimate || [])],
+          },
+          configs: JSON.parse(JSON.stringify(this._skillsBaseline.configs || {}))
+        };
       }
     }
 

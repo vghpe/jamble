@@ -51,6 +51,7 @@ var Jamble;
             this._activeName = null;
             this._profileBaseline = null;
             this._skills = { loadout: { movement: ['jump', 'dash'], utility: [], ultimate: [] }, configs: {} };
+            this._skillsBaseline = null;
             this._current = { ...embeddedDefaults, ...(initial !== null && initial !== void 0 ? initial : {}) };
         }
         get current() { return this._current; }
@@ -64,10 +65,28 @@ var Jamble;
         markBaseline(name) {
             this._activeName = name;
             this._profileBaseline = { ...this._current };
+            this._skillsBaseline = {
+                loadout: {
+                    movement: [...(this._skills.loadout.movement || [])],
+                    utility: [...(this._skills.loadout.utility || [])],
+                    ultimate: [...(this._skills.loadout.ultimate || [])],
+                },
+                configs: JSON.parse(JSON.stringify(this._skills.configs || {}))
+            };
         }
         revertToProfile() {
             if (this._profileBaseline) {
                 this._current = { ...this._profileBaseline };
+            }
+            if (this._skillsBaseline) {
+                this._skills = {
+                    loadout: {
+                        movement: [...(this._skillsBaseline.loadout.movement || [])],
+                        utility: [...(this._skillsBaseline.loadout.utility || [])],
+                        ultimate: [...(this._skillsBaseline.loadout.ultimate || [])],
+                    },
+                    configs: JSON.parse(JSON.stringify(this._skillsBaseline.configs || {}))
+                };
             }
         }
         async loadFrom(url) {
