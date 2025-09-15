@@ -12,6 +12,10 @@
   "files": [
     "src/constants.ts",
     "src/settings.ts",
+    "src/skills/types.ts",
+    "src/skills/utils.ts",
+    "src/skills/jump.ts",
+    "src/skills/dash.ts",
     "src/countdown.ts",
     "src/obstacle.ts",
     "src/wiggle.ts",

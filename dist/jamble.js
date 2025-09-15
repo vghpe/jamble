@@ -100,6 +100,127 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
+    let InputIntent;
+    (function (InputIntent) {
+        InputIntent["Tap"] = "tap";
+        InputIntent["HoldStart"] = "hold_start";
+        InputIntent["HoldEnd"] = "hold_end";
+        InputIntent["DoubleTap"] = "double_tap";
+        InputIntent["AirTap"] = "air_tap";
+    })(InputIntent = Jamble.InputIntent || (Jamble.InputIntent = {}));
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class CooldownTimer {
+        constructor(durationMs) {
+            this.readyAt = 0;
+            this.durationMs = Math.max(0, durationMs);
+        }
+        reset() { this.readyAt = 0; }
+        isReady(nowMs) { return nowMs >= this.readyAt; }
+        tryConsume(nowMs) {
+            if (!this.isReady(nowMs))
+                return false;
+            this.readyAt = nowMs + this.durationMs;
+            return true;
+        }
+    }
+    Jamble.CooldownTimer = CooldownTimer;
+    class ChargesPool {
+        constructor(options) {
+            var _a;
+            this.lastUseMs = 0;
+            this.max = Math.max(0, options.max);
+            this.regenMs = Math.max(0, options.regenMs);
+            this.charges = Math.min(this.max, Math.max(0, (_a = options.initial) !== null && _a !== void 0 ? _a : this.max));
+        }
+        get count() { return this.charges; }
+        tryUse(nowMs) {
+            this.tick(nowMs);
+            if (this.charges <= 0)
+                return false;
+            this.charges -= 1;
+            this.lastUseMs = nowMs;
+            return true;
+        }
+        tick(nowMs) {
+            if (this.charges >= this.max || this.regenMs <= 0)
+                return;
+            const elapsed = nowMs - this.lastUseMs;
+            if (elapsed <= 0)
+                return;
+            const gained = Math.floor(elapsed / this.regenMs);
+            if (gained > 0) {
+                this.charges = Math.min(this.max, this.charges + gained);
+                this.lastUseMs += gained * this.regenMs;
+            }
+        }
+        refillAll() { this.charges = this.max; this.lastUseMs = 0; }
+    }
+    Jamble.ChargesPool = ChargesPool;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class JumpSkill {
+        constructor(id = 'jump', priority = 10, cooldownMs = 0) {
+            this.name = 'Jump';
+            this.slot = 'movement';
+            this.cd = null;
+            this.id = id;
+            this.priority = priority;
+            this.cd = cooldownMs > 0 ? new Jamble.CooldownTimer(cooldownMs) : null;
+        }
+        onInput(intent, ctx, caps) {
+            if (intent !== Jamble.InputIntent.Tap && intent !== Jamble.InputIntent.AirTap)
+                return false;
+            if (!ctx.grounded && intent !== Jamble.InputIntent.AirTap)
+                return false;
+            const now = ctx.nowMs;
+            if (this.cd && !this.cd.isReady(now))
+                return false;
+            const ok = caps.requestJump(Jamble.Settings.current.jumpStrength);
+            if (ok && this.cd)
+                this.cd.tryConsume(now);
+            return ok;
+        }
+    }
+    Jamble.JumpSkill = JumpSkill;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class DashSkill {
+        constructor(id = 'dash', priority = 20, cooldownMs = 150) {
+            this.name = 'Dash';
+            this.slot = 'movement';
+            this.usedThisAir = false;
+            this.id = id;
+            this.priority = priority;
+            this.cd = new Jamble.CooldownTimer(cooldownMs);
+        }
+        onEquip(caps) { }
+        onLand(_ctx, _caps) { this.usedThisAir = false; }
+        onInput(intent, ctx, caps) {
+            if (intent !== Jamble.InputIntent.AirTap)
+                return false;
+            if (ctx.grounded)
+                return false;
+            if (this.usedThisAir)
+                return false;
+            const now = ctx.nowMs;
+            if (!this.cd.isReady(now))
+                return false;
+            const ok = caps.startDash(Jamble.Settings.current.dashSpeed, Jamble.Settings.current.dashDurationMs);
+            if (ok) {
+                this.cd.tryConsume(now);
+                this.usedThisAir = true;
+            }
+            return ok;
+        }
+    }
+    Jamble.DashSkill = DashSkill;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
     class Countdown {
         constructor(el) {
             this.timeout = null;
@@ -575,7 +696,11 @@ var Jamble;
     Jamble.Game = Game;
 })(Jamble || (Jamble = {}));
 (function () {
-    window.Jamble = { Game: Jamble.Game, Settings: Jamble.Settings };
+    window.Jamble = { Game: Jamble.Game, Settings: Jamble.Settings, Skills: {
+            InputIntent: Jamble.InputIntent,
+            JumpSkill: Jamble.JumpSkill,
+            DashSkill: Jamble.DashSkill,
+        } };
     Jamble.Settings.loadFrom('dist/profiles/default.json').finally(function () {
         try {
             window.dispatchEvent(new CustomEvent('jamble:settingsLoaded'));
