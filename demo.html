@@ -39,11 +39,44 @@
             <div id="dbg-dirty" style="font-size:12px;color:#a00;min-width:120px;text-align:right;visibility:hidden">Unsaved changes</div>
           </div>
         </div>
+        <!-- Skills Section -->
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;align-items:start;margin-top:8px">
-          <!-- Movement & Mode -->
+          <!-- Loadout -->
+          <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;background:#f9fff9;padding:8px;border-radius:6px;border:1px solid #cdeccd">
+            <div style="grid-column:1 / -1; font-weight:600; color:#2e7d32">Skills: Movement Loadout</div>
+            <label for="sk-equip-jump">Equip Jump</label>
+            <input id="sk-equip-jump" type="checkbox" style="width:auto">
+            <label for="sk-equip-dash">Equip Dash</label>
+            <input id="sk-equip-dash" type="checkbox" style="width:auto">
+          </div>
+          <!-- Jump Config -->
+          <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;background:#f9fff9;padding:8px;border-radius:6px;border:1px solid #cdeccd">
+            <div style="grid-column:1 / -1; font-weight:600; color:#2e7d32">Skill: Jump</div>
+            <label for="sk-jumpStrength">Strength</label>
+            <input id="sk-jumpStrength" type="number" step="0.1" min="1" max="30" style="width:100px">
+            <label for="sk-jumpCd">Cooldown (ms)</label>
+            <input id="sk-jumpCd" type="number" step="10" min="0" max="2000" style="width:100px">
+            <label for="sk-jumpPreset">Preset</label>
+            <select id="sk-jumpPreset" style="width:140px"></select>
+            <button id="sk-applyJumpPreset" type="button">Apply</button>
+          </div>
+          <!-- Dash Config -->
+          <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;background:#f9fff9;padding:8px;border-radius:6px;border:1px solid #cdeccd">
+            <div style="grid-column:1 / -1; font-weight:600; color:#2e7d32">Skill: Dash</div>
+            <label for="sk-dashSpeed">Speed</label>
+            <input id="sk-dashSpeed" type="number" step="5" min="0" max="1000" style="width:100px">
+            <label for="sk-dashDur">Duration (ms)</label>
+            <input id="sk-dashDur" type="number" step="10" min="0" max="2000" style="width:100px">
+            <label for="sk-dashCd">Cooldown (ms)</label>
+            <input id="sk-dashCd" type="number" step="10" min="0" max="2000" style="width:100px">
+            <label for="sk-dashPreset">Preset</label>
+            <select id="sk-dashPreset" style="width:140px"></select>
+            <button id="sk-applyDashPreset" type="button">Apply</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;align-items:start;margin-top:8px">
+          <!-- Movement & Mode (global) -->
           <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
-            <label for="dbg-jump">Jump strength</label>
-            <input id="dbg-jump" type="number" step="0.1" min="1" max="30" style="width:100px">
             <label for="dbg-speed">Player speed</label>
             <input id="dbg-speed" type="number" step="1" min="10" max="600" style="width:100px">
             <label for="dbg-mode">Ping-pong mode</label>
@@ -52,13 +85,7 @@
             <input id="dbg-squash" type="checkbox" style="width:auto">
           </div>
 
-          <!-- Dash -->
-          <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
-            <label for="dbg-dashSpeed">Dash speed</label>
-            <input id="dbg-dashSpeed" type="number" step="5" min="0" max="1000" style="width:100px">
-            <label for="dbg-dashDur">Dash duration (ms)</label>
-            <input id="dbg-dashDur" type="number" step="10" min="0" max="1000" style="width:100px">
-          </div>
+          <!-- Removed per-skill dash from global panel; managed in Skills section below -->
 
           <!-- Animation Params -->
           <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
@@ -151,6 +178,19 @@
         var saveAsBtn = document.getElementById('dbg-saveAs');
         var dirtyEl = document.getElementById('dbg-dirty');
 
+        // Skills UI refs
+        var equipJumpEl = document.getElementById('sk-equip-jump');
+        var equipDashEl = document.getElementById('sk-equip-dash');
+        var sjStrengthEl = document.getElementById('sk-jumpStrength');
+        var sjCdEl = document.getElementById('sk-jumpCd');
+        var sjPresetSel = document.getElementById('sk-jumpPreset');
+        var sjApplyBtn = document.getElementById('sk-applyJumpPreset');
+        var sdSpeedEl = document.getElementById('sk-dashSpeed');
+        var sdDurEl = document.getElementById('sk-dashDur');
+        var sdCdEl = document.getElementById('sk-dashCd');
+        var sdPresetSel = document.getElementById('sk-dashPreset');
+        var sdApplyBtn = document.getElementById('sk-applyDashPreset');
+
         var baselineJSON = null; // stringified snapshot of last loaded/saved profile
 
         function clamp(n, min, max){ n = Number(n); if (Number.isNaN(n)) return min; return Math.max(min, Math.min(max, n)); }
@@ -179,10 +219,58 @@
           if (wiggleDistEl) wiggleDistEl.value = String(s.deathWiggleDistance);
           if (treeMarginEl) treeMarginEl.value = String(s.treeEdgeMarginPct);
           if (treeGapEl) treeGapEl.value = String(s.treeMinGapPct);
+          // Skills
+          var loadout = window.Jamble.Settings.skills.loadout || { movement: ['jump','dash'], utility: [], ultimate: [] };
+          if (equipJumpEl) equipJumpEl.checked = (loadout.movement||[]).indexOf('jump') !== -1;
+          if (equipDashEl) equipDashEl.checked = (loadout.movement||[]).indexOf('dash') !== -1;
+          var jc = window.Jamble.Settings.skills.configs.jump || { strength: 7, cooldownMs: 0 };
+          var dc = window.Jamble.Settings.skills.configs.dash || { speed: 280, durationMs: 220, cooldownMs: 150 };
+          if (sjStrengthEl) sjStrengthEl.value = String(jc.strength);
+          if (sjCdEl) sjCdEl.value = String(jc.cooldownMs || 0);
+          if (sdSpeedEl) sdSpeedEl.value = String(dc.speed);
+          if (sdDurEl) sdDurEl.value = String(dc.durationMs);
+          if (sdCdEl) sdCdEl.value = String(dc.cooldownMs);
           // do not change baseline here; use markBaseline() when profile load/reset/save happens
           updateDirty();
           updateSaveEnabled();
         }
+        function populateSkillPresets(){
+          var mgr = game.getSkillManager();
+          mgr.listPresets('jump').then(function(x){ if (sjPresetSel){ sjPresetSel.innerHTML=''; (x&&x.presets||[]).forEach(function(n){ var o=document.createElement('option'); o.value=n; o.textContent=n; sjPresetSel.appendChild(o); }); }});
+          mgr.listPresets('dash').then(function(x){ if (sdPresetSel){ sdPresetSel.innerHTML=''; (x&&x.presets||[]).forEach(function(n){ var o=document.createElement('option'); o.value=n; o.textContent=n; sdPresetSel.appendChild(o); }); }});
+        }
+        function onEquipChange(){
+          var load = window.Jamble.Settings.skills.loadout;
+          load.movement = load.movement || [];
+          function set(id, on){ var i=load.movement.indexOf(id); if (on && i===-1) load.movement.push(id); if(!on && i!==-1) load.movement.splice(i,1); }
+          set('jump', !!(equipJumpEl && equipJumpEl.checked));
+          set('dash', !!(equipDashEl && equipDashEl.checked));
+          var mgr = game.getSkillManager();
+          mgr.clear();
+          (load.movement||[]).forEach(function(id){ try{ mgr.equip(id);}catch(e){} });
+          updateDirty();
+        }
+        function onJumpCfg(){
+          var cfg = window.Jamble.Settings.skills.configs.jump || {};
+          if (sjStrengthEl) cfg.strength = Number(clamp(sjStrengthEl.value,1,30));
+          if (sjCdEl) cfg.cooldownMs = Math.round(Number(clamp(sjCdEl.value,0,2000)));
+          window.Jamble.Settings.skills.configs.jump = cfg;
+          var mgr = game.getSkillManager();
+          mgr.patchConfig('jump', cfg); mgr.unequip('jump'); mgr.equip('jump');
+          updateDirty();
+        }
+        function onDashCfg(){
+          var cfg = window.Jamble.Settings.skills.configs.dash || {};
+          if (sdSpeedEl) cfg.speed = Math.round(Number(clamp(sdSpeedEl.value,0,1000)));
+          if (sdDurEl) cfg.durationMs = Math.round(Number(clamp(sdDurEl.value,0,2000)));
+          if (sdCdEl) cfg.cooldownMs = Math.round(Number(clamp(sdCdEl.value,0,2000)));
+          window.Jamble.Settings.skills.configs.dash = cfg;
+          var mgr = game.getSkillManager();
+          mgr.patchConfig('dash', cfg); mgr.unequip('dash'); mgr.equip('dash');
+          updateDirty();
+        }
+        function applyJumpPreset(){ if (!sjPresetSel || !sjPresetSel.value) return; var mgr=game.getSkillManager(); mgr.applyPreset('jump', sjPresetSel.value).then(function(){ var cfg=mgr.getConfig('jump')||{}; window.Jamble.Settings.skills.configs.jump = cfg; syncFromSettings(); mgr.unequip('jump'); mgr.equip('jump'); updateDirty(); }); }
+        function applyDashPreset(){ if (!sdPresetSel || !sdPresetSel.value) return; var mgr=game.getSkillManager(); mgr.applyPreset('dash', sdPresetSel.value).then(function(){ var cfg=mgr.getConfig('dash')||{}; window.Jamble.Settings.skills.configs.dash = cfg; syncFromSettings(); mgr.unequip('dash'); mgr.equip('dash'); updateDirty(); }); }
         function markBaseline(){ baselineJSON = JSON.stringify(window.Jamble.Settings.toJSON()); updateDirty(); updateSaveEnabled(); }
         function updateSaveEnabled(){
           if (!saveBtn) return;
@@ -270,6 +358,15 @@
         if (wiggleDistEl) wiggleDistEl.addEventListener('input', onInput);
         if (treeMarginEl) treeMarginEl.addEventListener('input', onInput);
         if (treeGapEl) treeGapEl.addEventListener('input', onInput);
+        if (equipJumpEl) equipJumpEl.addEventListener('change', onEquipChange);
+        if (equipDashEl) equipDashEl.addEventListener('change', onEquipChange);
+        if (sjStrengthEl) sjStrengthEl.addEventListener('input', onJumpCfg);
+        if (sjCdEl) sjCdEl.addEventListener('input', onJumpCfg);
+        if (sdSpeedEl) sdSpeedEl.addEventListener('input', onDashCfg);
+        if (sdDurEl) sdDurEl.addEventListener('input', onDashCfg);
+        if (sdCdEl) sdCdEl.addEventListener('input', onDashCfg);
+        if (sjApplyBtn) sjApplyBtn.addEventListener('click', applyJumpPreset);
+        if (sdApplyBtn) sdApplyBtn.addEventListener('click', applyDashPreset);
 
         // Save/Load/Reset wiring
         function saveProfile(){
@@ -365,7 +462,7 @@
         // Initial sync and after settings load (HTTP mode)
         syncFromSettings();
         // Establish initial baseline after the initial HTTP load finishes
-        window.addEventListener('jamble:settingsLoaded', function(){ syncFromSettings(); markBaseline(); populateProfiles(); });
+        window.addEventListener('jamble:settingsLoaded', function(){ syncFromSettings(); markBaseline(); populateProfiles(); populateSkillPresets(); });
       })();
     </script>
   </body>

@@ -5,7 +5,10 @@ namespace Jamble {
     readonly id: string; readonly name: string = 'Dash'; readonly slot: SkillSlot = 'movement'; readonly priority: number;
     private cd: CooldownTimer;
     private usedThisAir: boolean = false;
-    constructor(id: string = 'dash', priority = 20, cooldownMs = 150){ this.id = id; this.priority = priority; this.cd = new CooldownTimer(cooldownMs); }
+    private cfg: { speed: number; durationMs: number; cooldownMs: number };
+    constructor(id: string = 'dash', priority = 20, cfg: { speed: number; durationMs: number; cooldownMs: number }){
+      this.id = id; this.priority = priority; this.cfg = cfg; this.cd = new CooldownTimer(cfg.cooldownMs);
+    }
     onEquip(caps: PlayerCapabilities): void { /* no-op for now */ }
     onLand(_ctx: SkillContext, _caps: PlayerCapabilities): void { this.usedThisAir = false; }
     onInput(intent: InputIntent, ctx: SkillContext, caps: PlayerCapabilities): boolean {
@@ -14,10 +17,9 @@ namespace Jamble {
       if (this.usedThisAir) return false;
       const now = ctx.nowMs;
       if (!this.cd.isReady(now)) return false;
-      const ok = caps.startDash(Jamble.Settings.current.dashSpeed, Jamble.Settings.current.dashDurationMs);
+      const ok = caps.startDash(this.cfg.speed, this.cfg.durationMs);
       if (ok){ this.cd.tryConsume(now); this.usedThisAir = true; }
       return ok;
     }
   }
 }
-

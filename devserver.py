@@ -26,6 +26,42 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(str(e).encode('utf-8'))
             return
+        if self.path == '/__skill_presets':
+            try:
+                skills = {}
+                if os.path.isdir(os.path.join(DIST, 'skill-presets')):
+                    for sid in os.listdir(os.path.join(DIST, 'skill-presets')):
+                        sdir = os.path.join(DIST, 'skill-presets', sid)
+                        if os.path.isdir(sdir):
+                            skills[sid] = sorted([f for f in os.listdir(sdir) if f.endswith('.json')])
+                data = {'skills': skills}
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(data).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.end_headers()
+                self.wfile.write(str(e).encode('utf-8'))
+            return
+        if self.path.startswith('/__skill_presets/'):
+            sid = self.path[len('/__skill_presets/'):].strip('/')
+            target = os.path.join(DIST, 'skill-presets', sid)
+            try:
+                if not os.path.isdir(target):
+                    self.send_response(404); self.end_headers(); return
+                files = [f for f in os.listdir(target) if f.endswith('.json')]
+                files.sort()
+                data = {'skill': sid, 'presets': files}
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(data).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.end_headers()
+                self.wfile.write(str(e).encode('utf-8'))
+            return
         return http.server.SimpleHTTPRequestHandler.do_GET(self)
 
     def do_POST(self):
@@ -75,4 +111,3 @@ if __name__ == '__main__':
     with socketserver.TCPServer(('', port), Handler) as httpd:
         print(f"Serving at http://localhost:{port}")
         httpd.serve_forever()
-

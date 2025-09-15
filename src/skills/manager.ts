@@ -7,7 +7,8 @@ namespace Jamble {
     priority?: number;
     prerequisites?: string[]; // skill ids that must be equipped
     excludes?: string[];      // skill ids that cannot co-exist
-    create: () => Skill;      // factory returning a fresh Skill instance
+    defaults?: any;           // default config for this skill
+    create: (cfg: any) => Skill; // factory returning a fresh Skill instance
   }
 
   export interface SlotLimits { [slot: string]: number }
@@ -19,15 +20,14 @@ namespace Jamble {
     private slotLimits: SlotLimits;
     public lastError: string | null = null;
     private caps: PlayerCapabilities;
+    private configs = new Map<string, any>();
 
     constructor(caps: PlayerCapabilities, limits?: Partial<SlotLimits>){
       this.caps = caps;
       this.slotLimits = { movement: 2, utility: 2, ultimate: 1, ...(limits || {}) } as SlotLimits;
     }
 
-    register(desc: SkillDescriptor): void {
-      this.registry.set(desc.id, desc);
-    }
+    register(desc: SkillDescriptor): void { this.registry.set(desc.id, desc); }
 
     getAvailable(): SkillDescriptor[] { return Array.from(this.registry.values()); }
     getEquipped(): Skill[] { return Array.from(this.equipped.values()); }
@@ -57,8 +57,9 @@ namespace Jamble {
       const desc = this.registry.get(id); if (!desc){ this.lastError = `Unknown skill ${id}`; return false; }
       if (this.equipped.has(id)) return true;
       if (!this.canEquip(desc)) return false;
-      const inst = desc.create();
-      try { inst.onEquip && inst.onEquip(this.caps); } catch(_){}
+      const cfg = this.configs.get(id) ?? desc.defaults ?? {};
+      const inst = desc.create(cfg);
+      try { inst.onEquip && inst.onEquip(this.caps, cfg); } catch(_){}
       this.equipped.set(id, inst);
       return true;
     }
@@ -83,6 +84,30 @@ namespace Jamble {
 
     tick(ctx: SkillContext): void { for (const s of this.equipped.values()) if (s.onTick) s.onTick(ctx, this.caps); }
     onLand(ctx: SkillContext): void { for (const s of this.equipped.values()) if (s.onLand) s.onLand(ctx, this.caps); }
+
+    // Config helpers (scaffolding for per-skill configs)
+    getConfig<T = any>(id: string): T | undefined { return this.configs.get(id); }
+    setConfig<T = any>(id: string, cfg: T): void { this.configs.set(id, cfg); }
+    patchConfig<T extends Record<string, any>>(id: string, patch: Partial<T>): void {
+      const cur = this.configs.get(id) || {};
+      this.configs.set(id, { ...cur, ...patch });
+    }
+
+    // Preset helpers (fetch from dev server/static)
+    async listPresets(skillId?: string): Promise<any> {
+      if (!skillId){
+        const res = await fetch('/__skill_presets'); return res.json();
+      } else {
+        const res = await fetch('/__skill_presets/' + encodeURIComponent(skillId)); return res.json();
+      }
+    }
+    async applyPreset(skillId: string, presetFile: string): Promise<void> {
+      const url = 'dist/skill-presets/' + encodeURIComponent(skillId) + '/' + encodeURIComponent(presetFile);
+      const res = await fetch(url, { cache: 'no-cache' });
+      if (!res.ok) throw new Error('Failed to fetch preset ' + presetFile);
+      const preset = await res.json();
+      this.patchConfig(skillId, preset);
+      // In a later phase, notify the equipped instance or recreate it to use new config
+    }
   }
 }
-

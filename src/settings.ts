@@ -42,6 +42,11 @@ namespace Jamble {
     landEaseMs: number;              // transition time when returning to normal after landing
   }
 
+  export interface SkillsProfile {
+    loadout: { movement: string[]; utility: string[]; ultimate: string[] };
+    configs: { [skillId: string]: any };
+  }
+
   const embeddedDefaults: SettingsShape = {
     jumpStrength: 7,
     gravityUp: 0.32,
@@ -73,6 +78,7 @@ namespace Jamble {
     private _loadedFrom: string | null = null;
     private _activeName: string | null = null;
     private _profileBaseline: SettingsShape | null = null;
+    private _skills: SkillsProfile = { loadout: { movement: ['jump','dash'], utility: [], ultimate: [] }, configs: {} };
 
     constructor(initial?: Partial<SettingsShape>){
       this._current = { ...embeddedDefaults, ...(initial ?? {}) };
@@ -81,12 +87,13 @@ namespace Jamble {
     get current(): SettingsShape { return this._current; }
     get source(): string | null { return this._loadedFrom; }
     get activeName(): string | null { return this._activeName; }
+    get skills(): SkillsProfile { return this._skills; }
 
     update(patch: Partial<SettingsShape>): void {
       this._current = { ...this._current, ...patch };
     }
 
-    reset(): void { this._current = { ...embeddedDefaults }; }
+    reset(): void { this._current = { ...embeddedDefaults }; this._skills = { loadout: { movement: ['jump','dash'], utility: [], ultimate: [] }, configs: {} }; }
 
     /** Marks the current settings as the active profile baseline, with an optional name label. */
     markBaseline(name: string | null): void {
@@ -106,7 +113,18 @@ namespace Jamble {
         const res = await fetch(url, { cache: 'no-cache' });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
-        this._current = { ...embeddedDefaults, ...data };
+        const skills = (data && data.skills) || null;
+        this._current = { ...embeddedDefaults, ...(data && data.game ? data.game : data) };
+        // Migrate or load skills section
+        if (skills && skills.loadout && skills.configs){
+          this._skills = { loadout: skills.loadout, configs: skills.configs };
+        } else {
+          // Derive minimal configs from legacy fields
+          this._skills = { loadout: { movement: ['jump','dash'], utility: [], ultimate: [] }, configs: {
+            jump: { strength: this._current.jumpStrength },
+            dash: { speed: (this._current as any).dashSpeed ?? 280, durationMs: (this._current as any).dashDurationMs ?? 220, cooldownMs: 150 }
+          }};
+        }
         this._loadedFrom = url;
         // Derive a simple active name from the URL path (filename)
         try {
@@ -121,10 +139,19 @@ namespace Jamble {
         this._loadedFrom = null;
         this._activeName = null;
         this._profileBaseline = { ...this._current };
+        this._skills = { loadout: { movement: ['jump','dash'], utility: [], ultimate: [] }, configs: { jump: { strength: this._current.jumpStrength }, dash: { speed: 280, durationMs: 220, cooldownMs: 150 } } };
       }
     }
 
-    toJSON(): SettingsShape { return { ...this._current }; }
+    toJSON(): any {
+      return {
+        // keep legacy flat fields for now for compatibility
+        ...this._current,
+        // new structured sections
+        game: { ...this._current },
+        skills: { loadout: this._skills.loadout, configs: this._skills.configs }
+      };
+    }
   }
 
   // Global settings singleton for convenience

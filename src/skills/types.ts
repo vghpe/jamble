@@ -42,11 +42,10 @@ namespace Jamble {
     readonly name: string;
     readonly slot: SkillSlot;
     readonly priority: number;
-    onEquip?(caps: PlayerCapabilities): void;
+    onEquip?(caps: PlayerCapabilities, cfg?: any): void;
     onUnequip?(): void;
     onTick?(ctx: SkillContext, caps: PlayerCapabilities): void;
     onInput?(intent: InputIntent, ctx: SkillContext, caps: PlayerCapabilities): boolean; // true if handled
     onLand?(ctx: SkillContext, caps: PlayerCapabilities): void;
   }
 }
-

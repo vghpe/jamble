@@ -97,11 +97,17 @@ namespace Jamble {
 
       // Skill manager and default registry/loadout
       this.skills = new SkillManager(caps, { movement: 2 });
-      this.skills.register({ id: 'jump', name: 'Jump', slot: 'movement', priority: 10, create: () => new JumpSkill('jump', 10) });
-      this.skills.register({ id: 'dash', name: 'Dash', slot: 'movement', priority: 20, create: () => new DashSkill('dash', 20, 150) });
-      this.skills.equip('jump');
-      this.skills.equip('dash');
+      // Register skills with defaults
+      this.skills.register({ id: 'jump', name: 'Jump', slot: 'movement', priority: 10, defaults: { strength: Jamble.Settings.skills.configs.jump?.strength ?? Jamble.Settings.current.jumpStrength }, create: (cfg) => new JumpSkill('jump', 10, cfg) });
+      this.skills.register({ id: 'dash', name: 'Dash', slot: 'movement', priority: 20, defaults: { speed: Jamble.Settings.skills.configs.dash?.speed ?? Jamble.Settings.current.dashSpeed, durationMs: Jamble.Settings.skills.configs.dash?.durationMs ?? Jamble.Settings.current.dashDurationMs, cooldownMs: Jamble.Settings.skills.configs.dash?.cooldownMs ?? 150 }, create: (cfg) => new DashSkill('dash', 20, cfg) });
+      // Initialize configs from loaded skills profile if present
+      const sj = Jamble.Settings.skills.configs.jump; if (sj) this.skills.setConfig('jump', sj);
+      const sd = Jamble.Settings.skills.configs.dash; if (sd) this.skills.setConfig('dash', sd);
+      // Equip from loadout or fallback
+      const loadoutMoves = Jamble.Settings.skills.loadout.movement || ['jump','dash'];
+      loadoutMoves.forEach(id => { try { this.skills.equip(id); } catch(_e){} });
     }
+    public getSkillManager(): SkillManager { return this.skills; }
 
     start(): void {
       this.bind();

@@ -50,15 +50,17 @@ var Jamble;
             this._loadedFrom = null;
             this._activeName = null;
             this._profileBaseline = null;
+            this._skills = { loadout: { movement: ['jump', 'dash'], utility: [], ultimate: [] }, configs: {} };
             this._current = { ...embeddedDefaults, ...(initial !== null && initial !== void 0 ? initial : {}) };
         }
         get current() { return this._current; }
         get source() { return this._loadedFrom; }
         get activeName() { return this._activeName; }
+        get skills() { return this._skills; }
         update(patch) {
             this._current = { ...this._current, ...patch };
         }
-        reset() { this._current = { ...embeddedDefaults }; }
+        reset() { this._current = { ...embeddedDefaults }; this._skills = { loadout: { movement: ['jump', 'dash'], utility: [], ultimate: [] }, configs: {} }; }
         markBaseline(name) {
             this._activeName = name;
             this._profileBaseline = { ...this._current };
@@ -69,12 +71,23 @@ var Jamble;
             }
         }
         async loadFrom(url) {
+            var _a, _b;
             try {
                 const res = await fetch(url, { cache: 'no-cache' });
                 if (!res.ok)
                     throw new Error('HTTP ' + res.status);
                 const data = await res.json();
-                this._current = { ...embeddedDefaults, ...data };
+                const skills = (data && data.skills) || null;
+                this._current = { ...embeddedDefaults, ...(data && data.game ? data.game : data) };
+                if (skills && skills.loadout && skills.configs) {
+                    this._skills = { loadout: skills.loadout, configs: skills.configs };
+                }
+                else {
+                    this._skills = { loadout: { movement: ['jump', 'dash'], utility: [], ultimate: [] }, configs: {
+                            jump: { strength: this._current.jumpStrength },
+                            dash: { speed: (_a = this._current.dashSpeed) !== null && _a !== void 0 ? _a : 280, durationMs: (_b = this._current.dashDurationMs) !== null && _b !== void 0 ? _b : 220, cooldownMs: 150 }
+                        } };
+                }
                 this._loadedFrom = url;
                 try {
                     const u = new URL(url, (typeof location !== 'undefined' ? location.href : undefined));
@@ -91,9 +104,16 @@ var Jamble;
                 this._loadedFrom = null;
                 this._activeName = null;
                 this._profileBaseline = { ...this._current };
+                this._skills = { loadout: { movement: ['jump', 'dash'], utility: [], ultimate: [] }, configs: { jump: { strength: this._current.jumpStrength }, dash: { speed: 280, durationMs: 220, cooldownMs: 150 } } };
             }
         }
-        toJSON() { return { ...this._current }; }
+        toJSON() {
+            return {
+                ...this._current,
+                game: { ...this._current },
+                skills: { loadout: this._skills.loadout, configs: this._skills.configs }
+            };
+        }
     }
     Jamble.SettingsStore = SettingsStore;
     Jamble.Settings = new SettingsStore();
@@ -167,12 +187,11 @@ var Jamble;
             this.equipped = new Map();
             this.slotCounts = new Map();
             this.lastError = null;
+            this.configs = new Map();
             this.caps = caps;
             this.slotLimits = { movement: 2, utility: 2, ultimate: 1, ...(limits || {}) };
         }
-        register(desc) {
-            this.registry.set(desc.id, desc);
-        }
+        register(desc) { this.registry.set(desc.id, desc); }
         getAvailable() { return Array.from(this.registry.values()); }
         getEquipped() { return Array.from(this.equipped.values()); }
         isEquipped(id) { return this.equipped.has(id); }
@@ -202,6 +221,7 @@ var Jamble;
             return true;
         }
         equip(id) {
+            var _a, _b;
             const desc = this.registry.get(id);
             if (!desc) {
                 this.lastError = `Unknown skill ${id}`;
@@ -211,9 +231,10 @@ var Jamble;
                 return true;
             if (!this.canEquip(desc))
                 return false;
-            const inst = desc.create();
+            const cfg = (_b = (_a = this.configs.get(id)) !== null && _a !== void 0 ? _a : desc.defaults) !== null && _b !== void 0 ? _b : {};
+            const inst = desc.create(cfg);
             try {
-                inst.onEquip && inst.onEquip(this.caps);
+                inst.onEquip && inst.onEquip(this.caps, cfg);
             }
             catch (_) { }
             this.equipped.set(id, inst);
@@ -246,19 +267,44 @@ var Jamble;
         onLand(ctx) { for (const s of this.equipped.values())
             if (s.onLand)
                 s.onLand(ctx, this.caps); }
+        getConfig(id) { return this.configs.get(id); }
+        setConfig(id, cfg) { this.configs.set(id, cfg); }
+        patchConfig(id, patch) {
+            const cur = this.configs.get(id) || {};
+            this.configs.set(id, { ...cur, ...patch });
+        }
+        async listPresets(skillId) {
+            if (!skillId) {
+                const res = await fetch('/__skill_presets');
+                return res.json();
+            }
+            else {
+                const res = await fetch('/__skill_presets/' + encodeURIComponent(skillId));
+                return res.json();
+            }
+        }
+        async applyPreset(skillId, presetFile) {
+            const url = 'dist/skill-presets/' + encodeURIComponent(skillId) + '/' + encodeURIComponent(presetFile);
+            const res = await fetch(url, { cache: 'no-cache' });
+            if (!res.ok)
+                throw new Error('Failed to fetch preset ' + presetFile);
+            const preset = await res.json();
+            this.patchConfig(skillId, preset);
+        }
     }
     Jamble.SkillManager = SkillManager;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
     class JumpSkill {
-        constructor(id = 'jump', priority = 10, cooldownMs = 0) {
+        constructor(id = 'jump', priority = 10, cfg = { strength: 7 }) {
             this.name = 'Jump';
             this.slot = 'movement';
             this.cd = null;
             this.id = id;
             this.priority = priority;
-            this.cd = cooldownMs > 0 ? new Jamble.CooldownTimer(cooldownMs) : null;
+            this.cfg = { strength: cfg.strength };
+            this.cd = cfg.cooldownMs && cfg.cooldownMs > 0 ? new Jamble.CooldownTimer(cfg.cooldownMs) : null;
         }
         onInput(intent, ctx, caps) {
             if (intent !== Jamble.InputIntent.Tap && intent !== Jamble.InputIntent.AirTap)
@@ -268,7 +314,7 @@ var Jamble;
             const now = ctx.nowMs;
             if (this.cd && !this.cd.isReady(now))
                 return false;
-            const ok = caps.requestJump(Jamble.Settings.current.jumpStrength);
+            const ok = caps.requestJump(this.cfg.strength);
             if (ok && this.cd)
                 this.cd.tryConsume(now);
             return ok;
@@ -279,13 +325,14 @@ var Jamble;
 var Jamble;
 (function (Jamble) {
     class DashSkill {
-        constructor(id = 'dash', priority = 20, cooldownMs = 150) {
+        constructor(id = 'dash', priority = 20, cfg) {
             this.name = 'Dash';
             this.slot = 'movement';
             this.usedThisAir = false;
             this.id = id;
             this.priority = priority;
-            this.cd = new Jamble.CooldownTimer(cooldownMs);
+            this.cfg = cfg;
+            this.cd = new Jamble.CooldownTimer(cfg.cooldownMs);
         }
         onEquip(caps) { }
         onLand(_ctx, _caps) { this.usedThisAir = false; }
@@ -299,7 +346,7 @@ var Jamble;
             const now = ctx.nowMs;
             if (!this.cd.isReady(now))
                 return false;
-            const ok = caps.startDash(Jamble.Settings.current.dashSpeed, Jamble.Settings.current.dashDurationMs);
+            const ok = caps.startDash(this.cfg.speed, this.cfg.durationMs);
             if (ok) {
                 this.cd.tryConsume(now);
                 this.usedThisAir = true;
@@ -528,6 +575,7 @@ var Jamble;
 (function (Jamble) {
     class Game {
         constructor(root) {
+            var _a, _b, _c, _d, _f, _g, _h, _j;
             this.lastTime = null;
             this.rafId = null;
             this.awaitingStartTap = false;
@@ -596,11 +644,21 @@ var Jamble;
                 onLand: (cb) => { this.landCbs.push(cb); }
             };
             this.skills = new Jamble.SkillManager(caps, { movement: 2 });
-            this.skills.register({ id: 'jump', name: 'Jump', slot: 'movement', priority: 10, create: () => new Jamble.JumpSkill('jump', 10) });
-            this.skills.register({ id: 'dash', name: 'Dash', slot: 'movement', priority: 20, create: () => new Jamble.DashSkill('dash', 20, 150) });
-            this.skills.equip('jump');
-            this.skills.equip('dash');
+            this.skills.register({ id: 'jump', name: 'Jump', slot: 'movement', priority: 10, defaults: { strength: (_b = (_a = Jamble.Settings.skills.configs.jump) === null || _a === void 0 ? void 0 : _a.strength) !== null && _b !== void 0 ? _b : Jamble.Settings.current.jumpStrength }, create: (cfg) => new Jamble.JumpSkill('jump', 10, cfg) });
+            this.skills.register({ id: 'dash', name: 'Dash', slot: 'movement', priority: 20, defaults: { speed: (_d = (_c = Jamble.Settings.skills.configs.dash) === null || _c === void 0 ? void 0 : _c.speed) !== null && _d !== void 0 ? _d : Jamble.Settings.current.dashSpeed, durationMs: (_g = (_f = Jamble.Settings.skills.configs.dash) === null || _f === void 0 ? void 0 : _f.durationMs) !== null && _g !== void 0 ? _g : Jamble.Settings.current.dashDurationMs, cooldownMs: (_j = (_h = Jamble.Settings.skills.configs.dash) === null || _h === void 0 ? void 0 : _h.cooldownMs) !== null && _j !== void 0 ? _j : 150 }, create: (cfg) => new Jamble.DashSkill('dash', 20, cfg) });
+            const sj = Jamble.Settings.skills.configs.jump;
+            if (sj)
+                this.skills.setConfig('jump', sj);
+            const sd = Jamble.Settings.skills.configs.dash;
+            if (sd)
+                this.skills.setConfig('dash', sd);
+            const loadoutMoves = Jamble.Settings.skills.loadout.movement || ['jump', 'dash'];
+            loadoutMoves.forEach(id => { try {
+                this.skills.equip(id);
+            }
+            catch (_e) { } });
         }
+        getSkillManager() { return this.skills; }
         start() {
             this.bind();
             this.reset();
