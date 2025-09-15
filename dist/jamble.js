@@ -161,6 +161,96 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
+    class SkillManager {
+        constructor(caps, limits) {
+            this.registry = new Map();
+            this.equipped = new Map();
+            this.slotCounts = new Map();
+            this.lastError = null;
+            this.caps = caps;
+            this.slotLimits = { movement: 2, utility: 2, ultimate: 1, ...(limits || {}) };
+        }
+        register(desc) {
+            this.registry.set(desc.id, desc);
+        }
+        getAvailable() { return Array.from(this.registry.values()); }
+        getEquipped() { return Array.from(this.equipped.values()); }
+        isEquipped(id) { return this.equipped.has(id); }
+        countInSlot(slot) {
+            let n = 0;
+            for (const s of this.equipped.values())
+                if (s.slot === slot)
+                    n++;
+            return n;
+        }
+        canEquip(desc) {
+            var _a;
+            const cap = (_a = this.slotLimits[desc.slot]) !== null && _a !== void 0 ? _a : 0;
+            if (this.countInSlot(desc.slot) >= cap) {
+                this.lastError = `No free ${desc.slot} slots`;
+                return false;
+            }
+            if (desc.prerequisites && desc.prerequisites.some(id => !this.equipped.has(id))) {
+                this.lastError = `Missing prerequisites for ${desc.id}`;
+                return false;
+            }
+            if (desc.excludes && desc.excludes.some(id => this.equipped.has(id))) {
+                this.lastError = `Cannot equip ${desc.id} with excluded skill present`;
+                return false;
+            }
+            this.lastError = null;
+            return true;
+        }
+        equip(id) {
+            const desc = this.registry.get(id);
+            if (!desc) {
+                this.lastError = `Unknown skill ${id}`;
+                return false;
+            }
+            if (this.equipped.has(id))
+                return true;
+            if (!this.canEquip(desc))
+                return false;
+            const inst = desc.create();
+            try {
+                inst.onEquip && inst.onEquip(this.caps);
+            }
+            catch (_) { }
+            this.equipped.set(id, inst);
+            return true;
+        }
+        unequip(id) {
+            const inst = this.equipped.get(id);
+            if (!inst)
+                return true;
+            try {
+                inst.onUnequip && inst.onUnequip();
+            }
+            catch (_) { }
+            this.equipped.delete(id);
+            return true;
+        }
+        clear() { for (const id of Array.from(this.equipped.keys()))
+            this.unequip(id); }
+        handleInput(intent, ctx) {
+            const list = Array.from(this.equipped.values()).sort((a, b) => (b.priority || 0) - (a.priority || 0));
+            for (const s of list) {
+                if (s.onInput && s.onInput(intent, ctx, this.caps))
+                    return true;
+            }
+            return false;
+        }
+        tick(ctx) { for (const s of this.equipped.values())
+            if (s.onTick)
+                s.onTick(ctx, this.caps); }
+        onLand(ctx) { for (const s of this.equipped.values())
+            if (s.onLand)
+                s.onLand(ctx, this.caps); }
+    }
+    Jamble.SkillManager = SkillManager;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
     class JumpSkill {
         constructor(id = 'jump', priority = 10, cooldownMs = 0) {
             this.name = 'Jump';
@@ -700,6 +790,7 @@ var Jamble;
             InputIntent: Jamble.InputIntent,
             JumpSkill: Jamble.JumpSkill,
             DashSkill: Jamble.DashSkill,
+            SkillManager: Jamble.SkillManager
         } };
     Jamble.Settings.loadFrom('dist/profiles/default.json').finally(function () {
         try {

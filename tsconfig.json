@@ -14,6 +14,7 @@
     "src/settings.ts",
     "src/skills/types.ts",
     "src/skills/utils.ts",
+    "src/skills/manager.ts",
     "src/skills/jump.ts",
     "src/skills/dash.ts",
     "src/countdown.ts",

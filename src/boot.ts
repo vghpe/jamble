@@ -4,6 +4,7 @@
     InputIntent: Jamble.InputIntent,
     JumpSkill: Jamble.JumpSkill,
     DashSkill: Jamble.DashSkill,
+    SkillManager: Jamble.SkillManager
   }};
 
   // Always load default profile from dist over HTTP(S). Use npm run serve.
