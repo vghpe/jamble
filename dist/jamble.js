@@ -539,6 +539,8 @@ var Jamble;
             this.showResetTimer = null;
             this.waitGroundForStart = false;
             this.inCountdown = false;
+            this.landCbs = [];
+            this.wasGrounded = true;
             this.root = root;
             const gameEl = root.querySelector('.jamble-game');
             const playerEl = root.querySelector('.jamble-player');
@@ -565,6 +567,39 @@ var Jamble;
             this.wiggle = new Jamble.Wiggle(this.player.el);
             this.onPointerDown = this.onPointerDown.bind(this);
             this.loop = this.loop.bind(this);
+            const caps = {
+                requestJump: (strength) => {
+                    if (this.player.isJumping || this.player.frozenDeath)
+                        return false;
+                    this.player.jump();
+                    if (typeof strength === 'number')
+                        this.player.velocity = strength;
+                    return true;
+                },
+                startDash: (_speed, _durationMs) => {
+                    return this.player.startDash();
+                },
+                addHorizontalImpulse: (speed, durationMs) => {
+                    const start = performance.now();
+                    const dir = this.direction;
+                    const apply = () => {
+                        const now = performance.now();
+                        const dt = Math.min((now - start) / 1000, durationMs / 1000);
+                        const dx = speed * dt * dir;
+                        this.player.moveX(dx);
+                        if (now - start < durationMs)
+                            window.requestAnimationFrame(apply);
+                    };
+                    window.requestAnimationFrame(apply);
+                },
+                setVerticalVelocity: (vy) => { this.player.velocity = vy; },
+                onLand: (cb) => { this.landCbs.push(cb); }
+            };
+            this.skills = new Jamble.SkillManager(caps, { movement: 2 });
+            this.skills.register({ id: 'jump', name: 'Jump', slot: 'movement', priority: 10, create: () => new Jamble.JumpSkill('jump', 10) });
+            this.skills.register({ id: 'dash', name: 'Dash', slot: 'movement', priority: 20, create: () => new Jamble.DashSkill('dash', 20, 150) });
+            this.skills.equip('jump');
+            this.skills.equip('dash');
         }
         start() {
             this.bind();
@@ -664,17 +699,19 @@ var Jamble;
             const withinX = e.clientX >= rect.left && e.clientX <= rect.right;
             const withinY = e.clientY >= rect.top && e.clientY <= rect.bottom + rect.height * 2;
             if (withinX && withinY) {
-                if (!this.player.frozenStart && this.player.isJumping) {
-                    const dashed = this.player.startDash();
-                    if (!dashed)
-                        this.player.jump();
-                }
-                else if (!this.player.frozenStart) {
-                    this.player.jump();
-                }
-                else if (!this.waitGroundForStart) {
-                    this.player.jump();
-                }
+                const grounded = this.player.jumpHeight === 0 && !this.player.isJumping;
+                if (this.player.frozenStart && this.waitGroundForStart)
+                    return;
+                const intent = grounded ? Jamble.InputIntent.Tap : Jamble.InputIntent.AirTap;
+                const ctx = {
+                    nowMs: performance.now(),
+                    grounded,
+                    velocityY: this.player.velocity,
+                    isDashing: this.player.isDashing,
+                    jumpHeight: this.player.jumpHeight,
+                    dashAvailable: !this.player.isDashing
+                };
+                this.skills.handleInput(intent, ctx);
             }
         }
         updateLevel() {
@@ -754,6 +791,26 @@ var Jamble;
             }
             this.player.update(dt60);
             this.player.updateDash(deltaSec * 1000);
+            const grounded = this.player.jumpHeight === 0 && !this.player.isJumping;
+            const sctx = {
+                nowMs: performance.now(),
+                grounded,
+                velocityY: this.player.velocity,
+                isDashing: this.player.isDashing,
+                jumpHeight: this.player.jumpHeight,
+                dashAvailable: !this.player.isDashing
+            };
+            this.skills.tick(sctx);
+            if (!this.wasGrounded && grounded) {
+                this.skills.onLand(sctx);
+                const cbs = this.landCbs.slice();
+                this.landCbs.length = 0;
+                cbs.forEach(cb => { try {
+                    cb();
+                }
+                catch (_e) { } });
+            }
+            this.wasGrounded = grounded;
             if (Jamble.Settings.current.mode === 'idle' && this.waitGroundForStart && this.player.jumpHeight === 0 && !this.player.isJumping) {
                 this.waitGroundForStart = false;
                 this.awaitingStartTap = true;

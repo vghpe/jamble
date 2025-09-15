@@ -3,6 +3,10 @@
 /// <reference path="./obstacle.ts" />
 /// <reference path="./countdown.ts" />
 /// <reference path="./wiggle.ts" />
+/// <reference path="./skills/types.ts" />
+/// <reference path="./skills/manager.ts" />
+/// <reference path="./skills/jump.ts" />
+/// <reference path="./skills/dash.ts" />
 namespace Jamble {
   export class Game {
     private root: HTMLElement;
@@ -26,6 +30,10 @@ namespace Jamble {
     private showResetTimer: number | null = null;
     private waitGroundForStart: boolean = false;
     private inCountdown: boolean = false;
+    // Skills
+    private skills: SkillManager;
+    private landCbs: Array<() => void> = [];
+    private wasGrounded: boolean = true;
 
     constructor(root: HTMLElement){
       this.root = root;
@@ -57,6 +65,42 @@ namespace Jamble {
 
       this.onPointerDown = this.onPointerDown.bind(this);
       this.loop = this.loop.bind(this);
+
+      // Capabilities facade for skills
+      const caps: PlayerCapabilities = {
+        requestJump: (strength?: number) => {
+          if (this.player.isJumping || this.player.frozenDeath) return false;
+          // Use built-in jump to keep side effects consistent, then override strength if provided
+          this.player.jump();
+          if (typeof strength === 'number') this.player.velocity = strength;
+          return true;
+        },
+        startDash: (_speed: number, _durationMs: number) => {
+          return this.player.startDash();
+        },
+        addHorizontalImpulse: (speed: number, durationMs: number) => {
+          // Simple impulse: temporarily increase player.x over duration
+          const start = performance.now();
+          const dir = this.direction;
+          const apply = () => {
+            const now = performance.now();
+            const dt = Math.min((now - start) / 1000, durationMs / 1000);
+            const dx = speed * dt * dir;
+            this.player.moveX(dx);
+            if (now - start < durationMs) window.requestAnimationFrame(apply);
+          };
+          window.requestAnimationFrame(apply);
+        },
+        setVerticalVelocity: (vy: number) => { this.player.velocity = vy; },
+        onLand: (cb: () => void) => { this.landCbs.push(cb); }
+      };
+
+      // Skill manager and default registry/loadout
+      this.skills = new SkillManager(caps, { movement: 2 });
+      this.skills.register({ id: 'jump', name: 'Jump', slot: 'movement', priority: 10, create: () => new JumpSkill('jump', 10) });
+      this.skills.register({ id: 'dash', name: 'Dash', slot: 'movement', priority: 20, create: () => new DashSkill('dash', 20, 150) });
+      this.skills.equip('jump');
+      this.skills.equip('dash');
     }
 
     start(): void {
@@ -151,15 +195,19 @@ namespace Jamble {
       const withinY = e.clientY >= rect.top && e.clientY <= rect.bottom + rect.height * 2;
       if (withinX && withinY) {
         // Note: starting countdown happens via Start button only
-        if (!this.player.frozenStart && this.player.isJumping) {
-          const dashed = this.player.startDash();
-          if (!dashed) this.player.jump();
-        } else if (!this.player.frozenStart) {
-          this.player.jump();
-        } else if (!this.waitGroundForStart) {
-          // Allow jumping during idle and countdown; buttons are filtered above
-          this.player.jump();
-        }
+        // Build intent based on grounded state; allow jumps during idle unless waiting for ground
+        const grounded = this.player.jumpHeight === 0 && !this.player.isJumping;
+        if (this.player.frozenStart && this.waitGroundForStart) return;
+        const intent = grounded ? InputIntent.Tap : InputIntent.AirTap;
+        const ctx: SkillContext = {
+          nowMs: performance.now(),
+          grounded,
+          velocityY: this.player.velocity,
+          isDashing: this.player.isDashing,
+          jumpHeight: this.player.jumpHeight,
+          dashAvailable: !this.player.isDashing
+        };
+        this.skills.handleInput(intent, ctx);
       }
     }
 
@@ -244,6 +292,24 @@ namespace Jamble {
       // Vertical physics and dash timer
       this.player.update(dt60);
       this.player.updateDash(deltaSec * 1000);
+
+      // Skills tick + land detection
+      const grounded = this.player.jumpHeight === 0 && !this.player.isJumping;
+      const sctx: SkillContext = {
+        nowMs: performance.now(),
+        grounded,
+        velocityY: this.player.velocity,
+        isDashing: this.player.isDashing,
+        jumpHeight: this.player.jumpHeight,
+        dashAvailable: !this.player.isDashing
+      };
+      this.skills.tick(sctx);
+      if (!this.wasGrounded && grounded){
+        this.skills.onLand(sctx);
+        // fire simple onLand callbacks registered via caps
+        const cbs = this.landCbs.slice(); this.landCbs.length = 0; cbs.forEach(cb => { try { cb(); } catch(_e){} });
+      }
+      this.wasGrounded = grounded;
 
       // If we reached a side while airborne, wait to grant start until grounded
       if (Jamble.Settings.current.mode === 'idle' && this.waitGroundForStart && this.player.jumpHeight === 0 && !this.player.isJumping){
