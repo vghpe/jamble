@@ -85,15 +85,19 @@ namespace Jamble {
           return this.player.startDash(durationMs);
         },
         addHorizontalImpulse: (speed: number, durationMs: number) => {
-          // Simple impulse: temporarily increase player.x over duration
-          const start = performance.now();
-          const dir = this.direction;
+          // Apply a single dash impulse over duration using per-frame delta
+          let last = performance.now();
+          const end = last + durationMs;
           const apply = () => {
             const now = performance.now();
-            const dt = Math.min((now - start) / 1000, durationMs / 1000);
-            const dx = speed * dt * dir;
-            this.player.moveX(dx);
-            if (now - start < durationMs) window.requestAnimationFrame(apply);
+            const clampedNow = Math.min(now, end);
+            const dtSec = (clampedNow - last) / 1000;
+            if (dtSec > 0){
+              const dx = speed * dtSec * this.direction;
+              this.player.moveX(dx);
+            }
+            last = clampedNow;
+            if (clampedNow < end) window.requestAnimationFrame(apply);
           };
           window.requestAnimationFrame(apply);
         },
@@ -263,17 +267,14 @@ namespace Jamble {
         this.player.clearFrozenStart();
       }
 
-      // Horizontal movement when not frozen/dead and Move skill is equipped
-      if (!this.player.frozenStart && !this.player.frozenDeath && this.skills.isEquipped('move')){
-        const base = Jamble.Settings.current.playerSpeed;
-        let dashBoost = 0;
-        if (this.player.isDashing){
-          const dc: any = this.skills.getConfig('dash');
-          dashBoost = (dc && typeof dc.speed === 'number') ? dc.speed : Jamble.Settings.current.dashSpeed;
+      // Horizontal movement when not frozen/dead
+      // Base auto-run applies only if Move is equipped; Dash contributes via its own impulse
+      if (!this.player.frozenStart && !this.player.frozenDeath){
+        if (this.skills.isEquipped('move')){
+          const base = Jamble.Settings.current.playerSpeed;
+          const dx = base * deltaSec * this.direction;
+          this.player.moveX(dx);
         }
-        const speed = base + dashBoost;
-        const dx = speed * deltaSec * this.direction;
-        this.player.moveX(dx);
 
         if (this.direction === 1 && this.reachedRight()){
           this.player.snapRight(this.gameEl.offsetWidth);

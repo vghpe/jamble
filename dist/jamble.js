@@ -379,6 +379,7 @@ var Jamble;
                 return false;
             const ok = caps.startDash(this.cfg.speed, this.cfg.durationMs);
             if (ok) {
+                caps.addHorizontalImpulse(this.cfg.speed, this.cfg.durationMs);
                 this.cd.tryConsume(now);
                 this.usedThisAir = true;
             }
@@ -665,14 +666,18 @@ var Jamble;
                     return this.player.startDash(durationMs);
                 },
                 addHorizontalImpulse: (speed, durationMs) => {
-                    const start = performance.now();
-                    const dir = this.direction;
+                    let last = performance.now();
+                    const end = last + durationMs;
                     const apply = () => {
                         const now = performance.now();
-                        const dt = Math.min((now - start) / 1000, durationMs / 1000);
-                        const dx = speed * dt * dir;
-                        this.player.moveX(dx);
-                        if (now - start < durationMs)
+                        const clampedNow = Math.min(now, end);
+                        const dtSec = (clampedNow - last) / 1000;
+                        if (dtSec > 0) {
+                            const dx = speed * dtSec * this.direction;
+                            this.player.moveX(dx);
+                        }
+                        last = clampedNow;
+                        if (clampedNow < end)
                             window.requestAnimationFrame(apply);
                     };
                     window.requestAnimationFrame(apply);
@@ -847,16 +852,12 @@ var Jamble;
                 this.hideIdleControls();
                 this.player.clearFrozenStart();
             }
-            if (!this.player.frozenStart && !this.player.frozenDeath && this.skills.isEquipped('move')) {
-                const base = Jamble.Settings.current.playerSpeed;
-                let dashBoost = 0;
-                if (this.player.isDashing) {
-                    const dc = this.skills.getConfig('dash');
-                    dashBoost = (dc && typeof dc.speed === 'number') ? dc.speed : Jamble.Settings.current.dashSpeed;
+            if (!this.player.frozenStart && !this.player.frozenDeath) {
+                if (this.skills.isEquipped('move')) {
+                    const base = Jamble.Settings.current.playerSpeed;
+                    const dx = base * deltaSec * this.direction;
+                    this.player.moveX(dx);
                 }
-                const speed = base + dashBoost;
-                const dx = speed * deltaSec * this.direction;
-                this.player.moveX(dx);
                 if (this.direction === 1 && this.reachedRight()) {
                     this.player.snapRight(this.gameEl.offsetWidth);
                     this.level += 1;

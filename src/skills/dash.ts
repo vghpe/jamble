@@ -17,8 +17,13 @@ namespace Jamble {
       if (this.usedThisAir) return false;
       const now = ctx.nowMs;
       if (!this.cd.isReady(now)) return false;
+      // Start dash (vertical freeze + state), and apply horizontal impulse independent of Move
       const ok = caps.startDash(this.cfg.speed, this.cfg.durationMs);
-      if (ok){ this.cd.tryConsume(now); this.usedThisAir = true; }
+      if (ok){
+        caps.addHorizontalImpulse(this.cfg.speed, this.cfg.durationMs);
+        this.cd.tryConsume(now);
+        this.usedThisAir = true;
+      }
       return ok;
     }
   }
