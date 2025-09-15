@@ -600,8 +600,21 @@
         }
         var skillMenu = document.getElementById('skill-menu');
         if (skillMenu){
+          // Keep clicks from reaching game handler and wire interactivity
           skillMenu.addEventListener('pointerdown', function(ev){ ev.stopPropagation(); });
           skillMenu.addEventListener('click', function(ev){ ev.stopPropagation(); });
+          // Slot/unslot skills on tap
+          skillMenu.addEventListener('click', function(ev){
+            var t = ev.target;
+            if (!t || !t.classList || !t.classList.contains('jamble-skill-btn')) return;
+            var id = t.getAttribute('data-skill');
+            if (!id || id==='empty') return;
+            var l = getLoadout();
+            var idx = l.indexOf(id);
+            if (idx !== -1){ l.splice(idx,1); setLoadout(l); return; }
+            if (l.length >= 4) return; // no free slot
+            l.push(id); setLoadout(l);
+          });
         }
 
         // Initial sync and after settings load (HTTP mode)
@@ -628,19 +641,7 @@
           var btns = Array.from(menuEl.querySelectorAll('.jamble-skill-btn'));
           btns.forEach(function(b){ var id=b.getAttribute('data-skill'); if (!id || id==='empty') return; var active = l.indexOf(id) !== -1; b.classList.toggle('jamble-active', active); });
         }
-        if (menuEl){
-          menuEl.addEventListener('click', function(ev){
-            var t = ev.target;
-            if (!t || !t.classList || !t.classList.contains('jamble-skill-btn')) return;
-            var id = t.getAttribute('data-skill');
-            if (!id || id==='empty') return;
-            var l = getLoadout();
-            var idx = l.indexOf(id);
-            if (idx !== -1){ l.splice(idx,1); setLoadout(l); return; }
-            if (l.length >= 4) return; // no free slot
-            l.push(id); setLoadout(l);
-          });
-        }
+        // Click handler is attached above via `skillMenu`
         // Initial paint
         renderSkillSlotsAndMenu();
       })();

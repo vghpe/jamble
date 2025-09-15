@@ -790,7 +790,7 @@ var Jamble;
             this.startBtn.style.display = 'none';
             this.shuffleBtn.style.display = 'none';
             if (this.skillSlotsEl)
-                this.skillSlotsEl.style.display = 'none';
+                this.skillSlotsEl.style.display = 'flex';
             if (this.skillMenuEl)
                 this.skillMenuEl.style.display = 'none';
         }
