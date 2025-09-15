@@ -18,6 +18,8 @@ namespace Jamble {
     private resetBtn: HTMLButtonElement;
     private startBtn: HTMLButtonElement;
     private shuffleBtn: HTMLButtonElement;
+    private skillSlotsEl: HTMLElement | null = null;
+    private skillMenuEl: HTMLElement | null = null;
     private wiggle: Wiggle;
     private lastTime: number | null = null;
     private rafId: number | null = null;
@@ -47,6 +49,8 @@ namespace Jamble {
       const levelEl = root.querySelector('.jamble-level') as HTMLElement | null;
       const startBtn = root.querySelector('.jamble-start') as HTMLButtonElement | null;
       const shuffleBtn = root.querySelector('.jamble-shuffle') as HTMLButtonElement | null;
+      const skillSlotsEl = root.querySelector('#skill-slots') as HTMLElement | null;
+      const skillMenuEl = root.querySelector('#skill-menu') as HTMLElement | null;
 
       if (!gameEl || !playerEl || !t1 || !t2 || !cdEl || !resetBtn || !startBtn || !shuffleBtn){
         throw new Error('Jamble: missing required elements');
@@ -60,6 +64,8 @@ namespace Jamble {
       this.resetBtn = resetBtn;
       this.startBtn = startBtn;
       this.shuffleBtn = shuffleBtn;
+      this.skillSlotsEl = skillSlotsEl;
+      this.skillMenuEl = skillMenuEl;
       this.levelEl = levelEl;
       this.wiggle = new Wiggle(this.player.el);
 
@@ -75,8 +81,8 @@ namespace Jamble {
           if (typeof strength === 'number') this.player.velocity = strength;
           return true;
         },
-        startDash: (_speed: number, _durationMs: number) => {
-          return this.player.startDash();
+        startDash: (_speed: number, durationMs: number) => {
+          return this.player.startDash(durationMs);
         },
         addHorizontalImpulse: (speed: number, durationMs: number) => {
           // Simple impulse: temporarily increase player.x over duration
@@ -188,10 +194,14 @@ namespace Jamble {
     private showIdleControls(): void {
       this.startBtn.style.display = 'block';
       this.shuffleBtn.style.display = 'block';
+      if (this.skillSlotsEl) this.skillSlotsEl.style.display = 'flex';
+      if (this.skillMenuEl) this.skillMenuEl.style.display = 'flex';
     }
     private hideIdleControls(): void {
       this.startBtn.style.display = 'none';
       this.shuffleBtn.style.display = 'none';
+      if (this.skillSlotsEl) this.skillSlotsEl.style.display = 'none';
+      if (this.skillMenuEl) this.skillMenuEl.style.display = 'none';
     }
 
     private onPointerDown(e: PointerEvent): void {
@@ -255,7 +265,12 @@ namespace Jamble {
       // Horizontal movement when not frozen/dead and Move skill is equipped
       if (!this.player.frozenStart && !this.player.frozenDeath && this.skills.isEquipped('move')){
         const base = Jamble.Settings.current.playerSpeed;
-        const speed = base + (this.player.isDashing ? Jamble.Settings.current.dashSpeed : 0);
+        let dashBoost = 0;
+        if (this.player.isDashing){
+          const dc: any = this.skills.getConfig('dash');
+          dashBoost = (dc && typeof dc.speed === 'number') ? dc.speed : Jamble.Settings.current.dashSpeed;
+        }
+        const speed = base + dashBoost;
         const dx = speed * deltaSec * this.direction;
         this.player.moveX(dx);
 

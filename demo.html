@@ -9,6 +9,12 @@
   <body>
     <h1 style="text-align:center;font-family:system-ui,sans-serif">Jamble Demo</h1>
     <div id="jamble">
+      <div class="jamble-skill-slots" id="skill-slots">
+        <div class="jamble-skill-slot"></div>
+        <div class="jamble-skill-slot"></div>
+        <div class="jamble-skill-slot"></div>
+        <div class="jamble-skill-slot"></div>
+      </div>
       <div class="jamble-game">
         <div class="jamble-player jamble-player-idle"></div>
         <div class="jamble-tree" data-tree="1" style="left: 35%"></div>
@@ -20,6 +26,12 @@
       <div class="jamble-controls">
         <button class="jamble-start" title="Start">▶</button>
         <button class="jamble-shuffle" title="Shuffle">⇄</button>
+      </div>
+      <div class="jamble-skill-menu" id="skill-menu">
+        <div class="jamble-skill-btn" data-skill="move">M</div>
+        <div class="jamble-skill-btn" data-skill="jump">J</div>
+        <div class="jamble-skill-btn" data-skill="dash">D</div>
+        <div class="jamble-skill-btn" data-skill="empty"></div>
       </div>
     </div>
 
@@ -254,6 +266,8 @@
           // do not change baseline here; use markBaseline() when profile load/reset/save happens
           updateDirty();
           updateSaveEnabled();
+          // Update in-game skills UI
+          renderSkillSlotsAndMenu();
         }
         // Apply Settings.skills (configs + loadout) to the live SkillManager
         function applySkillsFromSettings(){
@@ -344,6 +358,7 @@
           (load.movement||[]).forEach(function(id){ try{ mgr.equip(id);}catch(e){} });
           updateDirty();
           updatePresetStatus();
+          renderSkillSlotsAndMenu();
         }
         function onJumpCfg(){
           var cfg = window.Jamble.Settings.skills.configs.jump || {};
@@ -583,11 +598,51 @@
           dbg.addEventListener('pointerdown', function(ev){ ev.stopPropagation(); });
           dbg.addEventListener('click', function(ev){ ev.stopPropagation(); });
         }
+        var skillMenu = document.getElementById('skill-menu');
+        if (skillMenu){
+          skillMenu.addEventListener('pointerdown', function(ev){ ev.stopPropagation(); });
+          skillMenu.addEventListener('click', function(ev){ ev.stopPropagation(); });
+        }
 
         // Initial sync and after settings load (HTTP mode)
         syncFromSettings();
         // Establish initial baseline after the initial HTTP load finishes
         window.addEventListener('jamble:settingsLoaded', function(){ syncFromSettings(); applySkillsFromSettings(); markBaseline(); populateProfiles(); populateSkillPresets(); updatePresetStatus(); });
+
+        // In-game skills UI logic
+        var slotEls = [];
+        var menuEl = null;
+        var letter = { move: 'M', jump: 'J', dash: 'D' };
+        function getLoadout(){ var l=window.Jamble.Settings.skills.loadout || { movement: [] }; return (l.movement||[]).slice(); }
+        function setLoadout(arr){ window.Jamble.Settings.skills.loadout.movement = arr.slice(0,4); applySkillsFromSettings(); renderSkillSlotsAndMenu(); updateDirty(); }
+        function renderSkillSlotsAndMenu(){
+          if (!slotEls || slotEls.length === 0) slotEls = Array.from(document.querySelectorAll('#skill-slots .jamble-skill-slot'));
+          if (!menuEl) menuEl = document.getElementById('skill-menu');
+          var l = getLoadout().slice(0,4);
+          // slots
+          // Guard against early calls before `letter` is initialized
+          var letterMap = (typeof letter !== 'undefined' && letter) ? letter : { move: 'M', jump: 'J', dash: 'D' };
+          slotEls.forEach(function(el,i){ el.textContent = l[i] ? (letterMap[l[i]]||'') : ''; });
+          // menu active state
+          if (!menuEl) return;
+          var btns = Array.from(menuEl.querySelectorAll('.jamble-skill-btn'));
+          btns.forEach(function(b){ var id=b.getAttribute('data-skill'); if (!id || id==='empty') return; var active = l.indexOf(id) !== -1; b.classList.toggle('jamble-active', active); });
+        }
+        if (menuEl){
+          menuEl.addEventListener('click', function(ev){
+            var t = ev.target;
+            if (!t || !t.classList || !t.classList.contains('jamble-skill-btn')) return;
+            var id = t.getAttribute('data-skill');
+            if (!id || id==='empty') return;
+            var l = getLoadout();
+            var idx = l.indexOf(id);
+            if (idx !== -1){ l.splice(idx,1); setLoadout(l); return; }
+            if (l.length >= 4) return; // no free slot
+            l.push(id); setLoadout(l);
+          });
+        }
+        // Initial paint
+        renderSkillSlotsAndMenu();
       })();
     </script>
   </body>

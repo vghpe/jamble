@@ -522,13 +522,13 @@ var Jamble;
             this.isJumping = true;
             this.velocity = Jamble.Settings.current.jumpStrength;
         }
-        startDash() {
+        startDash(durationOverrideMs) {
             if (this.frozenStart || this.frozenDeath || !this.isJumping)
                 return false;
             if (this.isDashing || !this.dashAvailable)
                 return false;
             this.isDashing = true;
-            this.dashRemainingMs = Jamble.Settings.current.dashDurationMs;
+            this.dashRemainingMs = typeof durationOverrideMs === 'number' ? durationOverrideMs : Jamble.Settings.current.dashDurationMs;
             this.dashAvailable = false;
             this.el.classList.add('jamble-dashing');
             return true;
@@ -607,6 +607,8 @@ var Jamble;
     class Game {
         constructor(root) {
             var _a, _b, _c, _d, _f, _g, _h, _j;
+            this.skillSlotsEl = null;
+            this.skillMenuEl = null;
             this.lastTime = null;
             this.rafId = null;
             this.awaitingStartTap = false;
@@ -631,6 +633,8 @@ var Jamble;
             const levelEl = root.querySelector('.jamble-level');
             const startBtn = root.querySelector('.jamble-start');
             const shuffleBtn = root.querySelector('.jamble-shuffle');
+            const skillSlotsEl = root.querySelector('#skill-slots');
+            const skillMenuEl = root.querySelector('#skill-menu');
             if (!gameEl || !playerEl || !t1 || !t2 || !cdEl || !resetBtn || !startBtn || !shuffleBtn) {
                 throw new Error('Jamble: missing required elements');
             }
@@ -642,6 +646,8 @@ var Jamble;
             this.resetBtn = resetBtn;
             this.startBtn = startBtn;
             this.shuffleBtn = shuffleBtn;
+            this.skillSlotsEl = skillSlotsEl;
+            this.skillMenuEl = skillMenuEl;
             this.levelEl = levelEl;
             this.wiggle = new Jamble.Wiggle(this.player.el);
             this.onPointerDown = this.onPointerDown.bind(this);
@@ -655,8 +661,8 @@ var Jamble;
                         this.player.velocity = strength;
                     return true;
                 },
-                startDash: (_speed, _durationMs) => {
-                    return this.player.startDash();
+                startDash: (_speed, durationMs) => {
+                    return this.player.startDash(durationMs);
                 },
                 addHorizontalImpulse: (speed, durationMs) => {
                     const start = performance.now();
@@ -775,10 +781,18 @@ var Jamble;
         showIdleControls() {
             this.startBtn.style.display = 'block';
             this.shuffleBtn.style.display = 'block';
+            if (this.skillSlotsEl)
+                this.skillSlotsEl.style.display = 'flex';
+            if (this.skillMenuEl)
+                this.skillMenuEl.style.display = 'flex';
         }
         hideIdleControls() {
             this.startBtn.style.display = 'none';
             this.shuffleBtn.style.display = 'none';
+            if (this.skillSlotsEl)
+                this.skillSlotsEl.style.display = 'none';
+            if (this.skillMenuEl)
+                this.skillMenuEl.style.display = 'none';
         }
         onPointerDown(e) {
             if (e.target === this.resetBtn || e.target === this.startBtn || e.target === this.shuffleBtn)
@@ -835,7 +849,12 @@ var Jamble;
             }
             if (!this.player.frozenStart && !this.player.frozenDeath && this.skills.isEquipped('move')) {
                 const base = Jamble.Settings.current.playerSpeed;
-                const speed = base + (this.player.isDashing ? Jamble.Settings.current.dashSpeed : 0);
+                let dashBoost = 0;
+                if (this.player.isDashing) {
+                    const dc = this.skills.getConfig('dash');
+                    dashBoost = (dc && typeof dc.speed === 'number') ? dc.speed : Jamble.Settings.current.dashSpeed;
+                }
+                const speed = base + dashBoost;
                 const dx = speed * deltaSec * this.direction;
                 this.player.moveX(dx);
                 if (this.direction === 1 && this.reachedRight()) {

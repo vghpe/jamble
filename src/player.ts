@@ -69,11 +69,11 @@ namespace Jamble {
     }
 
     // Dash: launch horizontally for a brief time. Only mid-air and once per airtime.
-    startDash(): boolean {
+    startDash(durationOverrideMs?: number): boolean {
       if (this.frozenStart || this.frozenDeath || !this.isJumping) return false;
       if (this.isDashing || !this.dashAvailable) return false;
       this.isDashing = true;
-      this.dashRemainingMs = Jamble.Settings.current.dashDurationMs;
+      this.dashRemainingMs = typeof durationOverrideMs === 'number' ? durationOverrideMs : Jamble.Settings.current.dashDurationMs;
       this.dashAvailable = false;
       this.el.classList.add('jamble-dashing');
       return true;

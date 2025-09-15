@@ -150,3 +150,43 @@
   min-height: 2em;
 }
 
+/* In-game Skills UI (idle-only) */
+#jamble .jamble-skill-slots {
+  display: none; /* shown in idle */
+  margin: 12px 0 6px 0;
+  display: flex;
+  gap: 10px;
+}
+#jamble .jamble-skill-slot {
+  width: 26px; height: 26px;
+  border: 2px solid #81c784;
+  border-radius: 4px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #2e7d32;
+  font-size: 14px;
+}
+
+#jamble .jamble-skill-menu {
+  display: none; /* shown in idle */
+  margin: 10px 0 0 0;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+#jamble .jamble-skill-btn {
+  width: 46px; height: 46px;
+  border: 2px solid #81c784;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 18px;
+  line-height: 42px;
+  text-align: center;
+  user-select: none;
+}
+#jamble .jamble-skill-btn.jamble-active {
+  color: #888; border-color: #c8e6c9; background: #f5f5f5;
+}
