@@ -44,6 +44,8 @@
           <!-- Loadout -->
           <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;background:#f9fff9;padding:8px;border-radius:6px;border:1px solid #cdeccd">
             <div style="grid-column:1 / -1; font-weight:600; color:#2e7d32">Skills: Movement Loadout</div>
+            <label for="sk-equip-move">Equip Move</label>
+            <input id="sk-equip-move" type="checkbox" style="width:auto">
             <label for="sk-equip-jump">Equip Jump</label>
             <input id="sk-equip-jump" type="checkbox" style="width:auto">
             <label for="sk-equip-dash">Equip Dash</label>
@@ -153,6 +155,7 @@
         if (!window.Jamble || !window.Jamble.Game) return;
         var root = document.getElementById('jamble');
         var game = new window.Jamble.Game(root);
+        window.__game = game; document.getElementById('jamble').__game = game;
         game.start();
 
         // Debug bindings
@@ -186,6 +189,7 @@
         var dirtyEl = document.getElementById('dbg-dirty');
 
         // Skills UI refs
+        var equipMoveEl = document.getElementById('sk-equip-move');
         var equipJumpEl = document.getElementById('sk-equip-jump');
         var equipDashEl = document.getElementById('sk-equip-dash');
         var sjStrengthEl = document.getElementById('sk-jumpStrength');
@@ -236,7 +240,8 @@
           if (treeMarginEl) treeMarginEl.value = String(s.treeEdgeMarginPct);
           if (treeGapEl) treeGapEl.value = String(s.treeMinGapPct);
           // Skills
-          var loadout = window.Jamble.Settings.skills.loadout || { movement: ['jump','dash'], utility: [], ultimate: [] };
+          var loadout = window.Jamble.Settings.skills.loadout || { movement: ['move','jump','dash'], utility: [], ultimate: [] };
+          if (equipMoveEl) equipMoveEl.checked = (loadout.movement||[]).indexOf('move') !== -1;
           if (equipJumpEl) equipJumpEl.checked = (loadout.movement||[]).indexOf('jump') !== -1;
           if (equipDashEl) equipDashEl.checked = (loadout.movement||[]).indexOf('dash') !== -1;
           var jc = window.Jamble.Settings.skills.configs.jump || { strength: 7, cooldownMs: 0 };
@@ -331,6 +336,7 @@
           var load = window.Jamble.Settings.skills.loadout;
           load.movement = load.movement || [];
           function set(id, on){ var i=load.movement.indexOf(id); if (on && i===-1) load.movement.push(id); if(!on && i!==-1) load.movement.splice(i,1); }
+          set('move', !!(equipMoveEl && equipMoveEl.checked));
           set('jump', !!(equipJumpEl && equipJumpEl.checked));
           set('dash', !!(equipDashEl && equipDashEl.checked));
           var mgr = game.getSkillManager();
@@ -475,6 +481,7 @@
         if (wiggleDistEl) wiggleDistEl.addEventListener('input', onInput);
         if (treeMarginEl) treeMarginEl.addEventListener('input', onInput);
         if (treeGapEl) treeGapEl.addEventListener('input', onInput);
+        if (equipMoveEl) equipMoveEl.addEventListener('change', onEquipChange);
         if (equipJumpEl) equipJumpEl.addEventListener('change', onEquipChange);
         if (equipDashEl) equipDashEl.addEventListener('change', onEquipChange);
         if (sjStrengthEl) sjStrengthEl.addEventListener('input', onJumpCfg);

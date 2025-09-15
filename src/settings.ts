@@ -78,7 +78,7 @@ namespace Jamble {
     private _loadedFrom: string | null = null;
     private _activeName: string | null = null;
     private _profileBaseline: SettingsShape | null = null;
-    private _skills: SkillsProfile = { loadout: { movement: ['jump','dash'], utility: [], ultimate: [] }, configs: {} };
+    private _skills: SkillsProfile = { loadout: { movement: ['move','jump','dash'], utility: [], ultimate: [] }, configs: {} };
     private _skillsBaseline: SkillsProfile | null = null;
 
     constructor(initial?: Partial<SettingsShape>){
@@ -94,7 +94,7 @@ namespace Jamble {
       this._current = { ...this._current, ...patch };
     }
 
-    reset(): void { this._current = { ...embeddedDefaults }; this._skills = { loadout: { movement: ['jump','dash'], utility: [], ultimate: [] }, configs: {} }; }
+    reset(): void { this._current = { ...embeddedDefaults }; this._skills = { loadout: { movement: ['move','jump','dash'], utility: [], ultimate: [] }, configs: {} }; }
 
     /** Marks the current settings as the active profile baseline, with an optional name label. */
     markBaseline(name: string | null): void {
@@ -139,7 +139,7 @@ namespace Jamble {
           this._skills = { loadout: skills.loadout, configs: skills.configs };
         } else {
           // Derive minimal configs from legacy fields
-          this._skills = { loadout: { movement: ['jump','dash'], utility: [], ultimate: [] }, configs: {
+          this._skills = { loadout: { movement: ['move','jump','dash'], utility: [], ultimate: [] }, configs: {
             jump: { strength: this._current.jumpStrength },
             dash: { speed: (this._current as any).dashSpeed ?? 280, durationMs: (this._current as any).dashDurationMs ?? 220, cooldownMs: 150 }
           }};
@@ -158,7 +158,7 @@ namespace Jamble {
         this._loadedFrom = null;
         this._activeName = null;
         this._profileBaseline = { ...this._current };
-        this._skills = { loadout: { movement: ['jump','dash'], utility: [], ultimate: [] }, configs: { jump: { strength: this._current.jumpStrength }, dash: { speed: 280, durationMs: 220, cooldownMs: 150 } } };
+        this._skills = { loadout: { movement: ['move','jump','dash'], utility: [], ultimate: [] }, configs: { jump: { strength: this._current.jumpStrength }, dash: { speed: 280, durationMs: 220, cooldownMs: 150 } } };
       }
     }
 

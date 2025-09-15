@@ -50,7 +50,7 @@ var Jamble;
             this._loadedFrom = null;
             this._activeName = null;
             this._profileBaseline = null;
-            this._skills = { loadout: { movement: ['jump', 'dash'], utility: [], ultimate: [] }, configs: {} };
+            this._skills = { loadout: { movement: ['move', 'jump', 'dash'], utility: [], ultimate: [] }, configs: {} };
             this._skillsBaseline = null;
             this._current = { ...embeddedDefaults, ...(initial !== null && initial !== void 0 ? initial : {}) };
         }
@@ -61,7 +61,7 @@ var Jamble;
         update(patch) {
             this._current = { ...this._current, ...patch };
         }
-        reset() { this._current = { ...embeddedDefaults }; this._skills = { loadout: { movement: ['jump', 'dash'], utility: [], ultimate: [] }, configs: {} }; }
+        reset() { this._current = { ...embeddedDefaults }; this._skills = { loadout: { movement: ['move', 'jump', 'dash'], utility: [], ultimate: [] }, configs: {} }; }
         markBaseline(name) {
             this._activeName = name;
             this._profileBaseline = { ...this._current };
@@ -102,7 +102,7 @@ var Jamble;
                     this._skills = { loadout: skills.loadout, configs: skills.configs };
                 }
                 else {
-                    this._skills = { loadout: { movement: ['jump', 'dash'], utility: [], ultimate: [] }, configs: {
+                    this._skills = { loadout: { movement: ['move', 'jump', 'dash'], utility: [], ultimate: [] }, configs: {
                             jump: { strength: this._current.jumpStrength },
                             dash: { speed: (_a = this._current.dashSpeed) !== null && _a !== void 0 ? _a : 280, durationMs: (_b = this._current.dashDurationMs) !== null && _b !== void 0 ? _b : 220, cooldownMs: 150 }
                         } };
@@ -123,7 +123,7 @@ var Jamble;
                 this._loadedFrom = null;
                 this._activeName = null;
                 this._profileBaseline = { ...this._current };
-                this._skills = { loadout: { movement: ['jump', 'dash'], utility: [], ultimate: [] }, configs: { jump: { strength: this._current.jumpStrength }, dash: { speed: 280, durationMs: 220, cooldownMs: 150 } } };
+                this._skills = { loadout: { movement: ['move', 'jump', 'dash'], utility: [], ultimate: [] }, configs: { jump: { strength: this._current.jumpStrength }, dash: { speed: 280, durationMs: 220, cooldownMs: 150 } } };
             }
         }
         toJSON() {
@@ -312,6 +312,18 @@ var Jamble;
         }
     }
     Jamble.SkillManager = SkillManager;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class MoveSkill {
+        constructor(id = 'move', priority = 5) {
+            this.name = 'Move';
+            this.slot = 'movement';
+            this.id = id;
+            this.priority = priority;
+        }
+    }
+    Jamble.MoveSkill = MoveSkill;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
@@ -662,7 +674,8 @@ var Jamble;
                 setVerticalVelocity: (vy) => { this.player.velocity = vy; },
                 onLand: (cb) => { this.landCbs.push(cb); }
             };
-            this.skills = new Jamble.SkillManager(caps, { movement: 2 });
+            this.skills = new Jamble.SkillManager(caps, { movement: 4 });
+            this.skills.register({ id: 'move', name: 'Move', slot: 'movement', priority: 5, defaults: {}, create: (_cfg) => new Jamble.MoveSkill('move', 5) });
             this.skills.register({ id: 'jump', name: 'Jump', slot: 'movement', priority: 10, defaults: { strength: (_b = (_a = Jamble.Settings.skills.configs.jump) === null || _a === void 0 ? void 0 : _a.strength) !== null && _b !== void 0 ? _b : Jamble.Settings.current.jumpStrength }, create: (cfg) => new Jamble.JumpSkill('jump', 10, cfg) });
             this.skills.register({ id: 'dash', name: 'Dash', slot: 'movement', priority: 20, defaults: { speed: (_d = (_c = Jamble.Settings.skills.configs.dash) === null || _c === void 0 ? void 0 : _c.speed) !== null && _d !== void 0 ? _d : Jamble.Settings.current.dashSpeed, durationMs: (_g = (_f = Jamble.Settings.skills.configs.dash) === null || _f === void 0 ? void 0 : _f.durationMs) !== null && _g !== void 0 ? _g : Jamble.Settings.current.dashDurationMs, cooldownMs: (_j = (_h = Jamble.Settings.skills.configs.dash) === null || _h === void 0 ? void 0 : _h.cooldownMs) !== null && _j !== void 0 ? _j : 150 }, create: (cfg) => new Jamble.DashSkill('dash', 20, cfg) });
             const sj = Jamble.Settings.skills.configs.jump;
@@ -671,7 +684,7 @@ var Jamble;
             const sd = Jamble.Settings.skills.configs.dash;
             if (sd)
                 this.skills.setConfig('dash', sd);
-            const loadoutMoves = Jamble.Settings.skills.loadout.movement || ['jump', 'dash'];
+            const loadoutMoves = Jamble.Settings.skills.loadout.movement || ['move', 'jump', 'dash'];
             loadoutMoves.forEach(id => { try {
                 this.skills.equip(id);
             }
@@ -820,7 +833,7 @@ var Jamble;
                 this.hideIdleControls();
                 this.player.clearFrozenStart();
             }
-            if (!this.player.frozenStart && !this.player.frozenDeath) {
+            if (!this.player.frozenStart && !this.player.frozenDeath && this.skills.isEquipped('move')) {
                 const base = Jamble.Settings.current.playerSpeed;
                 const speed = base + (this.player.isDashing ? Jamble.Settings.current.dashSpeed : 0);
                 const dx = speed * deltaSec * this.direction;
@@ -922,6 +935,7 @@ var Jamble;
 (function () {
     window.Jamble = { Game: Jamble.Game, Settings: Jamble.Settings, Skills: {
             InputIntent: Jamble.InputIntent,
+            MoveSkill: Jamble.MoveSkill,
             JumpSkill: Jamble.JumpSkill,
             DashSkill: Jamble.DashSkill,
             SkillManager: Jamble.SkillManager
