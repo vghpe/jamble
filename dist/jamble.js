@@ -576,6 +576,7 @@ var Jamble;
             this.inCountdown = false;
             this.landCbs = [];
             this.wasGrounded = true;
+            this.impulses = [];
             this.root = root;
             const gameEl = root.querySelector('.jamble-game');
             const playerEl = root.querySelector('.jamble-player');
@@ -621,21 +622,7 @@ var Jamble;
                     return this.player.startDash(durationMs);
                 },
                 addHorizontalImpulse: (speed, durationMs) => {
-                    let last = performance.now();
-                    const end = last + durationMs;
-                    const apply = () => {
-                        const now = performance.now();
-                        const clampedNow = Math.min(now, end);
-                        const dtSec = (clampedNow - last) / 1000;
-                        if (dtSec > 0) {
-                            const dx = speed * dtSec * this.direction;
-                            this.player.moveX(dx);
-                        }
-                        last = clampedNow;
-                        if (clampedNow < end)
-                            window.requestAnimationFrame(apply);
-                    };
-                    window.requestAnimationFrame(apply);
+                    this.impulses.push({ speed, remainingMs: Math.max(0, durationMs) });
                 },
                 setVerticalVelocity: (vy) => { this.player.velocity = vy; },
                 onLand: (cb) => { this.landCbs.push(cb); }
@@ -669,6 +656,7 @@ var Jamble;
             this.rafId = null;
             this.wiggle.stop();
             this.countdown.hide();
+            this.impulses.length = 0;
         }
         reset() {
             this.wiggle.stop();
@@ -685,6 +673,7 @@ var Jamble;
                 window.clearTimeout(this.showResetTimer);
                 this.showResetTimer = null;
             }
+            this.impulses.length = 0;
             this.player.reset();
             this.resetBtn.style.display = 'none';
             this.player.setFrozenStart();
@@ -812,6 +801,18 @@ var Jamble;
                     const base = Jamble.Settings.current.playerSpeed;
                     const dx = base * deltaSec * this.direction;
                     this.player.moveX(dx);
+                }
+                if (this.impulses.length > 0) {
+                    let sum = 0;
+                    for (const imp of this.impulses)
+                        sum += Math.max(0, imp.speed);
+                    const dxImp = sum * deltaSec * this.direction;
+                    if (dxImp !== 0)
+                        this.player.moveX(dxImp);
+                    const dtMs = deltaSec * 1000;
+                    for (const imp of this.impulses)
+                        imp.remainingMs -= dtMs;
+                    this.impulses = this.impulses.filter(i => i.remainingMs > 0);
                 }
                 if (this.direction === 1 && this.reachedRight()) {
                     this.player.snapRight(this.gameEl.offsetWidth);

@@ -35,6 +35,7 @@ namespace Jamble {
     private skills: SkillManager;
     private landCbs: Array<() => void> = [];
     private wasGrounded: boolean = true;
+    private impulses: Array<{ speed: number; remainingMs: number }> = [];
 
     constructor(root: HTMLElement){
       this.root = root;
@@ -86,21 +87,7 @@ namespace Jamble {
           return this.player.startDash(durationMs);
         },
         addHorizontalImpulse: (speed: number, durationMs: number) => {
-          // Apply a single dash impulse over duration using per-frame delta
-          let last = performance.now();
-          const end = last + durationMs;
-          const apply = () => {
-            const now = performance.now();
-            const clampedNow = Math.min(now, end);
-            const dtSec = (clampedNow - last) / 1000;
-            if (dtSec > 0){
-              const dx = speed * dtSec * this.direction;
-              this.player.moveX(dx);
-            }
-            last = clampedNow;
-            if (clampedNow < end) window.requestAnimationFrame(apply);
-          };
-          window.requestAnimationFrame(apply);
+          this.impulses.push({ speed, remainingMs: Math.max(0, durationMs) });
         },
         setVerticalVelocity: (vy: number) => { this.player.velocity = vy; },
         onLand: (cb: () => void) => { this.landCbs.push(cb); }
@@ -133,6 +120,7 @@ namespace Jamble {
       this.rafId = null;
       this.wiggle.stop();
       this.countdown.hide();
+      this.impulses.length = 0;
     }
 
     reset(): void {
@@ -141,6 +129,7 @@ namespace Jamble {
       if (this.startCountdownTimer !== null) { window.clearTimeout(this.startCountdownTimer); this.startCountdownTimer = null; }
       if (this.deathWiggleTimer !== null) { window.clearTimeout(this.deathWiggleTimer); this.deathWiggleTimer = null; }
       if (this.showResetTimer !== null) { window.clearTimeout(this.showResetTimer); this.showResetTimer = null; }
+      this.impulses.length = 0;
       this.player.reset();
       this.resetBtn.style.display = 'none';
       this.player.setFrozenStart();
@@ -269,12 +258,24 @@ namespace Jamble {
       }
 
       // Horizontal movement when not frozen/dead
-      // Base auto-run applies only if Move is equipped; Dash contributes via its own impulse
+      // Base auto-run applies only if Move is equipped; Dash contributes via accumulated impulses
       if (!this.player.frozenStart && !this.player.frozenDeath){
         if (this.skills.isEquipped('move')){
           const base = Jamble.Settings.current.playerSpeed;
           const dx = base * deltaSec * this.direction;
           this.player.moveX(dx);
+        }
+
+        // Apply horizontal impulses (e.g., from Dash). Sum all active speeds.
+        if (this.impulses.length > 0){
+          let sum = 0;
+          for (const imp of this.impulses) sum += Math.max(0, imp.speed);
+          const dxImp = sum * deltaSec * this.direction;
+          if (dxImp !== 0) this.player.moveX(dxImp);
+          // decrement remaining and cull finished
+          const dtMs = deltaSec * 1000;
+          for (const imp of this.impulses) imp.remainingMs -= dtMs;
+          this.impulses = this.impulses.filter(i => i.remainingMs > 0);
         }
 
         if (this.direction === 1 && this.reachedRight()){
