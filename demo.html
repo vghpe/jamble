@@ -52,54 +52,58 @@
           </div>
         </div>
         <!-- Skills Section -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;align-items:start;margin-top:8px">
-          <!-- Loadout -->
-          <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;background:#f9fff9;padding:8px;border-radius:6px;border:1px solid #cdeccd">
-            <div style="grid-column:1 / -1; font-weight:600; color:#2e7d32">Skills: Movement Loadout</div>
-            <label for="sk-equip-move">Equip Move</label>
-            <input id="sk-equip-move" type="checkbox" style="width:auto">
-            <label for="sk-equip-jump">Equip Jump</label>
-            <input id="sk-equip-jump" type="checkbox" style="width:auto">
-            <label for="sk-equip-dash">Equip Dash</label>
-            <input id="sk-equip-dash" type="checkbox" style="width:auto">
-          </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;align-items:start;margin-top:8px">
+          <!-- Move Skill -->
+          <details style="background:#f9fff9;padding:8px;border-radius:6px;border:1px solid #cdeccd">
+            <summary style="font-weight:600; color:#2e7d32">Skill: Move</summary>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
+              <label for="sk-moveSpeed">Speed</label>
+              <input id="sk-moveSpeed" type="number" step="1" min="10" max="600" style="width:120px">
+            </div>
+          </details>
           <!-- Jump Config -->
-          <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;background:#f9fff9;padding:8px;border-radius:6px;border:1px solid #cdeccd">
-            <div style="grid-column:1 / -1; font-weight:600; color:#2e7d32">Skill: Jump</div>
-            <div style="grid-column:1 / -1; text-align:right; font-size:12px; color:#2e7d32"><span id="sk-jumpStatus">Inherited</span></div>
-            <label for="sk-jumpStrength">Strength</label>
-            <input id="sk-jumpStrength" type="number" step="0.1" min="1" max="30" style="width:100px">
-            <span id="sk-jumpStrengthPreview" style="justify-self:start;font-size:12px;color:#555"></span>
-            <label for="sk-jumpCd">Cooldown (ms)</label>
-            <input id="sk-jumpCd" type="number" step="10" min="0" max="2000" style="width:100px">
-            <span id="sk-jumpCdPreview" style="justify-self:start;font-size:12px;color:#555"></span>
-            <label for="sk-jumpPreset">Preset</label>
-            <select id="sk-jumpPreset" style="width:140px"></select>
-            <button id="sk-applyJumpPreset" type="button" disabled>Apply</button>
-          </div>
+          <details style="background:#f9fff9;padding:8px;border-radius:6px;border:1px solid #cdeccd">
+            <summary style="display:flex;align-items:center;justify-content:space-between;font-weight:600;color:#2e7d32">
+              <span>Skill: Jump</span>
+              <span id="sk-jumpStatus" style="font-size:12px;color:#2e7d32">Inherited</span>
+            </summary>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
+              <label for="sk-jumpStrength">Strength</label>
+              <input id="sk-jumpStrength" type="number" step="0.1" min="1" max="30" style="width:120px">
+              <span id="sk-jumpStrengthPreview" style="grid-column: 2 / 3; justify-self:start;font-size:12px;color:#555"></span>
+              <label for="sk-jumpCd">Cooldown (ms)</label>
+              <input id="sk-jumpCd" type="number" step="10" min="0" max="2000" style="width:120px">
+              <span id="sk-jumpCdPreview" style="grid-column: 2 / 3; justify-self:start;font-size:12px;color:#555"></span>
+              <label for="sk-jumpPreset">Preset</label>
+              <select id="sk-jumpPreset" style="width:160px"></select>
+              <button id="sk-applyJumpPreset" type="button" disabled>Apply</button>
+            </div>
+          </details>
           <!-- Dash Config -->
-          <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;background:#f9fff9;padding:8px;border-radius:6px;border:1px solid #cdeccd">
-            <div style="grid-column:1 / -1; font-weight:600; color:#2e7d32">Skill: Dash</div>
-            <div style="grid-column:1 / -1; text-align:right; font-size:12px; color:#2e7d32"><span id="sk-dashStatus">Inherited</span></div>
-            <label for="sk-dashSpeed">Speed</label>
-            <input id="sk-dashSpeed" type="number" step="5" min="0" max="1000" style="width:100px">
-            <span id="sk-dashSpeedPreview" style="justify-self:start;font-size:12px;color:#555"></span>
-            <label for="sk-dashDur">Duration (ms)</label>
-            <input id="sk-dashDur" type="number" step="10" min="0" max="2000" style="width:100px">
-            <span id="sk-dashDurPreview" style="justify-self:start;font-size:12px;color:#555"></span>
-            <label for="sk-dashCd">Cooldown (ms)</label>
-            <input id="sk-dashCd" type="number" step="10" min="0" max="2000" style="width:100px">
-            <span id="sk-dashCdPreview" style="justify-self:start;font-size:12px;color:#555"></span>
-            <label for="sk-dashPreset">Preset</label>
-            <select id="sk-dashPreset" style="width:140px"></select>
-            <button id="sk-applyDashPreset" type="button" disabled>Apply</button>
-          </div>
+          <details style="background:#f9fff9;padding:8px;border-radius:6px;border:1px solid #cdeccd">
+            <summary style="display:flex;align-items:center;justify-content:space-between;font-weight:600;color:#2e7d32">
+              <span>Skill: Dash</span>
+              <span id="sk-dashStatus" style="font-size:12px;color:#2e7d32">Inherited</span>
+            </summary>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
+              <label for="sk-dashSpeed">Speed</label>
+              <input id="sk-dashSpeed" type="number" step="5" min="0" max="1000" style="width:120px">
+              <span id="sk-dashSpeedPreview" style="grid-column: 2 / 3; justify-self:start;font-size:12px;color:#555"></span>
+              <label for="sk-dashDur">Duration (ms)</label>
+              <input id="sk-dashDur" type="number" step="10" min="0" max="2000" style="width:120px">
+              <span id="sk-dashDurPreview" style="grid-column: 2 / 3; justify-self:start;font-size:12px;color:#555"></span>
+              <label for="sk-dashCd">Cooldown (ms)</label>
+              <input id="sk-dashCd" type="number" step="10" min="0" max="2000" style="width:120px">
+              <span id="sk-dashCdPreview" style="grid-column: 2 / 3; justify-self:start;font-size:12px;color:#555"></span>
+              <label for="sk-dashPreset">Preset</label>
+              <select id="sk-dashPreset" style="width:160px"></select>
+              <button id="sk-applyDashPreset" type="button" disabled>Apply</button>
+            </div>
+          </details>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;align-items:start;margin-top:8px">
-          <!-- Movement & Mode (global) -->
+          <!-- Mode & Animation toggles -->
           <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
-            <label for="dbg-speed">Player speed</label>
-            <input id="dbg-speed" type="number" step="1" min="10" max="600" style="width:100px">
             <label for="dbg-mode">Ping-pong mode</label>
             <input id="dbg-mode" type="checkbox" style="width:auto">
             <label for="dbg-squash">Squash animation</label>
@@ -109,54 +113,66 @@
           <!-- Removed per-skill dash from global panel; managed in Skills section below -->
 
           <!-- Animation Params -->
-          <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
-            <label for="dbg-stretch">J stretch factor</label>
-            <input id="dbg-stretch" type="number" step="0.005" min="0" max="0.2" style="width:100px">
-            <label for="dbg-squashFactor">J squash factor</label>
-            <input id="dbg-squashFactor" type="number" step="0.005" min="0" max="0.1" style="width:100px">
-            <label for="dbg-airMs">J smooth (ms)</label>
-            <input id="dbg-airMs" type="number" step="10" min="0" max="500" style="width:100px">
-            <label for="dbg-landMs">Landing squash (ms)</label>
-            <input id="dbg-landMs" type="number" step="10" min="0" max="1000" style="width"="100px">
-            <label for="dbg-landSY">L squash scale Y</label>
-            <input id="dbg-landSY" type="number" step="0.05" min="0.2" max="2" style="width:100px">
-            <label for="dbg-landSX">L squash scale X</label>
-            <input id="dbg-landSX" type="number" step="0.05" min="0.5" max="3" style="width:100px">
-            <label for="dbg-landEase">L ease (ms)</label>
-            <input id="dbg-landEase" type="number" step="10" min="0" max="1000" style="width:100px">
-          </div>
+          <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
+            <summary style="font-weight:600;color:#2e7d32">Animation</summary>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
+              <label for="dbg-stretch">J stretch factor</label>
+              <input id="dbg-stretch" type="number" step="0.005" min="0" max="0.2" style="width:120px">
+              <label for="dbg-squashFactor">J squash factor</label>
+              <input id="dbg-squashFactor" type="number" step="0.005" min="0" max="0.1" style="width:120px">
+              <label for="dbg-airMs">J smooth (ms)</label>
+              <input id="dbg-airMs" type="number" step="10" min="0" max="500" style="width:120px">
+              <label for="dbg-landMs">Landing squash (ms)</label>
+              <input id="dbg-landMs" type="number" step="10" min="0" max="1000" style="width:120px">
+              <label for="dbg-landSY">L squash scale Y</label>
+              <input id="dbg-landSY" type="number" step="0.05" min="0.2" max="2" style="width:120px">
+              <label for="dbg-landSX">L squash scale X</label>
+              <input id="dbg-landSX" type="number" step="0.05" min="0.5" max="3" style="width:120px">
+              <label for="dbg-landEase">L ease (ms)</label>
+              <input id="dbg-landEase" type="number" step="10" min="0" max="1000" style="width:120px">
+            </div>
+          </details>
 
           <!-- Physics (Gravity) -->
-          <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
-            <label for="dbg-gUp">Gravity up</label>
-            <input id="dbg-gUp" type="number" step="0.01" min="0" max="5" style="width:100px">
-            <label for="dbg-gMid">Gravity mid</label>
-            <input id="dbg-gMid" type="number" step="0.01" min="0" max="5" style="width:100px">
-            <label for="dbg-gDown">Gravity down</label>
-            <input id="dbg-gDown" type="number" step="0.01" min="0" max="5" style="width:100px">
-          </div>
+          <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
+            <summary style="font-weight:600;color:#2e7d32">Gravity</summary>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
+              <label for="dbg-gUp">Gravity up</label>
+              <input id="dbg-gUp" type="number" step="0.01" min="0" max="5" style="width:120px">
+              <label for="dbg-gMid">Gravity mid</label>
+              <input id="dbg-gMid" type="number" step="0.01" min="0" max="5" style="width:120px">
+              <label for="dbg-gDown">Gravity down</label>
+              <input id="dbg-gDown" type="number" step="0.01" min="0" max="5" style="width:120px">
+            </div>
+          </details>
 
           <!-- Timings -->
-          <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
-            <label for="dbg-startFreeze">Start freeze (ms)</label>
-            <input id="dbg-startFreeze" type="number" step="50" min="0" max="10000" style="width:100px">
-            <label for="dbg-deathFreeze">Death freeze (ms)</label>
-            <input id="dbg-deathFreeze" type="number" step="10" min="0" max="5000" style="width:100px">
-            <label for="dbg-resetDelay">Show reset delay (ms)</label>
-            <input id="dbg-resetDelay" type="number" step="10" min="0" max="2000" style="width:100px">
-          </div>
+          <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
+            <summary style="font-weight:600;color:#2e7d32">Timings</summary>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
+              <label for="dbg-startFreeze">Start freeze (ms)</label>
+              <input id="dbg-startFreeze" type="number" step="50" min="0" max="10000" style="width:120px">
+              <label for="dbg-deathFreeze">Death freeze (ms)</label>
+              <input id="dbg-deathFreeze" type="number" step="10" min="0" max="5000" style="width:120px">
+              <label for="dbg-resetDelay">Show reset delay (ms)</label>
+              <input id="dbg-resetDelay" type="number" step="10" min="0" max="2000" style="width:120px">
+            </div>
+          </details>
 
           <!-- Geometry / Trees -->
-          <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
-            <label for="dbg-startOffset">Player start offset (px)</label>
-            <input id="dbg-startOffset" type="number" step="1" min="0" max="200" style="width:100px">
-            <label for="dbg-wiggleDist">Death wiggle distance (px)</label>
-            <input id="dbg-wiggleDist" type="number" step="0.5" min="0" max="10" style="width:100px">
-            <label for="dbg-treeMargin">Tree edge margin (%)</label>
-            <input id="dbg-treeMargin" type="number" step="1" min="0" max="40" style="width:100px">
-            <label for="dbg-treeGap">Tree min gap (%)</label>
-            <input id="dbg-treeGap" type="number" step="1" min="5" max="80" style="width:100px">
-          </div>
+          <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
+            <summary style="font-weight:600;color:#2e7d32">Geometry</summary>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
+              <label for="dbg-startOffset">Player start offset (px)</label>
+              <input id="dbg-startOffset" type="number" step="1" min="0" max="200" style="width:120px">
+              <label for="dbg-wiggleDist">Death wiggle distance (px)</label>
+              <input id="dbg-wiggleDist" type="number" step="0.5" min="0" max="10" style="width:120px">
+              <label for="dbg-treeMargin">Tree edge margin (%)</label>
+              <input id="dbg-treeMargin" type="number" step="1" min="0" max="40" style="width:120px">
+              <label for="dbg-treeGap">Tree min gap (%)</label>
+              <input id="dbg-treeGap" type="number" step="1" min="5" max="80" style="width:120px">
+            </div>
+          </details>
         </div>
       </details>
     </div>
@@ -171,12 +187,9 @@
         game.start();
 
         // Debug bindings
-        var jumpEl = document.getElementById('dbg-jump');
-        var speedEl = document.getElementById('dbg-speed');
+        // Removed legacy global jump strength input
         var modeEl = document.getElementById('dbg-mode');
         var squashEl = document.getElementById('dbg-squash');
-        var dashSpeedEl = document.getElementById('dbg-dashSpeed');
-        var dashDurEl = document.getElementById('dbg-dashDur');
         var stretchEl = document.getElementById('dbg-stretch');
         var squashFactorEl = document.getElementById('dbg-squashFactor');
         var airMsEl = document.getElementById('dbg-airMs');
@@ -201,9 +214,7 @@
         var dirtyEl = document.getElementById('dbg-dirty');
 
         // Skills UI refs
-        var equipMoveEl = document.getElementById('sk-equip-move');
-        var equipJumpEl = document.getElementById('sk-equip-jump');
-        var equipDashEl = document.getElementById('sk-equip-dash');
+        var smSpeedEl = document.getElementById('sk-moveSpeed');
         var sjStrengthEl = document.getElementById('sk-jumpStrength');
         var sjCdEl = document.getElementById('sk-jumpCd');
         var sjPresetSel = document.getElementById('sk-jumpPreset');
@@ -229,8 +240,8 @@
         function clamp(n, min, max){ n = Number(n); if (Number.isNaN(n)) return min; return Math.max(min, Math.min(max, n)); }
         function syncFromSettings(){
           var s = window.Jamble.Settings.current;
-          if (jumpEl) jumpEl.value = String(s.jumpStrength);
-          if (speedEl) speedEl.value = String(s.playerSpeed);
+          
+          if (smSpeedEl) smSpeedEl.value = String(s.playerSpeed);
           if (modeEl) modeEl.checked = (s.mode === 'pingpong');
           if (squashEl) squashEl.checked = !!s.squashEnabled;
           // dashSpeed/duration are per-skill now; keep legacy fields unused
@@ -253,9 +264,6 @@
           if (treeGapEl) treeGapEl.value = String(s.treeMinGapPct);
           // Skills
           var loadout = window.Jamble.Settings.skills.loadout || { movement: ['move','jump','dash'], utility: [], ultimate: [] };
-          if (equipMoveEl) equipMoveEl.checked = (loadout.movement||[]).indexOf('move') !== -1;
-          if (equipJumpEl) equipJumpEl.checked = (loadout.movement||[]).indexOf('jump') !== -1;
-          if (equipDashEl) equipDashEl.checked = (loadout.movement||[]).indexOf('dash') !== -1;
           var jc = window.Jamble.Settings.skills.configs.jump || { strength: 7, cooldownMs: 0 };
           var dc = window.Jamble.Settings.skills.configs.dash || { speed: 280, durationMs: 220, cooldownMs: 150 };
           if (sjStrengthEl) sjStrengthEl.value = String(jc.strength);
@@ -346,20 +354,7 @@
             }
           }
         }
-        function onEquipChange(){
-          var load = window.Jamble.Settings.skills.loadout;
-          load.movement = load.movement || [];
-          function set(id, on){ var i=load.movement.indexOf(id); if (on && i===-1) load.movement.push(id); if(!on && i!==-1) load.movement.splice(i,1); }
-          set('move', !!(equipMoveEl && equipMoveEl.checked));
-          set('jump', !!(equipJumpEl && equipJumpEl.checked));
-          set('dash', !!(equipDashEl && equipDashEl.checked));
-          var mgr = game.getSkillManager();
-          mgr.clear();
-          (load.movement||[]).forEach(function(id){ try{ mgr.equip(id);}catch(e){} });
-          updateDirty();
-          updatePresetStatus();
-          renderSkillSlotsAndMenu();
-        }
+        // Debug panel edits no longer manage equip toggles; use in-game menu
         function onJumpCfg(){
           var cfg = window.Jamble.Settings.skills.configs.jump || {};
           if (sjStrengthEl) cfg.strength = Number(clamp(sjStrengthEl.value,1,30));
@@ -425,8 +420,8 @@
           } catch(_e){ dirtyEl.style.visibility = 'hidden'; }
         }
         function onInput(){
-          var j = jumpEl ? clamp(jumpEl.value, 1, 30) : undefined;
-          var p = speedEl ? clamp(speedEl.value, 10, 600) : undefined;
+          
+          var p = smSpeedEl ? clamp(smSpeedEl.value, 10, 600) : undefined;
           var st = stretchEl ? clamp(stretchEl.value, 0, 0.2) : undefined;
           var sq = squashFactorEl ? clamp(squashFactorEl.value, 0, 0.1) : undefined;
           var am = airMsEl ? clamp(airMsEl.value, 0, 500) : undefined;
@@ -434,8 +429,6 @@
           var lsy = landSYEl ? clamp(landSYEl.value, 0.2, 2) : undefined;
           var lsx = landSXEl ? clamp(landSXEl.value, 0.5, 3) : undefined;
           var le = landEaseEl ? clamp(landEaseEl.value, 0, 1000) : undefined;
-          var ds = dashSpeedEl ? clamp(dashSpeedEl.value, 0, 1000) : undefined;
-          var dd = dashDurEl ? clamp(dashDurEl.value, 0, 1000) : undefined;
           var gu = gUpEl ? clamp(gUpEl.value, 0, 5) : undefined;
           var gm = gMidEl ? clamp(gMidEl.value, 0, 5) : undefined;
           var gd = gDownEl ? clamp(gDownEl.value, 0, 5) : undefined;
@@ -447,12 +440,11 @@
           var tm = treeMarginEl ? clamp(treeMarginEl.value, 0, 40) : undefined;
           var tg = treeGapEl ? clamp(treeGapEl.value, 5, 80) : undefined;
           var patch = {};
-          if (j !== undefined) patch.jumpStrength = Number(j);
+          
           if (p !== undefined) patch.playerSpeed = Number(p);
           if (modeEl) patch.mode = modeEl.checked ? 'pingpong' : 'idle';
           if (squashEl) patch.squashEnabled = !!squashEl.checked;
-          if (ds !== undefined) patch.dashSpeed = Math.round(Number(ds));
-          if (dd !== undefined) patch.dashDurationMs = Math.round(Number(dd));
+          // Dash speed/duration are configured per-skill in the Skills section
           if (st !== undefined) patch.stretchFactor = Number(st);
           if (sq !== undefined) patch.squashFactor = Number(sq);
           if (am !== undefined) patch.airTransformSmoothingMs = Math.round(Number(am));
@@ -473,12 +465,10 @@
           window.Jamble.Settings.update(patch);
           updateDirty();
         }
-        if (jumpEl) jumpEl.addEventListener('input', onInput);
-        if (speedEl) speedEl.addEventListener('input', onInput);
+        
+        if (smSpeedEl) smSpeedEl.addEventListener('input', onInput);
         if (modeEl) modeEl.addEventListener('change', onInput);
         if (squashEl) squashEl.addEventListener('change', onInput);
-        if (dashSpeedEl) dashSpeedEl.addEventListener('input', onInput);
-        if (dashDurEl) dashDurEl.addEventListener('input', onInput);
         if (stretchEl) stretchEl.addEventListener('input', onInput);
         if (squashFactorEl) squashFactorEl.addEventListener('input', onInput);
         if (airMsEl) airMsEl.addEventListener('input', onInput);
@@ -496,9 +486,6 @@
         if (wiggleDistEl) wiggleDistEl.addEventListener('input', onInput);
         if (treeMarginEl) treeMarginEl.addEventListener('input', onInput);
         if (treeGapEl) treeGapEl.addEventListener('input', onInput);
-        if (equipMoveEl) equipMoveEl.addEventListener('change', onEquipChange);
-        if (equipJumpEl) equipJumpEl.addEventListener('change', onEquipChange);
-        if (equipDashEl) equipDashEl.addEventListener('change', onEquipChange);
         if (sjStrengthEl) sjStrengthEl.addEventListener('input', onJumpCfg);
         if (sjCdEl) sjCdEl.addEventListener('input', onJumpCfg);
         if (sdSpeedEl) sdSpeedEl.addEventListener('input', onDashCfg);
