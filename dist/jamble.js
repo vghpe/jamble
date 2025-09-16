@@ -12,6 +12,8 @@ var Jamble;
         startFreezeTime: 3000,
         deathFreezeTime: 500,
         showResetDelayMs: 150,
+        shuffleEnabled: true,
+        shuffleLimit: 3,
         playerStartOffset: 10,
         deathWiggleDistance: 1,
         treeEdgeMarginPct: 10,
@@ -407,34 +409,73 @@ var Jamble;
     class LevelElementManager {
         constructor() {
             this.elements = new Map();
+            this.activeIds = new Set();
         }
-        add(element) {
+        add(element, options) {
             this.elements.set(element.id, element);
+            const active = options && options.active === false ? false : true;
+            if (active)
+                this.activeIds.add(element.id);
+            else
+                this.activeIds.delete(element.id);
         }
         remove(id) {
             this.elements.delete(id);
+            this.activeIds.delete(id);
+        }
+        setActive(id, active) {
+            if (!this.elements.has(id))
+                return;
+            if (active)
+                this.activeIds.add(id);
+            else
+                this.activeIds.delete(id);
+        }
+        isActive(id) {
+            return this.activeIds.has(id);
         }
         get(id) {
             return this.elements.get(id);
         }
         getPositionable(id) {
             const el = this.elements.get(id);
-            if (el && isPositionableLevelElement(el))
+            if (!el || !this.activeIds.has(id))
+                return undefined;
+            if (isPositionableLevelElement(el))
                 return el;
             return undefined;
         }
+        getPositionablesByType(type) {
+            const list = [];
+            this.activeIds.forEach(id => {
+                const el = this.elements.get(id);
+                if (!el || el.type !== type)
+                    return;
+                if (isPositionableLevelElement(el))
+                    list.push(el);
+            });
+            return list;
+        }
         forEach(cb) {
-            this.elements.forEach(cb);
+            this.activeIds.forEach(id => {
+                const el = this.elements.get(id);
+                if (el)
+                    cb(el);
+            });
         }
         getByType(type) {
             const list = [];
-            this.elements.forEach(el => { if (el.type === type)
-                list.push(el); });
+            this.activeIds.forEach(id => {
+                const el = this.elements.get(id);
+                if (el && el.type === type)
+                    list.push(el);
+            });
             return list;
         }
         someCollidable(predicate) {
-            for (const el of this.elements.values()) {
-                if (!el.collidable)
+            for (const id of this.activeIds) {
+                const el = this.elements.get(id);
+                if (!el || !el.collidable)
                     continue;
                 if (predicate(el))
                     return true;
@@ -443,8 +484,17 @@ var Jamble;
         }
         clear() {
             this.elements.clear();
+            this.activeIds.clear();
         }
-        all() { return Array.from(this.elements.values()); }
+        all() {
+            const list = [];
+            this.activeIds.forEach(id => {
+                const el = this.elements.get(id);
+                if (el)
+                    list.push(el);
+            });
+            return list;
+        }
     }
     Jamble.LevelElementManager = LevelElementManager;
 })(Jamble || (Jamble = {}));
@@ -629,6 +679,8 @@ var Jamble;
             this.landCbs = [];
             this.wasGrounded = true;
             this.impulses = [];
+            this.idleShuffleRemaining = 0;
+            this.shuffleAllowanceInitialized = false;
             this.root = root;
             const gameEl = root.querySelector('.jamble-game');
             const playerEl = root.querySelector('.jamble-player');
@@ -710,6 +762,9 @@ var Jamble;
             this.wiggle.stop();
             this.countdown.hide();
             this.impulses.length = 0;
+            this.idleShuffleRemaining = 0;
+            this.shuffleAllowanceInitialized = false;
+            this.updateShuffleButtonState();
         }
         reset() {
             this.wiggle.stop();
@@ -733,6 +788,8 @@ var Jamble;
             this.awaitingStartTap = true;
             this.waitGroundForStart = false;
             this.inCountdown = false;
+            this.shuffleAllowanceInitialized = false;
+            this.idleShuffleRemaining = 0;
             this.showIdleControls();
             this.direction = 1;
             this.level = 0;
@@ -757,9 +814,17 @@ var Jamble;
         onShuffleClick() {
             if (!this.awaitingStartTap || this.waitGroundForStart)
                 return;
-            this.shuffleTrees();
+            if (!Jamble.Settings.current.shuffleEnabled)
+                return;
+            if (!this.shuffleAllowanceInitialized)
+                this.startIdleShuffleSession();
+            if (this.idleShuffleRemaining <= 0)
+                return;
+            this.shuffleElements();
+            this.idleShuffleRemaining = Math.max(0, this.idleShuffleRemaining - 1);
+            this.updateShuffleButtonState();
         }
-        shuffleTrees() {
+        shuffleElements() {
             const min = Jamble.Settings.current.treeEdgeMarginPct;
             const max = 100 - Jamble.Settings.current.treeEdgeMarginPct;
             const gap = Jamble.Settings.current.treeMinGapPct;
@@ -771,6 +836,50 @@ var Jamble;
                 tree1.setLeftPct(left1);
             if (tree2)
                 tree2.setLeftPct(left2);
+        }
+        startIdleShuffleSession() {
+            this.shuffleAllowanceInitialized = true;
+            if (!Jamble.Settings.current.shuffleEnabled) {
+                this.idleShuffleRemaining = 0;
+            }
+            else {
+                this.idleShuffleRemaining = Math.max(0, Math.round(Jamble.Settings.current.shuffleLimit));
+            }
+            this.updateShuffleButtonState();
+        }
+        updateShuffleButtonState() {
+            if (!this.shuffleBtn)
+                return;
+            const enabledSetting = Jamble.Settings.current.shuffleEnabled;
+            const idleVisible = this.awaitingStartTap && !this.waitGroundForStart && this.player.frozenStart;
+            if (!enabledSetting || !idleVisible) {
+                this.shuffleBtn.style.display = 'none';
+                this.shuffleBtn.disabled = true;
+                this.shuffleBtn.title = enabledSetting ? 'Shuffle available during idle' : 'Shuffle disabled';
+                return;
+            }
+            this.shuffleBtn.style.display = 'block';
+            const remaining = this.idleShuffleRemaining;
+            const usable = remaining > 0;
+            this.shuffleBtn.disabled = !usable;
+            this.shuffleBtn.title = usable ? ('Shuffle (' + remaining + ' left)') : 'No shuffles left';
+        }
+        refreshShuffleSettings() {
+            if (!Jamble.Settings.current.shuffleEnabled) {
+                this.idleShuffleRemaining = 0;
+                this.shuffleAllowanceInitialized = false;
+            }
+            else if (this.player.frozenStart && this.awaitingStartTap && !this.waitGroundForStart) {
+                const limit = Math.max(0, Math.round(Jamble.Settings.current.shuffleLimit));
+                if (!this.shuffleAllowanceInitialized) {
+                    this.idleShuffleRemaining = limit;
+                    this.shuffleAllowanceInitialized = true;
+                }
+                else {
+                    this.idleShuffleRemaining = Math.min(this.idleShuffleRemaining, limit);
+                }
+            }
+            this.updateShuffleButtonState();
         }
         bind() {
             document.addEventListener('pointerdown', this.onPointerDown);
@@ -786,15 +895,18 @@ var Jamble;
         }
         showIdleControls() {
             this.startBtn.style.display = 'block';
-            this.shuffleBtn.style.display = 'block';
             if (this.skillSlotsEl)
                 this.skillSlotsEl.style.display = 'flex';
             if (this.skillMenuEl)
                 this.skillMenuEl.style.display = 'flex';
+            this.startIdleShuffleSession();
         }
         hideIdleControls() {
             this.startBtn.style.display = 'none';
             this.shuffleBtn.style.display = 'none';
+            this.shuffleBtn.disabled = true;
+            this.shuffleBtn.title = 'Shuffle unavailable';
+            this.shuffleAllowanceInitialized = false;
             if (this.skillSlotsEl)
                 this.skillSlotsEl.style.display = 'flex';
             if (this.skillMenuEl)
@@ -848,6 +960,8 @@ var Jamble;
                     this.player.velocity = -0.1;
                 this.waitGroundForStart = true;
                 this.awaitingStartTap = false;
+                this.shuffleAllowanceInitialized = false;
+                this.updateShuffleButtonState();
             }
             else {
                 if (this.player.velocity > 0)

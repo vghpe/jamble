@@ -35,6 +35,8 @@ namespace Jamble {
     private landCbs: Array<() => void> = [];
     private wasGrounded: boolean = true;
     private impulses: Array<{ speed: number; remainingMs: number }> = [];
+    private idleShuffleRemaining: number = 0;
+    private shuffleAllowanceInitialized: boolean = false;
 
     constructor(root: HTMLElement){
       this.root = root;
@@ -121,6 +123,9 @@ namespace Jamble {
       this.wiggle.stop();
       this.countdown.hide();
       this.impulses.length = 0;
+      this.idleShuffleRemaining = 0;
+      this.shuffleAllowanceInitialized = false;
+      this.updateShuffleButtonState();
     }
 
     reset(): void {
@@ -136,6 +141,8 @@ namespace Jamble {
       this.awaitingStartTap = true;
       this.waitGroundForStart = false;
       this.inCountdown = false;
+      this.shuffleAllowanceInitialized = false;
+      this.idleShuffleRemaining = 0;
       this.showIdleControls();
       this.direction = 1;
       this.level = 0;
@@ -159,10 +166,15 @@ namespace Jamble {
 
     private onShuffleClick(): void {
       if (!this.awaitingStartTap || this.waitGroundForStart) return;
-      this.shuffleTrees();
+      if (!Jamble.Settings.current.shuffleEnabled) return;
+      if (!this.shuffleAllowanceInitialized) this.startIdleShuffleSession();
+      if (this.idleShuffleRemaining <= 0) return;
+      this.shuffleElements();
+      this.idleShuffleRemaining = Math.max(0, this.idleShuffleRemaining - 1);
+      this.updateShuffleButtonState();
     }
 
-    private shuffleTrees(): void {
+    private shuffleElements(): void {
       const min = Jamble.Settings.current.treeEdgeMarginPct;
       const max = 100 - Jamble.Settings.current.treeEdgeMarginPct;
       const gap = Jamble.Settings.current.treeMinGapPct;
@@ -172,6 +184,49 @@ namespace Jamble {
       const tree2 = this.levelElements.getPositionable('tree2');
       if (tree1) tree1.setLeftPct(left1);
       if (tree2) tree2.setLeftPct(left2);
+    }
+
+    private startIdleShuffleSession(): void {
+      this.shuffleAllowanceInitialized = true;
+      if (!Jamble.Settings.current.shuffleEnabled){
+        this.idleShuffleRemaining = 0;
+      } else {
+        this.idleShuffleRemaining = Math.max(0, Math.round(Jamble.Settings.current.shuffleLimit));
+      }
+      this.updateShuffleButtonState();
+    }
+
+    private updateShuffleButtonState(): void {
+      if (!this.shuffleBtn) return;
+      const enabledSetting = Jamble.Settings.current.shuffleEnabled;
+      const idleVisible = this.awaitingStartTap && !this.waitGroundForStart && this.player.frozenStart;
+      if (!enabledSetting || !idleVisible){
+        this.shuffleBtn.style.display = 'none';
+        this.shuffleBtn.disabled = true;
+        this.shuffleBtn.title = enabledSetting ? 'Shuffle available during idle' : 'Shuffle disabled';
+        return;
+      }
+      this.shuffleBtn.style.display = 'block';
+      const remaining = this.idleShuffleRemaining;
+      const usable = remaining > 0;
+      this.shuffleBtn.disabled = !usable;
+      this.shuffleBtn.title = usable ? ('Shuffle (' + remaining + ' left)') : 'No shuffles left';
+    }
+
+    public refreshShuffleSettings(): void {
+      if (!Jamble.Settings.current.shuffleEnabled){
+        this.idleShuffleRemaining = 0;
+        this.shuffleAllowanceInitialized = false;
+      } else if (this.player.frozenStart && this.awaitingStartTap && !this.waitGroundForStart){
+        const limit = Math.max(0, Math.round(Jamble.Settings.current.shuffleLimit));
+        if (!this.shuffleAllowanceInitialized){
+          this.idleShuffleRemaining = limit;
+          this.shuffleAllowanceInitialized = true;
+        } else {
+          this.idleShuffleRemaining = Math.min(this.idleShuffleRemaining, limit);
+        }
+      }
+      this.updateShuffleButtonState();
     }
 
     private bind(): void {
@@ -189,13 +244,16 @@ namespace Jamble {
 
     private showIdleControls(): void {
       this.startBtn.style.display = 'block';
-      this.shuffleBtn.style.display = 'block';
       if (this.skillSlotsEl) this.skillSlotsEl.style.display = 'flex';
       if (this.skillMenuEl) this.skillMenuEl.style.display = 'flex';
+      this.startIdleShuffleSession();
     }
     private hideIdleControls(): void {
       this.startBtn.style.display = 'none';
       this.shuffleBtn.style.display = 'none';
+      this.shuffleBtn.disabled = true;
+      this.shuffleBtn.title = 'Shuffle unavailable';
+      this.shuffleAllowanceInitialized = false;
       // Keep skill slots visible during runs; hide only the menu
       if (this.skillSlotsEl) this.skillSlotsEl.style.display = 'flex';
       if (this.skillMenuEl) this.skillMenuEl.style.display = 'none';
@@ -249,6 +307,8 @@ namespace Jamble {
         if (this.player.velocity > 0) this.player.velocity = -0.1;
         this.waitGroundForStart = true;
         this.awaitingStartTap = false;
+        this.shuffleAllowanceInitialized = false;
+        this.updateShuffleButtonState();
       } else {
         if (this.player.velocity > 0) this.player.velocity = -0.1;
         this.awaitingStartTap = false;

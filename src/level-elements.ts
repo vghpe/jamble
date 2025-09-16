@@ -38,13 +38,28 @@ namespace Jamble {
 
   export class LevelElementManager {
     private elements = new Map<string, LevelElement>();
+    private activeIds = new Set<string>();
 
-    add(element: LevelElement): void {
+    add(element: LevelElement, options?: { active?: boolean }): void {
       this.elements.set(element.id, element);
+      const active = options && options.active === false ? false : true;
+      if (active) this.activeIds.add(element.id);
+      else this.activeIds.delete(element.id);
     }
 
     remove(id: string): void {
       this.elements.delete(id);
+      this.activeIds.delete(id);
+    }
+
+    setActive(id: string, active: boolean): void {
+      if (!this.elements.has(id)) return;
+      if (active) this.activeIds.add(id);
+      else this.activeIds.delete(id);
+    }
+
+    isActive(id: string): boolean {
+      return this.activeIds.has(id);
     }
 
     get<T extends LevelElement = LevelElement>(id: string): T | undefined {
@@ -53,23 +68,41 @@ namespace Jamble {
 
     getPositionable(id: string): PositionableLevelElement | undefined {
       const el = this.elements.get(id);
-      if (el && isPositionableLevelElement(el)) return el;
+      if (!el || !this.activeIds.has(id)) return undefined;
+      if (isPositionableLevelElement(el)) return el;
       return undefined;
     }
 
+    getPositionablesByType(type: LevelElementType): PositionableLevelElement[] {
+      const list: PositionableLevelElement[] = [];
+      this.activeIds.forEach(id => {
+        const el = this.elements.get(id);
+        if (!el || el.type !== type) return;
+        if (isPositionableLevelElement(el)) list.push(el);
+      });
+      return list;
+    }
+
     forEach(cb: (element: LevelElement) => void): void {
-      this.elements.forEach(cb);
+      this.activeIds.forEach(id => {
+        const el = this.elements.get(id);
+        if (el) cb(el);
+      });
     }
 
     getByType(type: LevelElementType): LevelElement[] {
       const list: LevelElement[] = [];
-      this.elements.forEach(el => { if (el.type === type) list.push(el); });
+      this.activeIds.forEach(id => {
+        const el = this.elements.get(id);
+        if (el && el.type === type) list.push(el);
+      });
       return list;
     }
 
     someCollidable(predicate: (element: LevelElement) => boolean): boolean {
-      for (const el of this.elements.values()){
-        if (!el.collidable) continue;
+      for (const id of this.activeIds){
+        const el = this.elements.get(id);
+        if (!el || !el.collidable) continue;
         if (predicate(el)) return true;
       }
       return false;
@@ -77,9 +110,16 @@ namespace Jamble {
 
     clear(): void {
       this.elements.clear();
+      this.activeIds.clear();
     }
 
-    all(): LevelElement[] { return Array.from(this.elements.values()); }
+    all(): LevelElement[] {
+      const list: LevelElement[] = [];
+      this.activeIds.forEach(id => {
+        const el = this.elements.get(id);
+        if (el) list.push(el);
+      });
+      return list;
+    }
   }
 }
-

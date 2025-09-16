@@ -17,6 +17,8 @@ namespace Jamble {
     startFreezeTime: number;
     deathFreezeTime: number;
     showResetDelayMs: number;
+    shuffleEnabled: boolean;
+    shuffleLimit: number;
 
     // Geometry
     playerStartOffset: number;
@@ -58,6 +60,8 @@ namespace Jamble {
     startFreezeTime: 3000,
     deathFreezeTime: 500,
     showResetDelayMs: 150,
+    shuffleEnabled: true,
+    shuffleLimit: 3,
     playerStartOffset: 10,
     deathWiggleDistance: 1,
     treeEdgeMarginPct: 10,

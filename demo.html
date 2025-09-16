@@ -173,6 +173,16 @@
               <input id="dbg-treeGap" type="number" step="1" min="5" max="80" style="width:120px">
             </div>
           </details>
+          <!-- Shuffle Controls -->
+          <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
+            <summary style="font-weight:600;color:#2e7d32">Shuffle</summary>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
+              <label for="dbg-shuffleEnabled">Enable shuffle</label>
+              <input id="dbg-shuffleEnabled" type="checkbox" style="justify-self:start">
+              <label for="dbg-shuffleLimit">Shuffles per idle</label>
+              <input id="dbg-shuffleLimit" type="number" step="1" min="0" max="10" style="width:120px">
+            </div>
+          </details>
         </div>
       </details>
     </div>
@@ -207,6 +217,8 @@
         var wiggleDistEl = document.getElementById('dbg-wiggleDist');
         var treeMarginEl = document.getElementById('dbg-treeMargin');
         var treeGapEl = document.getElementById('dbg-treeGap');
+        var shuffleEnabledEl = document.getElementById('dbg-shuffleEnabled');
+        var shuffleLimitEl = document.getElementById('dbg-shuffleLimit');
         var saveBtn = document.getElementById('dbg-save');
         var profileSel = document.getElementById('dbg-profile');
         var revertBtn = document.getElementById('dbg-revert');
@@ -262,6 +274,8 @@
           if (wiggleDistEl) wiggleDistEl.value = String(s.deathWiggleDistance);
           if (treeMarginEl) treeMarginEl.value = String(s.treeEdgeMarginPct);
           if (treeGapEl) treeGapEl.value = String(s.treeMinGapPct);
+          if (shuffleEnabledEl) shuffleEnabledEl.checked = !!s.shuffleEnabled;
+          if (shuffleLimitEl) shuffleLimitEl.value = String(s.shuffleLimit ?? 0);
           // Skills
           var loadout = window.Jamble.Settings.skills.loadout || { movement: ['move','jump','dash'], utility: [], ultimate: [] };
           var jc = window.Jamble.Settings.skills.configs.jump || { strength: 7, cooldownMs: 0 };
@@ -421,6 +435,7 @@
         }
         function onInput(){
           
+          var currentSettings = window.Jamble.Settings.current || {};
           var p = smSpeedEl ? clamp(smSpeedEl.value, 10, 600) : undefined;
           var st = stretchEl ? clamp(stretchEl.value, 0, 0.2) : undefined;
           var sq = squashFactorEl ? clamp(squashFactorEl.value, 0, 0.1) : undefined;
@@ -439,7 +454,9 @@
           var wd = wiggleDistEl ? clamp(wiggleDistEl.value, 0, 10) : undefined;
           var tm = treeMarginEl ? clamp(treeMarginEl.value, 0, 40) : undefined;
           var tg = treeGapEl ? clamp(treeGapEl.value, 5, 80) : undefined;
+          var shLimit = shuffleLimitEl ? clamp(shuffleLimitEl.value, 0, 10) : undefined;
           var patch = {};
+          var shuffleChanged = false;
           
           if (p !== undefined) patch.playerSpeed = Number(p);
           if (modeEl) patch.mode = modeEl.checked ? 'pingpong' : 'idle';
@@ -462,10 +479,21 @@
           if (wd !== undefined) patch.deathWiggleDistance = Number(wd);
           if (tm !== undefined) patch.treeEdgeMarginPct = Math.round(Number(tm));
           if (tg !== undefined) patch.treeMinGapPct = Math.round(Number(tg));
+          if (shuffleEnabledEl){
+            var newShuffleEnabled = !!shuffleEnabledEl.checked;
+            if (!!currentSettings.shuffleEnabled !== newShuffleEnabled) shuffleChanged = true;
+            patch.shuffleEnabled = newShuffleEnabled;
+          }
+          if (shLimit !== undefined){
+            var limitVal = Math.round(Number(shLimit));
+            if (Number(currentSettings.shuffleLimit) !== limitVal) shuffleChanged = true;
+            patch.shuffleLimit = limitVal;
+          }
           window.Jamble.Settings.update(patch);
           updateDirty();
+          if (shuffleChanged && game && typeof game.refreshShuffleSettings === 'function') game.refreshShuffleSettings();
         }
-        
+
         if (smSpeedEl) smSpeedEl.addEventListener('input', onInput);
         if (modeEl) modeEl.addEventListener('change', onInput);
         if (squashEl) squashEl.addEventListener('change', onInput);
@@ -486,6 +514,8 @@
         if (wiggleDistEl) wiggleDistEl.addEventListener('input', onInput);
         if (treeMarginEl) treeMarginEl.addEventListener('input', onInput);
         if (treeGapEl) treeGapEl.addEventListener('input', onInput);
+        if (shuffleEnabledEl) shuffleEnabledEl.addEventListener('change', onInput);
+        if (shuffleLimitEl) shuffleLimitEl.addEventListener('input', onInput);
         if (sjStrengthEl) sjStrengthEl.addEventListener('input', onJumpCfg);
         if (sjCdEl) sjCdEl.addEventListener('input', onJumpCfg);
         if (sdSpeedEl) sdSpeedEl.addEventListener('input', onDashCfg);
