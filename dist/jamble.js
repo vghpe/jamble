@@ -857,6 +857,9 @@ var Jamble;
             }
             return cards;
         }
+        getElementDeck() {
+            return this.elementDeck.slice();
+        }
         setElementCardActive(id, active) {
             const card = this.elementHand.find(c => c.id === id);
             if (!card)

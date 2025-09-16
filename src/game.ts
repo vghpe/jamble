@@ -211,6 +211,10 @@ namespace Jamble {
       return cards;
     }
 
+    public getElementDeck(): ReadonlyArray<{ id: string; name: string; type: LevelElementType }> {
+      return this.elementDeck.slice();
+    }
+
     public setElementCardActive(id: string, active: boolean): void {
       const card = this.elementHand.find(c => c.id === id);
       if (!card) return;

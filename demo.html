@@ -190,6 +190,11 @@
               <input id="dbg-shuffleLimit" type="number" step="1" min="0" max="10" style="width:120px">
             </div>
           </details>
+          <!-- Deck View -->
+          <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
+            <summary style="font-weight:600;color:#2e7d32">Level Elements</summary>
+            <ul id="dbg-deck" style="list-style:none;padding:0;margin:6px 0 0 0;font-size:13px;color:#2e7d32"></ul>
+          </details>
         </div>
       </details>
     </div>
@@ -227,6 +232,7 @@
         var shuffleEnabledEl = document.getElementById('dbg-shuffleEnabled');
         var shuffleLimitEl = document.getElementById('dbg-shuffleLimit');
         var elementHandEl = document.getElementById('element-hand');
+        var deckEl = document.getElementById('dbg-deck');
         var saveBtn = document.getElementById('dbg-save');
         var profileSel = document.getElementById('dbg-profile');
         var revertBtn = document.getElementById('dbg-revert');
@@ -647,6 +653,19 @@
           elementHandEl.addEventListener('click', function(ev){ ev.stopPropagation(); });
         }
 
+        function renderDeckList(){
+          if (!deckEl) return;
+          var hand = game.getElementHand ? game.getElementHand() : [];
+          var deck = game.getElementDeck ? game.getElementDeck() : [];
+          deckEl.innerHTML = '';
+          deck.forEach(function(card){
+            var item = document.createElement('li');
+            var inHand = hand.some(function(h){ return h.id === card.id && h.available; });
+            item.textContent = card.name + (inHand ? ' (in hand)' : '');
+            deckEl.appendChild(item);
+          });
+        }
+
         function renderElementHand(hand){
           if (!elementHandEl) return;
           var cards = Array.isArray(hand) ? hand : (game.getElementHand ? game.getElementHand() : []);
@@ -677,7 +696,7 @@
           }
         }
 
-        window.addEventListener('jamble:elementHandChanged', function(ev){ renderElementHand(ev && ev.detail); });
+        window.addEventListener('jamble:elementHandChanged', function(ev){ renderElementHand(ev && ev.detail); renderDeckList(); });
 
         // Initial sync and after settings load (HTTP mode)
         syncFromSettings();
@@ -707,6 +726,7 @@
         // Initial paint
         renderSkillSlotsAndMenu();
         renderElementHand();
+        renderDeckList();
       })();
     </script>
   </body>
