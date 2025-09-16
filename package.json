@@ -4,7 +4,7 @@
   "description": "",
   "main": "jamble.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "tsc -p tsconfig.json --pretty false",
     "build:jamble": "mkdir -p dist dist/profiles dist/skill-presets && tsc -p tsconfig.json && cp src/jamble.css dist/jamble.css && cp src/profiles/*.json dist/profiles/ && (cp -R src/skill-presets/* dist/skill-presets/ 2>/dev/null || true)",
     "watch": "tsc -w -p tsconfig.json",
     "serve": "python3 devserver.py 8080"

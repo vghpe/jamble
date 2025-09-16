@@ -386,15 +386,67 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
-    class Obstacle {
-        constructor(el) { this.el = el; }
+    function isPositionableLevelElement(el) {
+        return typeof el.setLeftPct === 'function';
+    }
+    Jamble.isPositionableLevelElement = isPositionableLevelElement;
+    class TreeElement {
+        constructor(id, el) {
+            this.type = 'tree';
+            this.collidable = true;
+            this.id = id;
+            this.el = el;
+        }
         rect() { return this.el.getBoundingClientRect(); }
         setLeftPct(pct) {
             const n = Math.max(0, Math.min(100, pct));
             this.el.style.left = n.toFixed(1) + '%';
         }
     }
-    Jamble.Obstacle = Obstacle;
+    Jamble.TreeElement = TreeElement;
+    class LevelElementManager {
+        constructor() {
+            this.elements = new Map();
+        }
+        add(element) {
+            this.elements.set(element.id, element);
+        }
+        remove(id) {
+            this.elements.delete(id);
+        }
+        get(id) {
+            return this.elements.get(id);
+        }
+        getPositionable(id) {
+            const el = this.elements.get(id);
+            if (el && isPositionableLevelElement(el))
+                return el;
+            return undefined;
+        }
+        forEach(cb) {
+            this.elements.forEach(cb);
+        }
+        getByType(type) {
+            const list = [];
+            this.elements.forEach(el => { if (el.type === type)
+                list.push(el); });
+            return list;
+        }
+        someCollidable(predicate) {
+            for (const el of this.elements.values()) {
+                if (!el.collidable)
+                    continue;
+                if (predicate(el))
+                    return true;
+            }
+            return false;
+        }
+        clear() {
+            this.elements.clear();
+        }
+        all() { return Array.from(this.elements.values()); }
+    }
+    Jamble.LevelElementManager = LevelElementManager;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
@@ -594,8 +646,9 @@ var Jamble;
             }
             this.gameEl = gameEl;
             this.player = new Jamble.Player(playerEl);
-            this.tree1 = new Jamble.Obstacle(t1);
-            this.tree2 = new Jamble.Obstacle(t2);
+            this.levelElements = new Jamble.LevelElementManager();
+            this.levelElements.add(new Jamble.TreeElement('tree1', t1));
+            this.levelElements.add(new Jamble.TreeElement('tree2', t2));
             this.countdown = new Jamble.Countdown(cdEl);
             this.resetBtn = resetBtn;
             this.startBtn = startBtn;
@@ -712,8 +765,12 @@ var Jamble;
             const gap = Jamble.Settings.current.treeMinGapPct;
             const left1 = min + Math.random() * (max - min - gap);
             const left2 = left1 + gap + Math.random() * (max - (left1 + gap));
-            this.tree1.setLeftPct(left1);
-            this.tree2.setLeftPct(left2);
+            const tree1 = this.levelElements.getPositionable('tree1');
+            const tree2 = this.levelElements.getPositionable('tree2');
+            if (tree1)
+                tree1.setLeftPct(left1);
+            if (tree2)
+                tree2.setLeftPct(left2);
         }
         bind() {
             document.addEventListener('pointerdown', this.onPointerDown);
@@ -781,6 +838,26 @@ var Jamble;
             return this.player.getRight(this.gameEl.offsetWidth) >= rightLimit;
         }
         reachedLeft() { return this.player.x <= Jamble.Settings.current.playerStartOffset; }
+        handleEdgeArrival(nextDirection, align) {
+            align();
+            this.level += 1;
+            this.updateLevel();
+            if (Jamble.Settings.current.mode === 'idle') {
+                this.player.setFrozenStart();
+                if (this.player.velocity > 0)
+                    this.player.velocity = -0.1;
+                this.waitGroundForStart = true;
+                this.awaitingStartTap = false;
+            }
+            else {
+                if (this.player.velocity > 0)
+                    this.player.velocity = -0.1;
+                this.awaitingStartTap = false;
+                this.waitGroundForStart = false;
+                this.hideIdleControls();
+            }
+            this.direction = nextDirection;
+        }
         loop(ts) {
             if (this.lastTime === null)
                 this.lastTime = ts;
@@ -815,44 +892,10 @@ var Jamble;
                     this.impulses = this.impulses.filter(i => i.remainingMs > 0);
                 }
                 if (this.direction === 1 && this.reachedRight()) {
-                    this.player.snapRight(this.gameEl.offsetWidth);
-                    this.level += 1;
-                    this.updateLevel();
-                    if (Jamble.Settings.current.mode === 'idle') {
-                        this.player.setFrozenStart();
-                        if (this.player.velocity > 0)
-                            this.player.velocity = -0.1;
-                        this.waitGroundForStart = true;
-                        this.awaitingStartTap = false;
-                    }
-                    else {
-                        if (this.player.velocity > 0)
-                            this.player.velocity = -0.1;
-                        this.awaitingStartTap = false;
-                        this.waitGroundForStart = false;
-                        this.hideIdleControls();
-                    }
-                    this.direction = -1;
+                    this.handleEdgeArrival(-1, () => this.player.snapRight(this.gameEl.offsetWidth));
                 }
                 else if (this.direction === -1 && this.reachedLeft()) {
-                    this.player.setX(Jamble.Settings.current.playerStartOffset);
-                    this.level += 1;
-                    this.updateLevel();
-                    if (Jamble.Settings.current.mode === 'idle') {
-                        this.player.setFrozenStart();
-                        if (this.player.velocity > 0)
-                            this.player.velocity = -0.1;
-                        this.waitGroundForStart = true;
-                        this.awaitingStartTap = false;
-                    }
-                    else {
-                        if (this.player.velocity > 0)
-                            this.player.velocity = -0.1;
-                        this.awaitingStartTap = false;
-                        this.waitGroundForStart = false;
-                        this.hideIdleControls();
-                    }
-                    this.direction = 1;
+                    this.handleEdgeArrival(1, () => this.player.setX(Jamble.Settings.current.playerStartOffset));
                 }
             }
             this.player.update(dt60);
@@ -882,7 +925,8 @@ var Jamble;
                 this.awaitingStartTap = true;
                 this.showIdleControls();
             }
-            if (!this.player.frozenStart && !this.player.frozenDeath && (this.collisionWith(this.tree1) || this.collisionWith(this.tree2))) {
+            const hitElement = this.levelElements.someCollidable(el => this.collisionWith(el));
+            if (!this.player.frozenStart && !this.player.frozenDeath && hitElement) {
                 this.player.setFrozenDeath();
                 if (this.deathWiggleTimer !== null) {
                     window.clearTimeout(this.deathWiggleTimer);

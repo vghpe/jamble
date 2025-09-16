@@ -18,7 +18,7 @@
     "src/skills/jump.ts",
     "src/skills/dash.ts",
     "src/countdown.ts",
-    "src/obstacle.ts",
+    "src/level-elements.ts",
     "src/wiggle.ts",
     "src/player.ts",
     "src/game.ts",

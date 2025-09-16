@@ -1,5 +1,5 @@
 /// <reference path="./player.ts" />
-/// <reference path="./obstacle.ts" />
+/// <reference path="./level-elements.ts" />
 /// <reference path="./countdown.ts" />
 /// <reference path="./wiggle.ts" />
 /// <reference path="./skills/types.ts" />
@@ -11,8 +11,7 @@ namespace Jamble {
     private root: HTMLElement;
     private gameEl: HTMLDivElement;
     private player: Player;
-    private tree1: Obstacle;
-    private tree2: Obstacle;
+    private levelElements: LevelElementManager;
     private countdown: Countdown;
     private resetBtn: HTMLButtonElement;
     private startBtn: HTMLButtonElement;
@@ -57,8 +56,9 @@ namespace Jamble {
 
       this.gameEl = gameEl;
       this.player = new Player(playerEl);
-      this.tree1 = new Obstacle(t1);
-      this.tree2 = new Obstacle(t2);
+      this.levelElements = new LevelElementManager();
+      this.levelElements.add(new TreeElement('tree1', t1));
+      this.levelElements.add(new TreeElement('tree2', t2));
       this.countdown = new Countdown(cdEl);
       this.resetBtn = resetBtn;
       this.startBtn = startBtn;
@@ -168,8 +168,10 @@ namespace Jamble {
       const gap = Jamble.Settings.current.treeMinGapPct;
       const left1 = min + Math.random() * (max - min - gap);
       const left2 = left1 + gap + Math.random() * (max - (left1 + gap));
-      this.tree1.setLeftPct(left1);
-      this.tree2.setLeftPct(left2);
+      const tree1 = this.levelElements.getPositionable('tree1');
+      const tree2 = this.levelElements.getPositionable('tree2');
+      if (tree1) tree1.setLeftPct(left1);
+      if (tree2) tree2.setLeftPct(left2);
     }
 
     private bind(): void {
@@ -226,7 +228,7 @@ namespace Jamble {
     private updateLevel(): void {
       if (this.levelEl) this.levelEl.textContent = String(this.level);
     }
-    private collisionWith(ob: Obstacle): boolean {
+    private collisionWith(ob: LevelElement): boolean {
       const pr = this.player.el.getBoundingClientRect();
       const tr = ob.rect();
       return pr.left < tr.right && pr.right > tr.left && pr.bottom > tr.top;
@@ -333,7 +335,8 @@ namespace Jamble {
       }
 
       // Collision: wiggle + freeze; show reset button, no auto reset
-      if (!this.player.frozenStart && !this.player.frozenDeath && (this.collisionWith(this.tree1) || this.collisionWith(this.tree2))){
+      const hitElement = this.levelElements.someCollidable(el => this.collisionWith(el));
+      if (!this.player.frozenStart && !this.player.frozenDeath && hitElement){
         this.player.setFrozenDeath();
         if (this.deathWiggleTimer !== null) { window.clearTimeout(this.deathWiggleTimer); this.deathWiggleTimer = null; }
         if (this.showResetTimer !== null) { window.clearTimeout(this.showResetTimer); this.showResetTimer = null; }
