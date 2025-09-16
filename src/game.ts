@@ -238,6 +238,24 @@ namespace Jamble {
     }
     private reachedLeft(): boolean { return this.player.x <= Jamble.Settings.current.playerStartOffset; }
 
+    private handleEdgeArrival(nextDirection: 1 | -1, align: () => void): void {
+      align();
+      this.level += 1;
+      this.updateLevel();
+      if (Jamble.Settings.current.mode === 'idle'){
+        this.player.setFrozenStart();
+        if (this.player.velocity > 0) this.player.velocity = -0.1;
+        this.waitGroundForStart = true;
+        this.awaitingStartTap = false;
+      } else {
+        if (this.player.velocity > 0) this.player.velocity = -0.1;
+        this.awaitingStartTap = false;
+        this.waitGroundForStart = false;
+        this.hideIdleControls();
+      }
+      this.direction = nextDirection;
+    }
+
     private loop(ts: number): void {
       if (this.lastTime === null) this.lastTime = ts;
       const deltaSec = Math.min((ts - this.lastTime) / 1000, 0.05);
@@ -279,39 +297,9 @@ namespace Jamble {
         }
 
         if (this.direction === 1 && this.reachedRight()){
-          this.player.snapRight(this.gameEl.offsetWidth);
-          this.level += 1; this.updateLevel();
-          if (Jamble.Settings.current.mode === 'idle'){
-            // Apply idle visuals, freeze horizontal movement
-            this.player.setFrozenStart();
-            // Ensure downward motion starts immediately
-            if (this.player.velocity > 0) this.player.velocity = -0.1;
-            // Wait until grounded before allowing start tap
-            this.waitGroundForStart = true;
-            this.awaitingStartTap = false;
-          } else {
-            // Ping-pong: reverse immediately, keep moving
-            if (this.player.velocity > 0) this.player.velocity = -0.1;
-            this.awaitingStartTap = false;
-            this.waitGroundForStart = false;
-            this.hideIdleControls();
-          }
-          this.direction = -1;
+          this.handleEdgeArrival(-1, () => this.player.snapRight(this.gameEl.offsetWidth));
         } else if (this.direction === -1 && this.reachedLeft()){
-          this.player.setX(Jamble.Settings.current.playerStartOffset);
-          this.level += 1; this.updateLevel();
-          if (Jamble.Settings.current.mode === 'idle'){
-            this.player.setFrozenStart();
-            if (this.player.velocity > 0) this.player.velocity = -0.1;
-            this.waitGroundForStart = true;
-            this.awaitingStartTap = false;
-          } else {
-            if (this.player.velocity > 0) this.player.velocity = -0.1;
-            this.awaitingStartTap = false;
-            this.waitGroundForStart = false;
-            this.hideIdleControls();
-          }
-          this.direction = 1;
+          this.handleEdgeArrival(1, () => this.player.setX(Jamble.Settings.current.playerStartOffset));
         }
       }
 
