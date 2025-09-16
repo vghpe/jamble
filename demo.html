@@ -652,17 +652,15 @@
           var cards = Array.isArray(hand) ? hand : (game.getElementHand ? game.getElementHand() : []);
           var maxSlots = 5;
           elementHandEl.innerHTML = '';
-          cards.slice(0, maxSlots).forEach(function(card){
-            var btn = document.createElement('button');
+          for (let idx = 0; idx < maxSlots; idx++){
+            const card = cards[idx];
+            const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'jamble-element-card';
-            btn.textContent = '🌳';
-            btn.setAttribute('aria-label', card.name || 'Tree');
-            if (card.active) btn.classList.add('jamble-active');
-            if (card.clickable === false){
-              btn.disabled = true;
-              btn.classList.add('jamble-placeholder');
-            } else {
+            if (card && card.available){
+              btn.textContent = '🌳';
+              btn.setAttribute('aria-label', card.name || 'Tree');
+              if (card.active) btn.classList.add('jamble-active');
               btn.addEventListener('click', function(ev){
                 ev.preventDefault();
                 ev.stopPropagation();
@@ -670,15 +668,12 @@
                   game.setElementCardActive(card.id, !card.active);
                 }
               });
+            } else {
+              btn.textContent = '…';
+              btn.disabled = true;
+              btn.classList.add('jamble-placeholder');
             }
             elementHandEl.appendChild(btn);
-          });
-          var placeholdersNeeded = Math.max(0, maxSlots - cards.length);
-          for (var i = 0; i < placeholdersNeeded; i++){
-            var placeholder = document.createElement('div');
-            placeholder.className = 'jamble-element-card jamble-placeholder';
-            placeholder.textContent = '…';
-            elementHandEl.appendChild(placeholder);
           }
         }
 

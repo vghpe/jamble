@@ -13,7 +13,7 @@ namespace Jamble {
     private player: Player;
     private levelElements: LevelElementManager;
     private elementDeck: Array<{ id: string; name: string; type: LevelElementType }>;
-    private elementHand: Array<{ id: string; name: string; type: LevelElementType; active: boolean }>;
+    private elementHand: Array<{ id: string; name: string; type: LevelElementType; active: boolean; available: boolean }>;
     private countdown: Countdown;
     private resetBtn: HTMLButtonElement;
     private startBtn: HTMLButtonElement;
@@ -82,7 +82,7 @@ namespace Jamble {
         { id: 'tree2', name: 'Tree B', type: 'tree' },
         { id: 'tree3', name: 'Tree C', type: 'tree' }
       ];
-      this.elementHand = this.elementDeck.map(card => ({ ...card, active: true }));
+      this.elementHand = this.elementDeck.map(card => ({ ...card, active: true, available: true }));
       this.applyElementHand();
 
       this.onPointerDown = this.onPointerDown.bind(this);
@@ -178,9 +178,9 @@ namespace Jamble {
 
     private applyElementHand(triggerShuffle: boolean = true): void {
       let activeCount = 0;
-      for (const card of this.elementHand){
+      this.elementHand.forEach(card => {
         const element = this.levelElements.get(card.id);
-        if (!element) continue;
+        if (!element) return;
         const dom = element.el;
         if (card.active){
           this.levelElements.setActive(card.id, true);
@@ -190,7 +190,7 @@ namespace Jamble {
           this.levelElements.setActive(card.id, false);
           if (dom) dom.style.display = 'none';
         }
-      }
+      });
       if (triggerShuffle && activeCount > 0) this.shuffleElements();
       this.updateShuffleButtonState();
       this.emitElementHandChanged();
@@ -202,13 +202,19 @@ namespace Jamble {
       } catch(_e){}
     }
 
-    public getElementHand(): ReadonlyArray<{ id: string; name: string; type: LevelElementType; active: boolean }> {
-      return this.elementHand.map(card => ({ ...card }));
+    public getElementHand(): ReadonlyArray<{ id: string; name: string; type: LevelElementType; active: boolean; available: boolean }> {
+      const cards = this.elementHand.map(card => ({ ...card, available: true }));
+      const maxSlots = 5;
+      for (let i = cards.length; i < maxSlots; i++){
+        cards.push({ id: 'placeholder-' + i, name: 'Empty', type: 'empty', active: false, available: false });
+      }
+      return cards;
     }
 
     public setElementCardActive(id: string, active: boolean): void {
       const card = this.elementHand.find(c => c.id === id);
       if (!card) return;
+      if (!card.available) return;
       if (card.active === active) return;
       card.active = active;
       this.applyElementHand();

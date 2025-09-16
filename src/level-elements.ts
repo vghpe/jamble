@@ -1,5 +1,5 @@
 namespace Jamble {
-  export type LevelElementType = 'tree';
+  export type LevelElementType = 'tree' | 'empty';
 
   export interface LevelElement {
     readonly id: string;

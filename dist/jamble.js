@@ -719,7 +719,7 @@ var Jamble;
                 { id: 'tree2', name: 'Tree B', type: 'tree' },
                 { id: 'tree3', name: 'Tree C', type: 'tree' }
             ];
-            this.elementHand = this.elementDeck.map(card => ({ ...card, active: true }));
+            this.elementHand = this.elementDeck.map(card => ({ ...card, active: true, available: true }));
             this.applyElementHand();
             this.onPointerDown = this.onPointerDown.bind(this);
             this.onStartClick = this.onStartClick.bind(this);
@@ -821,10 +821,10 @@ var Jamble;
         }
         applyElementHand(triggerShuffle = true) {
             let activeCount = 0;
-            for (const card of this.elementHand) {
+            this.elementHand.forEach(card => {
                 const element = this.levelElements.get(card.id);
                 if (!element)
-                    continue;
+                    return;
                 const dom = element.el;
                 if (card.active) {
                     this.levelElements.setActive(card.id, true);
@@ -837,7 +837,7 @@ var Jamble;
                     if (dom)
                         dom.style.display = 'none';
                 }
-            }
+            });
             if (triggerShuffle && activeCount > 0)
                 this.shuffleElements();
             this.updateShuffleButtonState();
@@ -850,11 +850,18 @@ var Jamble;
             catch (_e) { }
         }
         getElementHand() {
-            return this.elementHand.map(card => ({ ...card }));
+            const cards = this.elementHand.map(card => ({ ...card, available: true }));
+            const maxSlots = 5;
+            for (let i = cards.length; i < maxSlots; i++) {
+                cards.push({ id: 'placeholder-' + i, name: 'Empty', type: 'empty', active: false, available: false });
+            }
+            return cards;
         }
         setElementCardActive(id, active) {
             const card = this.elementHand.find(c => c.id === id);
             if (!card)
+                return;
+            if (!card.available)
                 return;
             if (card.active === active)
                 return;
