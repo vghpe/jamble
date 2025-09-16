@@ -12,12 +12,15 @@ namespace Jamble {
     private gameEl: HTMLDivElement;
     private player: Player;
     private levelElements: LevelElementManager;
+    private elementDeck: Array<{ id: string; name: string; type: LevelElementType }>;
+    private elementHand: Array<{ id: string; name: string; type: LevelElementType; active: boolean }>;
     private countdown: Countdown;
     private resetBtn: HTMLButtonElement;
     private startBtn: HTMLButtonElement;
     private shuffleBtn: HTMLButtonElement;
     private skillSlotsEl: HTMLElement | null = null;
     private skillMenuEl: HTMLElement | null = null;
+    private elementHandEl: HTMLElement | null = null;
     private wiggle: Wiggle;
     private lastTime: number | null = null;
     private rafId: number | null = null;
@@ -51,6 +54,7 @@ namespace Jamble {
       const shuffleBtn = root.querySelector('.jamble-shuffle') as HTMLButtonElement | null;
       const skillSlotsEl = root.querySelector('#skill-slots') as HTMLElement | null;
       const skillMenuEl = root.querySelector('#skill-menu') as HTMLElement | null;
+      const elementHandEl = root.querySelector('#element-hand') as HTMLElement | null;
 
       if (!gameEl || !playerEl || !t1 || !t2 || !cdEl || !resetBtn || !startBtn || !shuffleBtn){
         throw new Error('Jamble: missing required elements');
@@ -59,16 +63,27 @@ namespace Jamble {
       this.gameEl = gameEl;
       this.player = new Player(playerEl);
       this.levelElements = new LevelElementManager();
-      this.levelElements.add(new TreeElement('tree1', t1));
-      this.levelElements.add(new TreeElement('tree2', t2));
+      this.levelElements.add(new TreeElement('tree1', t1), { active: false });
+      this.levelElements.add(new TreeElement('tree2', t2), { active: false });
+      const t3 = this.ensureTreeDom('3');
+      this.levelElements.add(new TreeElement('tree3', t3), { active: false });
       this.countdown = new Countdown(cdEl);
       this.resetBtn = resetBtn;
       this.startBtn = startBtn;
       this.shuffleBtn = shuffleBtn;
       this.skillSlotsEl = skillSlotsEl;
       this.skillMenuEl = skillMenuEl;
+      this.elementHandEl = elementHandEl;
       this.levelEl = levelEl;
       this.wiggle = new Wiggle(this.player.el);
+
+      this.elementDeck = [
+        { id: 'tree1', name: 'Tree A', type: 'tree' },
+        { id: 'tree2', name: 'Tree B', type: 'tree' },
+        { id: 'tree3', name: 'Tree C', type: 'tree' }
+      ];
+      this.elementHand = this.elementDeck.map(card => ({ ...card, active: true }));
+      this.applyElementHand();
 
       this.onPointerDown = this.onPointerDown.bind(this);
       this.onStartClick = this.onStartClick.bind(this);
@@ -128,6 +143,18 @@ namespace Jamble {
       this.updateShuffleButtonState();
     }
 
+    private ensureTreeDom(label: string): HTMLElement {
+      const existing = this.gameEl.querySelector('.jamble-tree[data-tree="' + label + '"]') as HTMLElement | null;
+      if (existing) return existing;
+      const el = document.createElement('div');
+      el.className = 'jamble-tree';
+      el.setAttribute('data-tree', label);
+      el.style.left = '50%';
+      el.style.display = 'none';
+      this.gameEl.appendChild(el);
+      return el;
+    }
+
     reset(): void {
       this.wiggle.stop();
       this.countdown.hide();
@@ -147,6 +174,44 @@ namespace Jamble {
       this.direction = 1;
       this.level = 0;
       this.updateLevel();
+    }
+
+    private applyElementHand(triggerShuffle: boolean = true): void {
+      let activeCount = 0;
+      for (const card of this.elementHand){
+        const element = this.levelElements.get(card.id);
+        if (!element) continue;
+        const dom = element.el;
+        if (card.active){
+          this.levelElements.setActive(card.id, true);
+          if (dom) dom.style.display = '';
+          activeCount++;
+        } else {
+          this.levelElements.setActive(card.id, false);
+          if (dom) dom.style.display = 'none';
+        }
+      }
+      if (triggerShuffle && activeCount > 0) this.shuffleElements();
+      this.updateShuffleButtonState();
+      this.emitElementHandChanged();
+    }
+
+    private emitElementHandChanged(): void {
+      try {
+        window.dispatchEvent(new CustomEvent('jamble:elementHandChanged', { detail: this.getElementHand() }));
+      } catch(_e){}
+    }
+
+    public getElementHand(): ReadonlyArray<{ id: string; name: string; type: LevelElementType; active: boolean }> {
+      return this.elementHand.map(card => ({ ...card }));
+    }
+
+    public setElementCardActive(id: string, active: boolean): void {
+      const card = this.elementHand.find(c => c.id === id);
+      if (!card) return;
+      if (card.active === active) return;
+      card.active = active;
+      this.applyElementHand();
     }
 
     private onStartClick(): void {
@@ -175,15 +240,28 @@ namespace Jamble {
     }
 
     private shuffleElements(): void {
+      const trees = this.levelElements.getPositionablesByType('tree');
+      if (trees.length === 0) return;
       const min = Jamble.Settings.current.treeEdgeMarginPct;
       const max = 100 - Jamble.Settings.current.treeEdgeMarginPct;
-      const gap = Jamble.Settings.current.treeMinGapPct;
-      const left1 = min + Math.random() * (max - min - gap);
-      const left2 = left1 + gap + Math.random() * (max - (left1 + gap));
-      const tree1 = this.levelElements.getPositionable('tree1');
-      const tree2 = this.levelElements.getPositionable('tree2');
-      if (tree1) tree1.setLeftPct(left1);
-      if (tree2) tree2.setLeftPct(left2);
+      const gap = Math.max(0, Jamble.Settings.current.treeMinGapPct);
+      const usable = Math.max(0, max - min);
+      const totalGap = gap * Math.max(0, trees.length - 1);
+      const free = Math.max(0, usable - totalGap);
+      const order = trees.slice();
+      for (let i = order.length - 1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        const tmp = order[i]; order[i] = order[j]; order[j] = tmp;
+      }
+      const weights = order.map(() => Math.random());
+      const weightTotal = weights.reduce((acc, w) => acc + w, 0);
+      let cursor = min;
+      for (let i = 0; i < order.length; i++){
+        const share = weightTotal > 0 ? (weights[i] / weightTotal) * free : (order.length > 0 ? free / order.length : 0);
+        cursor += share;
+        order[i].setLeftPct(cursor);
+        if (i < order.length - 1) cursor += gap;
+      }
     }
 
     private startIdleShuffleSession(): void {
@@ -200,6 +278,7 @@ namespace Jamble {
       if (!this.shuffleBtn) return;
       const enabledSetting = Jamble.Settings.current.shuffleEnabled;
       const idleVisible = this.awaitingStartTap && !this.waitGroundForStart && this.player.frozenStart;
+      const activeTrees = this.levelElements.getByType('tree').length;
       if (!enabledSetting || !idleVisible){
         this.shuffleBtn.style.display = 'none';
         this.shuffleBtn.disabled = true;
@@ -208,9 +287,14 @@ namespace Jamble {
       }
       this.shuffleBtn.style.display = 'block';
       const remaining = this.idleShuffleRemaining;
-      const usable = remaining > 0;
+      const usable = remaining > 0 && activeTrees > 0;
       this.shuffleBtn.disabled = !usable;
-      this.shuffleBtn.title = usable ? ('Shuffle (' + remaining + ' left)') : 'No shuffles left';
+      if (!usable){
+        if (activeTrees === 0) this.shuffleBtn.title = 'No elements to shuffle';
+        else this.shuffleBtn.title = 'No shuffles left';
+      } else {
+        this.shuffleBtn.title = 'Shuffle (' + remaining + ' left)';
+      }
     }
 
     public refreshShuffleSettings(): void {
@@ -246,7 +330,9 @@ namespace Jamble {
       this.startBtn.style.display = 'block';
       if (this.skillSlotsEl) this.skillSlotsEl.style.display = 'flex';
       if (this.skillMenuEl) this.skillMenuEl.style.display = 'flex';
+      if (this.elementHandEl) this.elementHandEl.style.display = 'flex';
       this.startIdleShuffleSession();
+      this.emitElementHandChanged();
     }
     private hideIdleControls(): void {
       this.startBtn.style.display = 'none';
@@ -257,6 +343,7 @@ namespace Jamble {
       // Keep skill slots visible during runs; hide only the menu
       if (this.skillSlotsEl) this.skillSlotsEl.style.display = 'flex';
       if (this.skillMenuEl) this.skillMenuEl.style.display = 'none';
+      if (this.elementHandEl) this.elementHandEl.style.display = 'none';
     }
 
     private onPointerDown(e: PointerEvent): void {

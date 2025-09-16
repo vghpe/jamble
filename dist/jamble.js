@@ -665,6 +665,7 @@ var Jamble;
             var _a, _b, _c, _d, _f, _g, _h, _j;
             this.skillSlotsEl = null;
             this.skillMenuEl = null;
+            this.elementHandEl = null;
             this.lastTime = null;
             this.rafId = null;
             this.awaitingStartTap = false;
@@ -693,22 +694,33 @@ var Jamble;
             const shuffleBtn = root.querySelector('.jamble-shuffle');
             const skillSlotsEl = root.querySelector('#skill-slots');
             const skillMenuEl = root.querySelector('#skill-menu');
+            const elementHandEl = root.querySelector('#element-hand');
             if (!gameEl || !playerEl || !t1 || !t2 || !cdEl || !resetBtn || !startBtn || !shuffleBtn) {
                 throw new Error('Jamble: missing required elements');
             }
             this.gameEl = gameEl;
             this.player = new Jamble.Player(playerEl);
             this.levelElements = new Jamble.LevelElementManager();
-            this.levelElements.add(new Jamble.TreeElement('tree1', t1));
-            this.levelElements.add(new Jamble.TreeElement('tree2', t2));
+            this.levelElements.add(new Jamble.TreeElement('tree1', t1), { active: false });
+            this.levelElements.add(new Jamble.TreeElement('tree2', t2), { active: false });
+            const t3 = this.ensureTreeDom('3');
+            this.levelElements.add(new Jamble.TreeElement('tree3', t3), { active: false });
             this.countdown = new Jamble.Countdown(cdEl);
             this.resetBtn = resetBtn;
             this.startBtn = startBtn;
             this.shuffleBtn = shuffleBtn;
             this.skillSlotsEl = skillSlotsEl;
             this.skillMenuEl = skillMenuEl;
+            this.elementHandEl = elementHandEl;
             this.levelEl = levelEl;
             this.wiggle = new Jamble.Wiggle(this.player.el);
+            this.elementDeck = [
+                { id: 'tree1', name: 'Tree A', type: 'tree' },
+                { id: 'tree2', name: 'Tree B', type: 'tree' },
+                { id: 'tree3', name: 'Tree C', type: 'tree' }
+            ];
+            this.elementHand = this.elementDeck.map(card => ({ ...card, active: true }));
+            this.applyElementHand();
             this.onPointerDown = this.onPointerDown.bind(this);
             this.onStartClick = this.onStartClick.bind(this);
             this.onShuffleClick = this.onShuffleClick.bind(this);
@@ -766,6 +778,18 @@ var Jamble;
             this.shuffleAllowanceInitialized = false;
             this.updateShuffleButtonState();
         }
+        ensureTreeDom(label) {
+            const existing = this.gameEl.querySelector('.jamble-tree[data-tree="' + label + '"]');
+            if (existing)
+                return existing;
+            const el = document.createElement('div');
+            el.className = 'jamble-tree';
+            el.setAttribute('data-tree', label);
+            el.style.left = '50%';
+            el.style.display = 'none';
+            this.gameEl.appendChild(el);
+            return el;
+        }
         reset() {
             this.wiggle.stop();
             this.countdown.hide();
@@ -794,6 +818,48 @@ var Jamble;
             this.direction = 1;
             this.level = 0;
             this.updateLevel();
+        }
+        applyElementHand(triggerShuffle = true) {
+            let activeCount = 0;
+            for (const card of this.elementHand) {
+                const element = this.levelElements.get(card.id);
+                if (!element)
+                    continue;
+                const dom = element.el;
+                if (card.active) {
+                    this.levelElements.setActive(card.id, true);
+                    if (dom)
+                        dom.style.display = '';
+                    activeCount++;
+                }
+                else {
+                    this.levelElements.setActive(card.id, false);
+                    if (dom)
+                        dom.style.display = 'none';
+                }
+            }
+            if (triggerShuffle && activeCount > 0)
+                this.shuffleElements();
+            this.updateShuffleButtonState();
+            this.emitElementHandChanged();
+        }
+        emitElementHandChanged() {
+            try {
+                window.dispatchEvent(new CustomEvent('jamble:elementHandChanged', { detail: this.getElementHand() }));
+            }
+            catch (_e) { }
+        }
+        getElementHand() {
+            return this.elementHand.map(card => ({ ...card }));
+        }
+        setElementCardActive(id, active) {
+            const card = this.elementHand.find(c => c.id === id);
+            if (!card)
+                return;
+            if (card.active === active)
+                return;
+            card.active = active;
+            this.applyElementHand();
         }
         onStartClick() {
             if (this.waitGroundForStart)
@@ -825,17 +891,32 @@ var Jamble;
             this.updateShuffleButtonState();
         }
         shuffleElements() {
+            const trees = this.levelElements.getPositionablesByType('tree');
+            if (trees.length === 0)
+                return;
             const min = Jamble.Settings.current.treeEdgeMarginPct;
             const max = 100 - Jamble.Settings.current.treeEdgeMarginPct;
-            const gap = Jamble.Settings.current.treeMinGapPct;
-            const left1 = min + Math.random() * (max - min - gap);
-            const left2 = left1 + gap + Math.random() * (max - (left1 + gap));
-            const tree1 = this.levelElements.getPositionable('tree1');
-            const tree2 = this.levelElements.getPositionable('tree2');
-            if (tree1)
-                tree1.setLeftPct(left1);
-            if (tree2)
-                tree2.setLeftPct(left2);
+            const gap = Math.max(0, Jamble.Settings.current.treeMinGapPct);
+            const usable = Math.max(0, max - min);
+            const totalGap = gap * Math.max(0, trees.length - 1);
+            const free = Math.max(0, usable - totalGap);
+            const order = trees.slice();
+            for (let i = order.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                const tmp = order[i];
+                order[i] = order[j];
+                order[j] = tmp;
+            }
+            const weights = order.map(() => Math.random());
+            const weightTotal = weights.reduce((acc, w) => acc + w, 0);
+            let cursor = min;
+            for (let i = 0; i < order.length; i++) {
+                const share = weightTotal > 0 ? (weights[i] / weightTotal) * free : (order.length > 0 ? free / order.length : 0);
+                cursor += share;
+                order[i].setLeftPct(cursor);
+                if (i < order.length - 1)
+                    cursor += gap;
+            }
         }
         startIdleShuffleSession() {
             this.shuffleAllowanceInitialized = true;
@@ -852,6 +933,7 @@ var Jamble;
                 return;
             const enabledSetting = Jamble.Settings.current.shuffleEnabled;
             const idleVisible = this.awaitingStartTap && !this.waitGroundForStart && this.player.frozenStart;
+            const activeTrees = this.levelElements.getByType('tree').length;
             if (!enabledSetting || !idleVisible) {
                 this.shuffleBtn.style.display = 'none';
                 this.shuffleBtn.disabled = true;
@@ -860,9 +942,17 @@ var Jamble;
             }
             this.shuffleBtn.style.display = 'block';
             const remaining = this.idleShuffleRemaining;
-            const usable = remaining > 0;
+            const usable = remaining > 0 && activeTrees > 0;
             this.shuffleBtn.disabled = !usable;
-            this.shuffleBtn.title = usable ? ('Shuffle (' + remaining + ' left)') : 'No shuffles left';
+            if (!usable) {
+                if (activeTrees === 0)
+                    this.shuffleBtn.title = 'No elements to shuffle';
+                else
+                    this.shuffleBtn.title = 'No shuffles left';
+            }
+            else {
+                this.shuffleBtn.title = 'Shuffle (' + remaining + ' left)';
+            }
         }
         refreshShuffleSettings() {
             if (!Jamble.Settings.current.shuffleEnabled) {
@@ -899,7 +989,10 @@ var Jamble;
                 this.skillSlotsEl.style.display = 'flex';
             if (this.skillMenuEl)
                 this.skillMenuEl.style.display = 'flex';
+            if (this.elementHandEl)
+                this.elementHandEl.style.display = 'flex';
             this.startIdleShuffleSession();
+            this.emitElementHandChanged();
         }
         hideIdleControls() {
             this.startBtn.style.display = 'none';
@@ -911,6 +1004,8 @@ var Jamble;
                 this.skillSlotsEl.style.display = 'flex';
             if (this.skillMenuEl)
                 this.skillMenuEl.style.display = 'none';
+            if (this.elementHandEl)
+                this.elementHandEl.style.display = 'none';
         }
         onPointerDown(e) {
             if (e.target === this.resetBtn || e.target === this.startBtn || e.target === this.shuffleBtn)

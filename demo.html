@@ -9,12 +9,6 @@
   <body>
     <h1 style="text-align:center;font-family:system-ui,sans-serif">Jamble Demo</h1>
     <div id="jamble">
-      <div class="jamble-skill-slots" id="skill-slots">
-        <div class="jamble-skill-slot"></div>
-        <div class="jamble-skill-slot"></div>
-        <div class="jamble-skill-slot"></div>
-        <div class="jamble-skill-slot"></div>
-      </div>
       <div class="jamble-game">
         <div class="jamble-player jamble-player-idle"></div>
         <div class="jamble-tree" data-tree="1" style="left: 35%"></div>
@@ -27,11 +21,24 @@
         <button class="jamble-start" title="Start">▶</button>
         <button class="jamble-shuffle" title="Shuffle">⇄</button>
       </div>
-      <div class="jamble-skill-menu" id="skill-menu">
-        <div class="jamble-skill-btn" data-skill="move">M</div>
-        <div class="jamble-skill-btn" data-skill="jump">J</div>
-        <div class="jamble-skill-btn" data-skill="dash">D</div>
-        <div class="jamble-skill-btn" data-skill="empty"></div>
+      <div class="jamble-section">
+        <h3 class="jamble-section-heading">Skill Loadout</h3>
+        <div class="jamble-skill-slots" id="skill-slots">
+          <div class="jamble-skill-slot"></div>
+          <div class="jamble-skill-slot"></div>
+          <div class="jamble-skill-slot"></div>
+          <div class="jamble-skill-slot"></div>
+        </div>
+        <div class="jamble-skill-menu" id="skill-menu">
+          <div class="jamble-skill-btn" data-skill="move">M</div>
+          <div class="jamble-skill-btn" data-skill="jump">J</div>
+          <div class="jamble-skill-btn" data-skill="dash">D</div>
+          <div class="jamble-skill-btn" data-skill="empty"></div>
+        </div>
+      </div>
+      <div class="jamble-section">
+        <h3 class="jamble-section-heading">Level Element Hand</h3>
+        <div class="jamble-element-hand" id="element-hand"></div>
       </div>
     </div>
 
@@ -219,6 +226,7 @@
         var treeGapEl = document.getElementById('dbg-treeGap');
         var shuffleEnabledEl = document.getElementById('dbg-shuffleEnabled');
         var shuffleLimitEl = document.getElementById('dbg-shuffleLimit');
+        var elementHandEl = document.getElementById('element-hand');
         var saveBtn = document.getElementById('dbg-save');
         var profileSel = document.getElementById('dbg-profile');
         var revertBtn = document.getElementById('dbg-revert');
@@ -634,6 +642,48 @@
           });
         }
 
+        if (elementHandEl){
+          elementHandEl.addEventListener('pointerdown', function(ev){ ev.stopPropagation(); });
+          elementHandEl.addEventListener('click', function(ev){ ev.stopPropagation(); });
+        }
+
+        function renderElementHand(hand){
+          if (!elementHandEl) return;
+          var cards = Array.isArray(hand) ? hand : (game.getElementHand ? game.getElementHand() : []);
+          var maxSlots = 5;
+          elementHandEl.innerHTML = '';
+          cards.slice(0, maxSlots).forEach(function(card){
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'jamble-element-card';
+            btn.textContent = '🌳';
+            btn.setAttribute('aria-label', card.name || 'Tree');
+            if (card.active) btn.classList.add('jamble-active');
+            if (card.clickable === false){
+              btn.disabled = true;
+              btn.classList.add('jamble-placeholder');
+            } else {
+              btn.addEventListener('click', function(ev){
+                ev.preventDefault();
+                ev.stopPropagation();
+                if (typeof game.setElementCardActive === 'function'){
+                  game.setElementCardActive(card.id, !card.active);
+                }
+              });
+            }
+            elementHandEl.appendChild(btn);
+          });
+          var placeholdersNeeded = Math.max(0, maxSlots - cards.length);
+          for (var i = 0; i < placeholdersNeeded; i++){
+            var placeholder = document.createElement('div');
+            placeholder.className = 'jamble-element-card jamble-placeholder';
+            placeholder.textContent = '…';
+            elementHandEl.appendChild(placeholder);
+          }
+        }
+
+        window.addEventListener('jamble:elementHandChanged', function(ev){ renderElementHand(ev && ev.detail); });
+
         // Initial sync and after settings load (HTTP mode)
         syncFromSettings();
         // Establish initial baseline after the initial HTTP load finishes
@@ -661,6 +711,7 @@
         // Click handler is attached above via `skillMenu`
         // Initial paint
         renderSkillSlotsAndMenu();
+        renderElementHand();
       })();
     </script>
   </body>
