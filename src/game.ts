@@ -77,27 +77,70 @@ namespace Jamble {
           return new TreeElement(id, host);
         }
       });
-      const treeHosts: Record<string, HTMLElement> = {
+      this.elementRegistry.register({
+        id: 'bird.basic',
+        name: 'Bird',
+        type: 'bird',
+        defaults: {},
+        create: ({ id, host }) => {
+          if (!host) throw new Error('Bird element requires a host element');
+          if (!host.classList.contains('jamble-bird')) host.classList.add('jamble-bird');
+          host.textContent = '🐦';
+          return new BirdElement(id, host);
+        }
+      });
+      this.elementRegistry.register({
+        id: 'bird.basic',
+        name: 'Bird',
+        type: 'tree',
+        defaults: {},
+        create: ({ id, host }) => {
+          if (!host) throw new Error('Bird element requires a host element');
+          if (!host.classList.contains('jamble-bird')) host.classList.add('jamble-bird');
+          host.textContent = '🐦';
+          return new BirdElement(id, host);
+        }
+      });
+      const elementHosts: Record<string, HTMLElement> = {
         tree1: t1,
         tree2: t2,
         tree3: this.ensureTreeDom('3')
       };
 
       const elementsSettings = Jamble.Settings.elements;
-      const deckConfig: ElementDeckEntry[] = (elementsSettings.deck && elementsSettings.deck.length > 0)
-        ? elementsSettings.deck
-        : [
-          { id: 'tree1', definitionId: 'tree.basic', name: 'Tree A', type: 'tree' as LevelElementType },
-          { id: 'tree2', definitionId: 'tree.basic', name: 'Tree B', type: 'tree' as LevelElementType },
-          { id: 'tree3', definitionId: 'tree.basic', name: 'Tree C', type: 'tree' as LevelElementType }
-        ];
+      const fallbackDeck: Jamble.ElementDeckEntry[] = [
+        { id: 'tree1', definitionId: 'tree.basic', name: 'Tree A', type: 'tree' },
+        { id: 'tree2', definitionId: 'tree.basic', name: 'Tree B', type: 'tree' },
+        { id: 'tree3', definitionId: 'tree.basic', name: 'Tree C', type: 'tree' },
+        { id: 'bird1', definitionId: 'bird.basic', name: 'Bird A', type: 'bird' },
+        { id: 'bird2', definitionId: 'bird.basic', name: 'Bird B', type: 'bird' },
+        { id: 'bird3', definitionId: 'bird.basic', name: 'Bird C', type: 'bird' }
+      ];
 
-      const resolveHost = (cardId: string): HTMLElement => {
-        if (treeHosts[cardId]) return treeHosts[cardId];
-        const labelMatch = cardId.match(/(\d+)/);
-        const label = labelMatch ? labelMatch[1] : String(Object.keys(treeHosts).length + 1);
-        const host = this.ensureTreeDom(label);
-        treeHosts[cardId] = host;
+      const deckConfig: Jamble.ElementDeckEntry[] = (elementsSettings.deck && elementsSettings.deck.length > 0)
+        ? elementsSettings.deck.slice()
+        : fallbackDeck.slice();
+
+      const ensureCard = (id: string, definitionId: string, name: string, type: LevelElementType): void => {
+        if (!deckConfig.some(card => card.id === id)) deckConfig.push({ id, definitionId, name, type });
+      };
+      ensureCard('bird1', 'bird.basic', 'Bird A', 'bird');
+      ensureCard('bird2', 'bird.basic', 'Bird B', 'bird');
+      ensureCard('bird3', 'bird.basic', 'Bird C', 'bird');
+
+      const resolveHost = (card: Jamble.ElementDeckEntry): HTMLElement => {
+        if (elementHosts[card.id]) return elementHosts[card.id];
+        let host: HTMLElement;
+        if (card.definitionId === 'tree.basic'){
+          const labelMatch = card.id.match(/(\d+)/);
+          const label = labelMatch ? labelMatch[1] : String(Object.keys(elementHosts).length + 1);
+          host = this.ensureTreeDom(label);
+        } else if (card.definitionId === 'bird.basic'){
+          host = this.ensureBirdDom(card.id);
+        } else {
+          host = this.ensureTreeDom(String(Object.keys(elementHosts).length + 1));
+        }
+        elementHosts[card.id] = host;
         return host;
       };
 
@@ -105,12 +148,12 @@ namespace Jamble {
       this.elementHandSlots = Array.from({ length: 5 }).map((_, idx) => ({ slotId: 'slot-' + idx, cardId: null, active: false }));
 
       deckConfig.forEach(card => {
-        const host = resolveHost(card.id);
+        const host = resolveHost(card);
         const instance = this.levelElements.spawnFromRegistry(card.definitionId, { instanceId: card.id, host, active: false });
         if (instance) this.elementInstances.set(card.id, { definitionId: card.definitionId, name: card.name, type: card.type });
       });
 
-      const handConfig = (elementsSettings.hand && elementsSettings.hand.length > 0) ? elementsSettings.hand : undefined;
+      const handConfig = (elementsSettings.hand && elementsSettings.hand.length > 0) ? elementsSettings.hand.slice() : undefined;
       this.elementHandSlots.forEach((slot, idx) => {
         const cfg = handConfig && handConfig[idx] ? handConfig[idx] : null;
         const fallbackCard = this.elementDeckPool[idx] ? this.elementDeckPool[idx].id : null;
@@ -120,6 +163,14 @@ namespace Jamble {
         slot.active = cfg ? !!cfg.active : !!validCard;
         slot.slotId = cfg?.slotId || slot.slotId;
       });
+
+      if (this.elementHandSlots.every(slot => slot.cardId !== 'bird1')){
+        const target = this.elementHandSlots.find(slot => !slot.cardId);
+        if (target) {
+          target.cardId = 'bird1';
+          target.active = true;
+        }
+      }
       this.countdown = new Countdown(cdEl);
       this.resetBtn = resetBtn;
       this.startBtn = startBtn;
@@ -196,6 +247,19 @@ namespace Jamble {
       const el = document.createElement('div');
       el.className = 'jamble-tree';
       el.setAttribute('data-tree', label);
+      el.style.left = '50%';
+      el.style.display = 'none';
+      this.gameEl.appendChild(el);
+      return el;
+    }
+
+    private ensureBirdDom(id: string): HTMLElement {
+      const existing = this.gameEl.querySelector('.jamble-bird[data-bird="' + id + '"]') as HTMLElement | null;
+      if (existing) return existing;
+      const el = document.createElement('div');
+      el.className = 'jamble-bird';
+      el.setAttribute('data-bird', id);
+      el.textContent = '🐦';
       el.style.left = '50%';
       el.style.display = 'none';
       this.gameEl.appendChild(el);

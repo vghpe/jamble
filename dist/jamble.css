@@ -74,6 +74,17 @@
   border-radius: 50%;
 }
 
+#jamble .jamble-bird {
+  position: absolute;
+  bottom: 60px;
+  width: 24px;
+  height: 24px;
+  background: none;
+  font-size: 24px;
+  line-height: 24px;
+  text-align: center;
+}
+
 /* Countdown */
 #jamble .jamble-countdown {
   position: absolute;

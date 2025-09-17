@@ -102,14 +102,17 @@ namespace Jamble {
       deck: [
         { id: 'tree1', definitionId: 'tree.basic', name: 'Tree A', type: 'tree' },
         { id: 'tree2', definitionId: 'tree.basic', name: 'Tree B', type: 'tree' },
-        { id: 'tree3', definitionId: 'tree.basic', name: 'Tree C', type: 'tree' }
+        { id: 'tree3', definitionId: 'tree.basic', name: 'Tree C', type: 'tree' },
+        { id: 'bird1', definitionId: 'bird.basic', name: 'Bird A', type: 'bird' },
+        { id: 'bird2', definitionId: 'bird.basic', name: 'Bird B', type: 'bird' },
+        { id: 'bird3', definitionId: 'bird.basic', name: 'Bird C', type: 'bird' }
       ],
       hand: [
         { slotId: 'slot-0', cardId: 'tree1', active: true },
         { slotId: 'slot-1', cardId: 'tree2', active: true },
         { slotId: 'slot-2', cardId: 'tree3', active: true },
-        { slotId: 'slot-3', cardId: null, active: false },
-        { slotId: 'slot-4', cardId: null, active: false }
+        { slotId: 'slot-3', cardId: 'bird1', active: true },
+        { slotId: 'slot-4', cardId: 'bird2', active: true }
       ]
     };
   }

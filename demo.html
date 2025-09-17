@@ -666,6 +666,15 @@
           });
         }
 
+        function getElementCardIcon(card){
+          if (!card || !card.definitionId) return '…';
+          switch(card.definitionId){
+            case 'bird.basic': return '🐦';
+            case 'tree.basic': return '🌳';
+            default: return '❔';
+          }
+        }
+
         function renderElementHand(hand){
           if (!elementHandEl) return;
           var cards = Array.isArray(hand) ? hand : (game.getElementHand ? game.getElementHand() : []);
@@ -677,8 +686,8 @@
             btn.type = 'button';
             btn.className = 'jamble-element-card';
             if (card && card.available){
-              btn.textContent = '🌳';
-              btn.setAttribute('aria-label', card.name || 'Tree');
+              btn.textContent = getElementCardIcon(card);
+              btn.setAttribute('aria-label', card.name || 'Element');
               if (card.active) btn.classList.add('jamble-active');
               btn.addEventListener('click', function(ev){
                 ev.preventDefault();
