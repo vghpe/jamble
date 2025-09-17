@@ -1,6 +1,234 @@
 "use strict";
 var Jamble;
 (function (Jamble) {
+    function isPositionableLevelElement(el) {
+        return typeof el.setLeftPct === 'function';
+    }
+    Jamble.isPositionableLevelElement = isPositionableLevelElement;
+    class LevelElementRegistry {
+        constructor() {
+            this.descriptors = new Map();
+        }
+        register(desc) {
+            this.descriptors.set(desc.id, desc);
+        }
+        unregister(id) {
+            this.descriptors.delete(id);
+        }
+        get(id) {
+            return this.descriptors.get(id);
+        }
+        create(elementId, options) {
+            const desc = this.descriptors.get(elementId);
+            if (!desc)
+                return undefined;
+            const cfg = (options.config !== undefined ? options.config : desc.defaults);
+            const instId = options.instanceId || elementId;
+            const factoryOptions = {
+                id: instId,
+                manager: options.manager,
+                host: options.host,
+                config: cfg
+            };
+            return desc.create(factoryOptions);
+        }
+    }
+    Jamble.LevelElementRegistry = LevelElementRegistry;
+    class TreeElement {
+        constructor(id, el) {
+            this.type = 'tree';
+            this.collidable = true;
+            this.defaultDisplay = '';
+            this.initialized = false;
+            this.id = id;
+            this.el = el;
+        }
+        rect() { return this.el.getBoundingClientRect(); }
+        setLeftPct(pct) {
+            const n = Math.max(0, Math.min(100, pct));
+            this.el.style.left = n.toFixed(1) + '%';
+        }
+        init() {
+            if (this.initialized)
+                return;
+            this.initialized = true;
+            const current = this.el.style.display;
+            this.defaultDisplay = current && current !== 'none' ? current : '';
+            this.el.style.display = 'none';
+        }
+        activate() {
+            this.el.style.display = this.defaultDisplay;
+        }
+        deactivate() {
+            this.el.style.display = 'none';
+        }
+        dispose() {
+            this.el.style.display = 'none';
+        }
+    }
+    Jamble.TreeElement = TreeElement;
+    class LevelElementManager {
+        constructor(registry) {
+            this.elements = new Map();
+            this.activeIds = new Set();
+            this.registry = null;
+            if (registry)
+                this.registry = registry;
+        }
+        attachRegistry(registry) {
+            this.registry = registry;
+        }
+        getRegistry() {
+            return this.registry;
+        }
+        add(element, options) {
+            this.elements.set(element.id, element);
+            const lifecycleCtx = { manager: this };
+            if (element.init)
+                element.init(lifecycleCtx);
+            const active = options && options.active === false ? false : true;
+            if (active) {
+                this.activeIds.add(element.id);
+                if (element.activate)
+                    element.activate(lifecycleCtx);
+            }
+            else {
+                this.activeIds.delete(element.id);
+            }
+        }
+        spawnFromRegistry(id, options = {}) {
+            if (!this.registry)
+                return undefined;
+            const descriptorId = options.instanceId || id;
+            if (this.elements.has(descriptorId))
+                return this.elements.get(descriptorId);
+            const instance = this.registry.create(id, {
+                manager: this,
+                config: options.config,
+                host: options.host,
+                instanceId: descriptorId
+            });
+            if (!instance)
+                return undefined;
+            this.add(instance, { active: options.active });
+            return instance;
+        }
+        remove(id) {
+            const element = this.elements.get(id);
+            if (!element) {
+                this.activeIds.delete(id);
+                return;
+            }
+            const lifecycleCtx = { manager: this };
+            if (this.activeIds.has(id) && element.deactivate)
+                element.deactivate(lifecycleCtx);
+            if (element.dispose)
+                element.dispose(lifecycleCtx);
+            this.elements.delete(id);
+            this.activeIds.delete(id);
+        }
+        setActive(id, active) {
+            const element = this.elements.get(id);
+            if (!element)
+                return;
+            const lifecycleCtx = { manager: this };
+            if (active) {
+                if (!this.activeIds.has(id)) {
+                    this.activeIds.add(id);
+                    if (element.activate)
+                        element.activate(lifecycleCtx);
+                }
+            }
+            else if (this.activeIds.has(id)) {
+                this.activeIds.delete(id);
+                if (element.deactivate)
+                    element.deactivate(lifecycleCtx);
+            }
+        }
+        isActive(id) {
+            return this.activeIds.has(id);
+        }
+        get(id) {
+            return this.elements.get(id);
+        }
+        getPositionable(id) {
+            const el = this.elements.get(id);
+            if (!el || !this.activeIds.has(id))
+                return undefined;
+            if (isPositionableLevelElement(el))
+                return el;
+            return undefined;
+        }
+        getPositionablesByType(type) {
+            const list = [];
+            this.activeIds.forEach(id => {
+                const el = this.elements.get(id);
+                if (!el || el.type !== type)
+                    return;
+                if (isPositionableLevelElement(el))
+                    list.push(el);
+            });
+            return list;
+        }
+        forEach(cb) {
+            this.activeIds.forEach(id => {
+                const el = this.elements.get(id);
+                if (el)
+                    cb(el);
+            });
+        }
+        getByType(type) {
+            const list = [];
+            this.activeIds.forEach(id => {
+                const el = this.elements.get(id);
+                if (el && el.type === type)
+                    list.push(el);
+            });
+            return list;
+        }
+        someCollidable(predicate) {
+            for (const id of this.activeIds) {
+                const el = this.elements.get(id);
+                if (!el || !el.collidable)
+                    continue;
+                const hit = predicate(el);
+                if (hit) {
+                    if (el.onCollision)
+                        el.onCollision({ manager: this });
+                    return true;
+                }
+            }
+            return false;
+        }
+        tick(deltaMs) {
+            if (deltaMs <= 0)
+                return;
+            const ctx = { manager: this, deltaMs };
+            for (const id of this.activeIds) {
+                const el = this.elements.get(id);
+                if (!el || !el.tick)
+                    continue;
+                el.tick(ctx);
+            }
+        }
+        clear() {
+            const ids = Array.from(this.elements.keys());
+            ids.forEach(id => this.remove(id));
+        }
+        all() {
+            const list = [];
+            this.activeIds.forEach(id => {
+                const el = this.elements.get(id);
+                if (el)
+                    list.push(el);
+            });
+            return list;
+        }
+    }
+    Jamble.LevelElementManager = LevelElementManager;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
     const embeddedDefaults = {
         jumpStrength: 7,
         gravityUp: 0.32,
@@ -28,6 +256,28 @@ var Jamble;
         airTransformSmoothingMs: 100,
         landEaseMs: 100,
     };
+    function defaultElements() {
+        return {
+            deck: [
+                { id: 'tree1', definitionId: 'tree.basic', name: 'Tree A', type: 'tree' },
+                { id: 'tree2', definitionId: 'tree.basic', name: 'Tree B', type: 'tree' },
+                { id: 'tree3', definitionId: 'tree.basic', name: 'Tree C', type: 'tree' }
+            ],
+            hand: [
+                { slotId: 'slot-0', cardId: 'tree1', active: true },
+                { slotId: 'slot-1', cardId: 'tree2', active: true },
+                { slotId: 'slot-2', cardId: 'tree3', active: true },
+                { slotId: 'slot-3', cardId: null, active: false },
+                { slotId: 'slot-4', cardId: null, active: false }
+            ]
+        };
+    }
+    function cloneElements(src) {
+        return {
+            deck: src.deck.map(card => ({ ...card })),
+            hand: src.hand.map(slot => ({ ...slot }))
+        };
+    }
     class SettingsStore {
         constructor(initial) {
             this._loadedFrom = null;
@@ -35,8 +285,11 @@ var Jamble;
             this._profileBaseline = null;
             this._skills = { loadout: { movement: ['move', 'jump', 'dash'], utility: [], ultimate: [] }, configs: {} };
             this._skillsBaseline = null;
+            this._elements = defaultElements();
+            this._elementsBaseline = null;
             this._current = { ...embeddedDefaults, ...(initial !== null && initial !== void 0 ? initial : {}) };
         }
+        get elements() { return cloneElements(this._elements); }
         get current() { return this._current; }
         get source() { return this._loadedFrom; }
         get activeName() { return this._activeName; }
@@ -44,7 +297,11 @@ var Jamble;
         update(patch) {
             this._current = { ...this._current, ...patch };
         }
-        reset() { this._current = { ...embeddedDefaults }; this._skills = { loadout: { movement: ['move', 'jump', 'dash'], utility: [], ultimate: [] }, configs: {} }; }
+        reset() {
+            this._current = { ...embeddedDefaults };
+            this._skills = { loadout: { movement: ['move', 'jump', 'dash'], utility: [], ultimate: [] }, configs: {} };
+            this._elements = defaultElements();
+        }
         markBaseline(name) {
             this._activeName = name;
             this._profileBaseline = { ...this._current };
@@ -56,6 +313,7 @@ var Jamble;
                 },
                 configs: JSON.parse(JSON.stringify(this._skills.configs || {}))
             };
+            this._elementsBaseline = cloneElements(this._elements);
         }
         revertToProfile() {
             if (this._profileBaseline) {
@@ -71,6 +329,9 @@ var Jamble;
                     configs: JSON.parse(JSON.stringify(this._skillsBaseline.configs || {}))
                 };
             }
+            if (this._elementsBaseline) {
+                this._elements = cloneElements(this._elementsBaseline);
+            }
         }
         async loadFrom(url) {
             var _a, _b;
@@ -80,6 +341,7 @@ var Jamble;
                     throw new Error('HTTP ' + res.status);
                 const data = await res.json();
                 const skills = (data && data.skills) || null;
+                const elements = (data && data.elements) || null;
                 this._current = { ...embeddedDefaults, ...(data && data.game ? data.game : data) };
                 if (skills && skills.loadout && skills.configs) {
                     this._skills = { loadout: skills.loadout, configs: skills.configs };
@@ -89,6 +351,25 @@ var Jamble;
                             jump: { strength: this._current.jumpStrength },
                             dash: { speed: (_a = this._current.dashSpeed) !== null && _a !== void 0 ? _a : 280, durationMs: (_b = this._current.dashDurationMs) !== null && _b !== void 0 ? _b : 220, cooldownMs: 150 }
                         } };
+                }
+                if (elements && Array.isArray(elements.deck) && Array.isArray(elements.hand)) {
+                    this._elements = {
+                        deck: elements.deck.map((card) => ({
+                            id: String(card.id),
+                            definitionId: String(card.definitionId || card.type || 'tree.basic'),
+                            name: String(card.name || card.id),
+                            type: (card.type || 'tree'),
+                            config: card.config
+                        })),
+                        hand: elements.hand.map((slot, idx) => ({
+                            slotId: String(slot.slotId || 'slot-' + idx),
+                            cardId: typeof slot.cardId === 'string' ? slot.cardId : null,
+                            active: !!slot.active
+                        }))
+                    };
+                }
+                else {
+                    this._elements = defaultElements();
                 }
                 this._loadedFrom = url;
                 try {
@@ -107,13 +388,18 @@ var Jamble;
                 this._activeName = null;
                 this._profileBaseline = { ...this._current };
                 this._skills = { loadout: { movement: ['move', 'jump', 'dash'], utility: [], ultimate: [] }, configs: { jump: { strength: this._current.jumpStrength }, dash: { speed: 280, durationMs: 220, cooldownMs: 150 } } };
+                this._elements = defaultElements();
             }
+        }
+        setElements(next) {
+            this._elements = cloneElements(next);
         }
         toJSON() {
             return {
                 ...this._current,
                 game: { ...this._current },
-                skills: { loadout: this._skills.loadout, configs: this._skills.configs }
+                skills: { loadout: this._skills.loadout, configs: this._skills.configs },
+                elements: cloneElements(this._elements)
             };
         }
     }
@@ -388,118 +674,6 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
-    function isPositionableLevelElement(el) {
-        return typeof el.setLeftPct === 'function';
-    }
-    Jamble.isPositionableLevelElement = isPositionableLevelElement;
-    class TreeElement {
-        constructor(id, el) {
-            this.type = 'tree';
-            this.collidable = true;
-            this.id = id;
-            this.el = el;
-        }
-        rect() { return this.el.getBoundingClientRect(); }
-        setLeftPct(pct) {
-            const n = Math.max(0, Math.min(100, pct));
-            this.el.style.left = n.toFixed(1) + '%';
-        }
-    }
-    Jamble.TreeElement = TreeElement;
-    class LevelElementManager {
-        constructor() {
-            this.elements = new Map();
-            this.activeIds = new Set();
-        }
-        add(element, options) {
-            this.elements.set(element.id, element);
-            const active = options && options.active === false ? false : true;
-            if (active)
-                this.activeIds.add(element.id);
-            else
-                this.activeIds.delete(element.id);
-        }
-        remove(id) {
-            this.elements.delete(id);
-            this.activeIds.delete(id);
-        }
-        setActive(id, active) {
-            if (!this.elements.has(id))
-                return;
-            if (active)
-                this.activeIds.add(id);
-            else
-                this.activeIds.delete(id);
-        }
-        isActive(id) {
-            return this.activeIds.has(id);
-        }
-        get(id) {
-            return this.elements.get(id);
-        }
-        getPositionable(id) {
-            const el = this.elements.get(id);
-            if (!el || !this.activeIds.has(id))
-                return undefined;
-            if (isPositionableLevelElement(el))
-                return el;
-            return undefined;
-        }
-        getPositionablesByType(type) {
-            const list = [];
-            this.activeIds.forEach(id => {
-                const el = this.elements.get(id);
-                if (!el || el.type !== type)
-                    return;
-                if (isPositionableLevelElement(el))
-                    list.push(el);
-            });
-            return list;
-        }
-        forEach(cb) {
-            this.activeIds.forEach(id => {
-                const el = this.elements.get(id);
-                if (el)
-                    cb(el);
-            });
-        }
-        getByType(type) {
-            const list = [];
-            this.activeIds.forEach(id => {
-                const el = this.elements.get(id);
-                if (el && el.type === type)
-                    list.push(el);
-            });
-            return list;
-        }
-        someCollidable(predicate) {
-            for (const id of this.activeIds) {
-                const el = this.elements.get(id);
-                if (!el || !el.collidable)
-                    continue;
-                if (predicate(el))
-                    return true;
-            }
-            return false;
-        }
-        clear() {
-            this.elements.clear();
-            this.activeIds.clear();
-        }
-        all() {
-            const list = [];
-            this.activeIds.forEach(id => {
-                const el = this.elements.get(id);
-                if (el)
-                    list.push(el);
-            });
-            return list;
-        }
-    }
-    Jamble.LevelElementManager = LevelElementManager;
-})(Jamble || (Jamble = {}));
-var Jamble;
-(function (Jamble) {
     class Wiggle {
         constructor(playerEl) {
             this.interval = null;
@@ -663,6 +837,7 @@ var Jamble;
     class Game {
         constructor(root) {
             var _a, _b, _c, _d, _f, _g, _h, _j;
+            this.elementInstances = new Map();
             this.skillSlotsEl = null;
             this.skillMenuEl = null;
             this.elementHandEl = null;
@@ -700,11 +875,60 @@ var Jamble;
             }
             this.gameEl = gameEl;
             this.player = new Jamble.Player(playerEl);
-            this.levelElements = new Jamble.LevelElementManager();
-            this.levelElements.add(new Jamble.TreeElement('tree1', t1), { active: false });
-            this.levelElements.add(new Jamble.TreeElement('tree2', t2), { active: false });
-            const t3 = this.ensureTreeDom('3');
-            this.levelElements.add(new Jamble.TreeElement('tree3', t3), { active: false });
+            this.elementRegistry = new Jamble.LevelElementRegistry();
+            this.levelElements = new Jamble.LevelElementManager(this.elementRegistry);
+            this.elementRegistry.register({
+                id: 'tree.basic',
+                name: 'Tree',
+                type: 'tree',
+                defaults: {},
+                create: ({ id, host }) => {
+                    if (!host)
+                        throw new Error('Tree element requires a host element');
+                    return new Jamble.TreeElement(id, host);
+                }
+            });
+            const treeHosts = {
+                tree1: t1,
+                tree2: t2,
+                tree3: this.ensureTreeDom('3')
+            };
+            const elementsSettings = Jamble.Settings.elements;
+            const deckConfig = (elementsSettings.deck && elementsSettings.deck.length > 0)
+                ? elementsSettings.deck
+                : [
+                    { id: 'tree1', definitionId: 'tree.basic', name: 'Tree A', type: 'tree' },
+                    { id: 'tree2', definitionId: 'tree.basic', name: 'Tree B', type: 'tree' },
+                    { id: 'tree3', definitionId: 'tree.basic', name: 'Tree C', type: 'tree' }
+                ];
+            const resolveHost = (cardId) => {
+                if (treeHosts[cardId])
+                    return treeHosts[cardId];
+                const labelMatch = cardId.match(/(\d+)/);
+                const label = labelMatch ? labelMatch[1] : String(Object.keys(treeHosts).length + 1);
+                const host = this.ensureTreeDom(label);
+                treeHosts[cardId] = host;
+                return host;
+            };
+            this.elementDeckPool = deckConfig.map(card => ({ id: card.id, definitionId: card.definitionId, name: card.name, type: card.type }));
+            this.elementHandSlots = Array.from({ length: 5 }).map((_, idx) => ({ slotId: 'slot-' + idx, cardId: null, active: false }));
+            deckConfig.forEach(card => {
+                const host = resolveHost(card.id);
+                const instance = this.levelElements.spawnFromRegistry(card.definitionId, { instanceId: card.id, host, active: false });
+                if (instance)
+                    this.elementInstances.set(card.id, { definitionId: card.definitionId, name: card.name, type: card.type });
+            });
+            const handConfig = (elementsSettings.hand && elementsSettings.hand.length > 0) ? elementsSettings.hand : undefined;
+            this.elementHandSlots.forEach((slot, idx) => {
+                var _a;
+                const cfg = handConfig && handConfig[idx] ? handConfig[idx] : null;
+                const fallbackCard = this.elementDeckPool[idx] ? this.elementDeckPool[idx].id : null;
+                const cardId = (_a = cfg === null || cfg === void 0 ? void 0 : cfg.cardId) !== null && _a !== void 0 ? _a : fallbackCard;
+                const validCard = cardId && this.elementDeckPool.some(card => card.id === cardId) ? cardId : null;
+                slot.cardId = validCard;
+                slot.active = cfg ? !!cfg.active : !!validCard;
+                slot.slotId = (cfg === null || cfg === void 0 ? void 0 : cfg.slotId) || slot.slotId;
+            });
             this.countdown = new Jamble.Countdown(cdEl);
             this.resetBtn = resetBtn;
             this.startBtn = startBtn;
@@ -714,12 +938,6 @@ var Jamble;
             this.elementHandEl = elementHandEl;
             this.levelEl = levelEl;
             this.wiggle = new Jamble.Wiggle(this.player.el);
-            this.elementDeck = [
-                { id: 'tree1', name: 'Tree A', type: 'tree' },
-                { id: 'tree2', name: 'Tree B', type: 'tree' },
-                { id: 'tree3', name: 'Tree C', type: 'tree' }
-            ];
-            this.elementHand = this.elementDeck.map(card => ({ ...card, active: true, available: true }));
             this.applyElementHand();
             this.onPointerDown = this.onPointerDown.bind(this);
             this.onStartClick = this.onStartClick.bind(this);
@@ -821,27 +1039,21 @@ var Jamble;
         }
         applyElementHand(triggerShuffle = true) {
             let activeCount = 0;
-            this.elementHand.forEach(card => {
-                const element = this.levelElements.get(card.id);
-                if (!element)
+            this.elementHandSlots.forEach(slot => {
+                const cardId = slot.cardId;
+                if (!cardId)
                     return;
-                const dom = element.el;
-                if (card.active) {
-                    this.levelElements.setActive(card.id, true);
-                    if (dom)
-                        dom.style.display = '';
+                if (!this.levelElements.get(cardId))
+                    return;
+                this.levelElements.setActive(cardId, slot.active);
+                if (slot.active && this.levelElements.isActive(cardId))
                     activeCount++;
-                }
-                else {
-                    this.levelElements.setActive(card.id, false);
-                    if (dom)
-                        dom.style.display = 'none';
-                }
             });
             if (triggerShuffle && activeCount > 0)
                 this.shuffleElements();
             this.updateShuffleButtonState();
             this.emitElementHandChanged();
+            this.persistElementState();
         }
         emitElementHandChanged() {
             try {
@@ -849,26 +1061,36 @@ var Jamble;
             }
             catch (_e) { }
         }
+        persistElementState() {
+            Jamble.Settings.setElements({
+                deck: this.elementDeckPool.map(card => ({ ...card })),
+                hand: this.elementHandSlots.map(slot => ({ ...slot }))
+            });
+        }
         getElementHand() {
-            const cards = this.elementHand.map(card => ({ ...card, available: true }));
-            const maxSlots = 5;
-            for (let i = cards.length; i < maxSlots; i++) {
-                cards.push({ id: 'placeholder-' + i, name: 'Empty', type: 'empty', active: false, available: false });
-            }
-            return cards;
+            return this.elementHandSlots.map((slot, index) => {
+                if (!slot.cardId) {
+                    return { id: 'placeholder-' + index, definitionId: 'placeholder', name: 'Empty', type: 'empty', active: false, available: false };
+                }
+                const meta = this.elementInstances.get(slot.cardId) || this.elementDeckPool.find(card => card.id === slot.cardId);
+                if (!meta) {
+                    return { id: slot.cardId, definitionId: 'unknown', name: 'Unknown', type: 'empty', active: false, available: false };
+                }
+                return { id: slot.cardId, definitionId: meta.definitionId, name: meta.name, type: meta.type, active: slot.active, available: true };
+            });
         }
         getElementDeck() {
-            return this.elementDeck.slice();
+            return this.elementDeckPool.slice();
         }
         setElementCardActive(id, active) {
-            const card = this.elementHand.find(c => c.id === id);
-            if (!card)
+            const slot = this.elementHandSlots.find(s => s.cardId === id);
+            if (!slot)
                 return;
-            if (!card.available)
+            if (!slot.cardId)
                 return;
-            if (card.active === active)
+            if (slot.active === active)
                 return;
-            card.active = active;
+            slot.active = active;
             this.applyElementHand();
         }
         onStartClick() {
