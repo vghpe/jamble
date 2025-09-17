@@ -1,91 +1,6 @@
 "use strict";
 var Jamble;
 (function (Jamble) {
-    function isPositionableLevelElement(el) {
-        return typeof el.setLeftPct === 'function';
-    }
-    Jamble.isPositionableLevelElement = isPositionableLevelElement;
-    class LevelElementRegistry {
-        constructor() {
-            this.descriptors = new Map();
-        }
-        register(desc) {
-            this.descriptors.set(desc.id, desc);
-        }
-        unregister(id) {
-            this.descriptors.delete(id);
-        }
-        get(id) {
-            return this.descriptors.get(id);
-        }
-        create(elementId, options) {
-            const desc = this.descriptors.get(elementId);
-            if (!desc)
-                return undefined;
-            const cfg = (options.config !== undefined ? options.config : desc.defaults);
-            const instId = options.instanceId || elementId;
-            const factoryOptions = {
-                id: instId,
-                manager: options.manager,
-                host: options.host,
-                config: cfg
-            };
-            return desc.create(factoryOptions);
-        }
-    }
-    Jamble.LevelElementRegistry = LevelElementRegistry;
-})(Jamble || (Jamble = {}));
-var Jamble;
-(function (Jamble) {
-    Jamble.CoreDeckConfig = {
-        pool: [
-            { id: 'treeA', definitionId: 'tree.basic', name: 'Tree A', type: 'tree', quantity: 3 },
-            { id: 'birdA', definitionId: 'bird.basic', name: 'Bird A', type: 'bird', quantity: 3 }
-        ]
-    };
-    const HAND_SLOTS = 5;
-    function generateCardId(baseId, index) {
-        return baseId + '-' + (index + 1);
-    }
-    function expandDeck(config) {
-        const deck = [];
-        config.pool.forEach(blueprint => {
-            var _a;
-            const qty = Math.max(1, (_a = blueprint.quantity) !== null && _a !== void 0 ? _a : 1);
-            for (let i = 0; i < qty; i++) {
-                const id = generateCardId(blueprint.id, i);
-                deck.push({
-                    id,
-                    definitionId: blueprint.definitionId,
-                    name: qty > 1 ? blueprint.name + ' ' + (i + 1) : blueprint.name,
-                    type: blueprint.type,
-                    config: blueprint.config
-                });
-            }
-        });
-        return deck;
-    }
-    Jamble.expandDeck = expandDeck;
-    function deriveElementsSettings(config) {
-        const deck = expandDeck(config);
-        const hand = [];
-        const mutableDeck = deck.slice();
-        for (let i = 0; i < HAND_SLOTS; i++) {
-            const slotId = 'slot-' + i;
-            if (mutableDeck.length === 0) {
-                hand.push({ slotId, cardId: null, active: false });
-                continue;
-            }
-            const index = Math.floor(Math.random() * mutableDeck.length);
-            const [card] = mutableDeck.splice(index, 1);
-            hand.push({ slotId, cardId: card.id, active: true });
-        }
-        return { deck, hand };
-    }
-    Jamble.deriveElementsSettings = deriveElementsSettings;
-})(Jamble || (Jamble = {}));
-var Jamble;
-(function (Jamble) {
     const embeddedDefaults = {
         jumpStrength: 7,
         gravityUp: 0.32,
@@ -111,124 +26,50 @@ var Jamble;
         landScaleY: 0.6,
         landScaleX: 1.4,
         airTransformSmoothingMs: 100,
-        landEaseMs: 100,
+        landEaseMs: 100
     };
+    function defaultSkills() {
+        return {
+            loadout: { movement: ['move', 'jump', 'dash'], utility: [], ultimate: [] },
+            configs: {
+                jump: { strength: embeddedDefaults.jumpStrength },
+                dash: { speed: embeddedDefaults.dashSpeed, durationMs: embeddedDefaults.dashDurationMs, cooldownMs: 150 }
+            }
+        };
+    }
     class SettingsStore {
-        constructor(initial) {
-            this._loadedFrom = null;
-            this._activeName = null;
-            this._profileBaseline = null;
-            this._skills = { loadout: { movement: ['move', 'jump', 'dash'], utility: [], ultimate: [] }, configs: {} };
-            this._skillsBaseline = null;
-            this._elements = Jamble.deriveElementsSettings(Jamble.CoreDeckConfig);
-            this._elementsBaseline = null;
+        constructor(initial, skills) {
+            var _a, _b, _c;
             this._current = { ...embeddedDefaults, ...(initial !== null && initial !== void 0 ? initial : {}) };
-        }
-        get elements() {
-            return {
-                deck: this._elements.deck.map(card => ({ ...card })),
-                hand: this._elements.hand.map(slot => ({ ...slot }))
+            const baseSkills = defaultSkills();
+            this._skills = {
+                loadout: {
+                    movement: ((_a = skills === null || skills === void 0 ? void 0 : skills.loadout) === null || _a === void 0 ? void 0 : _a.movement) ? skills.loadout.movement.slice() : baseSkills.loadout.movement.slice(),
+                    utility: ((_b = skills === null || skills === void 0 ? void 0 : skills.loadout) === null || _b === void 0 ? void 0 : _b.utility) ? skills.loadout.utility.slice() : baseSkills.loadout.utility.slice(),
+                    ultimate: ((_c = skills === null || skills === void 0 ? void 0 : skills.loadout) === null || _c === void 0 ? void 0 : _c.ultimate) ? skills.loadout.ultimate.slice() : baseSkills.loadout.ultimate.slice()
+                },
+                configs: { ...baseSkills.configs, ...((skills === null || skills === void 0 ? void 0 : skills.configs) || {}) }
             };
         }
         get current() { return this._current; }
-        get source() { return this._loadedFrom; }
-        get activeName() { return this._activeName; }
         get skills() { return this._skills; }
         update(patch) {
             this._current = { ...this._current, ...patch };
         }
         reset() {
             this._current = { ...embeddedDefaults };
-            this._skills = { loadout: { movement: ['move', 'jump', 'dash'], utility: [], ultimate: [] }, configs: {} };
-            this._elements = Jamble.deriveElementsSettings(Jamble.CoreDeckConfig);
-        }
-        markBaseline(name) {
-            this._activeName = name;
-            this._profileBaseline = { ...this._current };
-            this._skillsBaseline = {
-                loadout: {
-                    movement: [...(this._skills.loadout.movement || [])],
-                    utility: [...(this._skills.loadout.utility || [])],
-                    ultimate: [...(this._skills.loadout.ultimate || [])],
-                },
-                configs: JSON.parse(JSON.stringify(this._skills.configs || {}))
-            };
-            this._elementsBaseline = {
-                deck: this._elements.deck.map(card => ({ ...card })),
-                hand: this._elements.hand.map(slot => ({ ...slot }))
-            };
-        }
-        revertToProfile() {
-            if (this._profileBaseline) {
-                this._current = { ...this._profileBaseline };
-            }
-            if (this._skillsBaseline) {
-                this._skills = {
-                    loadout: {
-                        movement: [...(this._skillsBaseline.loadout.movement || [])],
-                        utility: [...(this._skillsBaseline.loadout.utility || [])],
-                        ultimate: [...(this._skillsBaseline.loadout.ultimate || [])],
-                    },
-                    configs: JSON.parse(JSON.stringify(this._skillsBaseline.configs || {}))
-                };
-            }
-            if (this._elementsBaseline) {
-                this._elements = {
-                    deck: this._elementsBaseline.deck.map(card => ({ ...card })),
-                    hand: this._elementsBaseline.hand.map(slot => ({ ...slot }))
-                };
-            }
-        }
-        async loadFrom(url) {
-            var _a, _b;
-            try {
-                const res = await fetch(url, { cache: 'no-cache' });
-                if (!res.ok)
-                    throw new Error('HTTP ' + res.status);
-                const data = await res.json();
-                const skills = (data && data.skills) || null;
-                this._current = { ...embeddedDefaults, ...(data && data.game ? data.game : data) };
-                if (skills && skills.loadout && skills.configs) {
-                    this._skills = { loadout: skills.loadout, configs: skills.configs };
-                }
-                else {
-                    this._skills = { loadout: { movement: ['move', 'jump', 'dash'], utility: [], ultimate: [] }, configs: {
-                            jump: { strength: this._current.jumpStrength },
-                            dash: { speed: (_a = this._current.dashSpeed) !== null && _a !== void 0 ? _a : 280, durationMs: (_b = this._current.dashDurationMs) !== null && _b !== void 0 ? _b : 220, cooldownMs: 150 }
-                        } };
-                }
-                this._elements = Jamble.deriveElementsSettings(Jamble.CoreDeckConfig);
-                this._loadedFrom = url;
-                try {
-                    const u = new URL(url, (typeof location !== 'undefined' ? location.href : undefined));
-                    const parts = u.pathname.split('/');
-                    this._activeName = parts[parts.length - 1] || url;
-                }
-                catch (_e) {
-                    this._activeName = url;
-                }
-                this._profileBaseline = { ...this._current };
-            }
-            catch (_err) {
-                this._current = { ...embeddedDefaults };
-                this._loadedFrom = null;
-                this._activeName = null;
-                this._profileBaseline = { ...this._current };
-                this._skills = { loadout: { movement: ['move', 'jump', 'dash'], utility: [], ultimate: [] }, configs: { jump: { strength: this._current.jumpStrength }, dash: { speed: 280, durationMs: 220, cooldownMs: 150 } } };
-                this._elements = Jamble.deriveElementsSettings(Jamble.CoreDeckConfig);
-            }
-        }
-        setElements(next) {
-            this._elements = Jamble.deriveElementsSettings(Jamble.CoreDeckConfig);
+            this._skills = defaultSkills();
         }
         toJSON() {
             return {
-                ...this._current,
                 game: { ...this._current },
-                skills: { loadout: this._skills.loadout, configs: this._skills.configs },
-                elements: {
-                    deck: this._elements.deck.map(card => ({ ...card })),
-                    hand: this._elements.hand.map(slot => ({ ...slot }))
+                skills: {
+                    loadout: {
+                        movement: this._skills.loadout.movement.slice(),
+                        utility: this._skills.loadout.utility.slice(),
+                        ultimate: this._skills.loadout.ultimate.slice()
+                    },
+                    configs: { ...this._skills.configs }
                 }
             };
         }
@@ -359,24 +200,6 @@ var Jamble;
             const cur = this.configs.get(id) || {};
             this.configs.set(id, { ...cur, ...patch });
         }
-        async listPresets(skillId) {
-            if (!skillId) {
-                const res = await fetch('/__skill_presets');
-                return res.json();
-            }
-            else {
-                const res = await fetch('/__skill_presets/' + encodeURIComponent(skillId));
-                return res.json();
-            }
-        }
-        async applyPreset(skillId, presetFile) {
-            const url = 'dist/skill-presets/' + encodeURIComponent(skillId) + '/' + encodeURIComponent(presetFile);
-            const res = await fetch(url, { cache: 'no-cache' });
-            if (!res.ok)
-                throw new Error('Failed to fetch preset ' + presetFile);
-            const preset = await res.json();
-            this.patchConfig(skillId, preset);
-        }
     }
     Jamble.SkillManager = SkillManager;
 })(Jamble || (Jamble = {}));
@@ -501,6 +324,42 @@ var Jamble;
         }
     }
     Jamble.Countdown = Countdown;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    function isPositionableLevelElement(el) {
+        return typeof el.setLeftPct === 'function';
+    }
+    Jamble.isPositionableLevelElement = isPositionableLevelElement;
+    class LevelElementRegistry {
+        constructor() {
+            this.descriptors = new Map();
+        }
+        register(desc) {
+            this.descriptors.set(desc.id, desc);
+        }
+        unregister(id) {
+            this.descriptors.delete(id);
+        }
+        get(id) {
+            return this.descriptors.get(id);
+        }
+        create(elementId, options) {
+            const desc = this.descriptors.get(elementId);
+            if (!desc)
+                return undefined;
+            const cfg = (options.config !== undefined ? options.config : desc.defaults);
+            const instId = options.instanceId || elementId;
+            const factoryOptions = {
+                id: instId,
+                manager: options.manager,
+                host: options.host,
+                config: cfg
+            };
+            return desc.create(factoryOptions);
+        }
+    }
+    Jamble.LevelElementRegistry = LevelElementRegistry;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
@@ -759,6 +618,55 @@ var Jamble;
         });
     }
     Jamble.registerCoreElements = registerCoreElements;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    Jamble.CoreDeckConfig = {
+        pool: [
+            { id: 'treeA', definitionId: 'tree.basic', name: 'Tree A', type: 'tree', quantity: 3 },
+            { id: 'birdA', definitionId: 'bird.basic', name: 'Bird A', type: 'bird', quantity: 3 }
+        ]
+    };
+    const HAND_SLOTS = 5;
+    function generateCardId(baseId, index) {
+        return baseId + '-' + (index + 1);
+    }
+    function expandDeck(config) {
+        const deck = [];
+        config.pool.forEach(blueprint => {
+            var _a;
+            const qty = Math.max(1, (_a = blueprint.quantity) !== null && _a !== void 0 ? _a : 1);
+            for (let i = 0; i < qty; i++) {
+                const id = generateCardId(blueprint.id, i);
+                deck.push({
+                    id,
+                    definitionId: blueprint.definitionId,
+                    name: qty > 1 ? blueprint.name + ' ' + (i + 1) : blueprint.name,
+                    type: blueprint.type,
+                    config: blueprint.config
+                });
+            }
+        });
+        return deck;
+    }
+    Jamble.expandDeck = expandDeck;
+    function deriveElementsSettings(config) {
+        const deck = expandDeck(config);
+        const hand = [];
+        const mutableDeck = deck.slice();
+        for (let i = 0; i < HAND_SLOTS; i++) {
+            const slotId = 'slot-' + i;
+            if (mutableDeck.length === 0) {
+                hand.push({ slotId, cardId: null, active: false });
+                continue;
+            }
+            const index = Math.floor(Math.random() * mutableDeck.length);
+            const [card] = mutableDeck.splice(index, 1);
+            hand.push({ slotId, cardId: card.id, active: true });
+        }
+        return { deck, hand };
+    }
+    Jamble.deriveElementsSettings = deriveElementsSettings;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
@@ -1493,10 +1401,8 @@ var Jamble;
             DashSkill: Jamble.DashSkill,
             SkillManager: Jamble.SkillManager
         } };
-    Jamble.Settings.loadFrom('dist/profiles/default.json').finally(function () {
-        try {
-            window.dispatchEvent(new CustomEvent('jamble:settingsLoaded'));
-        }
-        catch (_e) { }
-    });
+    try {
+        window.dispatchEvent(new CustomEvent('jamble:settingsLoaded'));
+    }
+    catch (_e) { }
 })();

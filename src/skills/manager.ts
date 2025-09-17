@@ -92,22 +92,5 @@ namespace Jamble {
       const cur = this.configs.get(id) || {};
       this.configs.set(id, { ...cur, ...patch });
     }
-
-    // Preset helpers (fetch from dev server/static)
-    async listPresets(skillId?: string): Promise<any> {
-      if (!skillId){
-        const res = await fetch('/__skill_presets'); return res.json();
-      } else {
-        const res = await fetch('/__skill_presets/' + encodeURIComponent(skillId)); return res.json();
-      }
-    }
-    async applyPreset(skillId: string, presetFile: string): Promise<void> {
-      const url = 'dist/skill-presets/' + encodeURIComponent(skillId) + '/' + encodeURIComponent(presetFile);
-      const res = await fetch(url, { cache: 'no-cache' });
-      if (!res.ok) throw new Error('Failed to fetch preset ' + presetFile);
-      const preset = await res.json();
-      this.patchConfig(skillId, preset);
-      // In a later phase, notify the equipped instance or recreate it to use new config
-    }
   }
 }
