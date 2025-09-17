@@ -534,17 +534,9 @@ var Jamble;
             this.el = el;
             this.variant = variant;
             this.type = variant === 'ceiling' ? 'tree_ceiling' : 'tree';
-            if (variant === 'ceiling') {
-                this.el.classList.add('jamble-tree', 'jamble-tree-ceiling');
-                this.el.textContent = '🌲';
-            }
-            else {
-                this.el.classList.add('jamble-tree');
-                if (this.el.classList.contains('jamble-tree-ceiling'))
-                    this.el.classList.remove('jamble-tree-ceiling');
-                if (this.el.textContent === '🌲')
-                    this.el.textContent = '';
-            }
+            this.el.classList.add('jamble-tree');
+            if (variant === 'ceiling')
+                this.el.classList.add('jamble-tree-ceiling');
         }
         rect() { return this.el.getBoundingClientRect(); }
         setLeftPct(pct) {
@@ -558,12 +550,8 @@ var Jamble;
             const current = this.el.style.display;
             this.defaultDisplay = current && current !== 'none' ? current : '';
             this.el.style.display = 'none';
-            if (this.variant === 'ceiling')
-                this.el.textContent = '🌲';
         }
         activate() {
-            if (this.variant === 'ceiling')
-                this.el.textContent = '🌲';
             this.el.style.display = this.defaultDisplay;
         }
         deactivate() {
@@ -618,7 +606,9 @@ var Jamble;
             type: 'tree',
             defaults: {},
             create: ({ id, host }) => {
-                const el = host || hostResolvers.ensureTreeDom(id.replace(/[^0-9]+/g, '') || id);
+                const labelMatch = id.match(/(\d+)/);
+                const label = labelMatch ? labelMatch[1] : id;
+                const el = host || hostResolvers.ensureTreeDom(label);
                 return new Jamble.TreeElement(id, el, 'ground');
             }
         });
@@ -1025,7 +1015,6 @@ var Jamble;
             const el = document.createElement('div');
             el.className = 'jamble-tree jamble-tree-ceiling';
             el.setAttribute('data-ceiling', id);
-            el.textContent = '🌲';
             el.style.left = '50%';
             el.style.top = '0';
             el.style.bottom = '';

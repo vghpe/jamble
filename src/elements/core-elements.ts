@@ -14,7 +14,9 @@ namespace Jamble {
       type: 'tree',
       defaults: {},
       create: ({ id, host }) => {
-        const el = host || hostResolvers.ensureTreeDom(id.replace(/[^0-9]+/g, '') || id);
+        const labelMatch = id.match(/(\d+)/);
+        const label = labelMatch ? labelMatch[1] : id;
+        const el = host || hostResolvers.ensureTreeDom(label);
         return new TreeElement(id, el, 'ground');
       }
     });

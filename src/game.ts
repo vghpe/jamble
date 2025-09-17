@@ -193,7 +193,6 @@ namespace Jamble {
       const el = document.createElement('div');
       el.className = 'jamble-tree jamble-tree-ceiling';
       el.setAttribute('data-ceiling', id);
-      el.textContent = '🌲';
       el.style.left = '50%';
       el.style.top = '0';
       el.style.bottom = '';

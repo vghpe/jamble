@@ -77,16 +77,12 @@
 #jamble .jamble-tree.jamble-tree-ceiling {
   top: 0;
   bottom: auto;
-  width: 24px;
-  height: 24px;
-  background: none;
-  font-size: 24px;
-  text-align: center;
-  line-height: 24px;
 }
 
 #jamble .jamble-tree.jamble-tree-ceiling::after {
-  content: none;
+  bottom: auto;
+  top: 20px;
+  background: #bbb866;
 }
 
 #jamble .jamble-bird {
