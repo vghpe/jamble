@@ -82,6 +82,7 @@
 #jamble .jamble-tree.jamble-tree-ceiling::after {
   bottom: auto;
   top: 20px;
+  background: #bbb866;
 }
 
 #jamble .jamble-bird {
