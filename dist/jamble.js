@@ -526,13 +526,25 @@ var Jamble;
 var Jamble;
 (function (Jamble) {
     class TreeElement {
-        constructor(id, el) {
-            this.type = 'tree';
+        constructor(id, el, variant = 'ground') {
             this.collidable = true;
             this.defaultDisplay = '';
             this.initialized = false;
             this.id = id;
             this.el = el;
+            this.variant = variant;
+            this.type = variant === 'ceiling' ? 'tree_ceiling' : 'tree';
+            if (variant === 'ceiling') {
+                this.el.classList.add('jamble-tree', 'jamble-tree-ceiling');
+                this.el.textContent = '🌲';
+            }
+            else {
+                this.el.classList.add('jamble-tree');
+                if (this.el.classList.contains('jamble-tree-ceiling'))
+                    this.el.classList.remove('jamble-tree-ceiling');
+                if (this.el.textContent === '🌲')
+                    this.el.textContent = '';
+            }
         }
         rect() { return this.el.getBoundingClientRect(); }
         setLeftPct(pct) {
@@ -546,8 +558,12 @@ var Jamble;
             const current = this.el.style.display;
             this.defaultDisplay = current && current !== 'none' ? current : '';
             this.el.style.display = 'none';
+            if (this.variant === 'ceiling')
+                this.el.textContent = '🌲';
         }
         activate() {
+            if (this.variant === 'ceiling')
+                this.el.textContent = '🌲';
             this.el.style.display = this.defaultDisplay;
         }
         deactivate() {
@@ -603,7 +619,17 @@ var Jamble;
             defaults: {},
             create: ({ id, host }) => {
                 const el = host || hostResolvers.ensureTreeDom(id.replace(/[^0-9]+/g, '') || id);
-                return new Jamble.TreeElement(id, el);
+                return new Jamble.TreeElement(id, el, 'ground');
+            }
+        });
+        registry.register({
+            id: 'tree.ceiling',
+            name: 'Tree Ceiling',
+            type: 'tree_ceiling',
+            defaults: {},
+            create: ({ id, host }) => {
+                const el = host || hostResolvers.ensureCeilingTreeDom(id);
+                return new Jamble.TreeElement(id, el, 'ceiling');
             }
         });
         registry.register({
@@ -624,6 +650,7 @@ var Jamble;
     Jamble.CoreDeckConfig = {
         pool: [
             { id: 'treeA', definitionId: 'tree.basic', name: 'Tree A', type: 'tree', quantity: 3 },
+            { id: 'treeCeil', definitionId: 'tree.ceiling', name: 'Ceiling Tree', type: 'tree_ceiling', quantity: 3 },
             { id: 'birdA', definitionId: 'bird.basic', name: 'Bird A', type: 'bird', quantity: 3 }
         ]
     };
@@ -875,21 +902,8 @@ var Jamble;
             this.levelElements = new Jamble.LevelElementManager(this.elementRegistry);
             Jamble.registerCoreElements(this.elementRegistry, {
                 ensureTreeDom: (label) => this.ensureTreeDom(label),
+                ensureCeilingTreeDom: (id) => this.ensureCeilingTreeDom(id),
                 ensureBirdDom: (id) => this.ensureBirdDom(id)
-            });
-            this.elementRegistry.register({
-                id: 'bird.basic',
-                name: 'Bird',
-                type: 'tree',
-                defaults: {},
-                create: ({ id, host }) => {
-                    if (!host)
-                        throw new Error('Bird element requires a host element');
-                    if (!host.classList.contains('jamble-bird'))
-                        host.classList.add('jamble-bird');
-                    host.textContent = '🐦';
-                    return new Jamble.BirdElement(id, host);
-                }
             });
             const treeHostOrder = [t1, t2, this.ensureTreeDom('3')];
             let nextTreeHostIndex = 0;
@@ -907,6 +921,8 @@ var Jamble;
                 let host;
                 if (card.definitionId === 'tree.basic')
                     host = nextTreeHost();
+                else if (card.definitionId === 'tree.ceiling')
+                    host = this.ensureCeilingTreeDom(card.id);
                 else if (card.definitionId === 'bird.basic')
                     host = this.ensureBirdDom(card.id);
                 else
@@ -998,6 +1014,21 @@ var Jamble;
             el.className = 'jamble-tree';
             el.setAttribute('data-tree', label);
             el.style.left = '50%';
+            el.style.display = 'none';
+            this.gameEl.appendChild(el);
+            return el;
+        }
+        ensureCeilingTreeDom(id) {
+            const existing = this.gameEl.querySelector('.jamble-tree-ceiling[data-ceiling="' + id + '"]');
+            if (existing)
+                return existing;
+            const el = document.createElement('div');
+            el.className = 'jamble-tree jamble-tree-ceiling';
+            el.setAttribute('data-ceiling', id);
+            el.textContent = '🌲';
+            el.style.left = '50%';
+            el.style.top = '0';
+            el.style.bottom = '';
             el.style.display = 'none';
             this.gameEl.appendChild(el);
             return el;

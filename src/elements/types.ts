@@ -1,5 +1,5 @@
 namespace Jamble {
-  export type LevelElementType = 'tree' | 'bird' | 'empty';
+  export type LevelElementType = 'tree' | 'tree_ceiling' | 'bird' | 'empty';
 
   export interface LevelElementLifecycleContext {
     manager: LevelElementManager;
