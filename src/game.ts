@@ -18,9 +18,9 @@ namespace Jamble {
     private player: Player;
     private levelElements: LevelElementManager;
     private elementRegistry: LevelElementRegistry;
-    private elementDeckPool: Array<{ id: string; definitionId: string; name: string; type: LevelElementType; config?: any }>;
+    private elementDeckPool: Array<{ id: string; definitionId: string; name: string; type: LevelElementType; emoji: string; config?: any }>;
     private elementHandSlots: Array<{ slotId: string; cardId: string | null; active: boolean }>;
-    private elementInstances = new Map<string, { definitionId: string; name: string; type: LevelElementType; config?: any }>();
+    private elementInstances = new Map<string, { definitionId: string; name: string; type: LevelElementType; emoji: string; config?: any }>();
     private countdown: Countdown;
     private resetBtn: HTMLButtonElement;
     private startBtn: HTMLButtonElement;
@@ -52,8 +52,6 @@ namespace Jamble {
       this.root = root;
       const gameEl = root.querySelector('.jamble-game') as HTMLDivElement | null;
       const playerEl = root.querySelector('.jamble-player') as HTMLElement | null;
-      const t1 = root.querySelector('.jamble-tree[data-tree="1"]') as HTMLElement | null;
-      const t2 = root.querySelector('.jamble-tree[data-tree="2"]') as HTMLElement | null;
       const cdEl = root.querySelector('.jamble-countdown') as HTMLElement | null;
       const resetBtn = root.querySelector('.jamble-reset') as HTMLButtonElement | null;
       const levelEl = root.querySelector('.jamble-level') as HTMLElement | null;
@@ -63,46 +61,21 @@ namespace Jamble {
       const skillMenuEl = root.querySelector('#skill-menu') as HTMLElement | null;
       const elementHandEl = root.querySelector('#element-hand') as HTMLElement | null;
 
-      if (!gameEl || !playerEl || !t1 || !t2 || !cdEl || !resetBtn || !startBtn || !shuffleBtn){
+      if (!gameEl || !playerEl || !cdEl || !resetBtn || !startBtn || !shuffleBtn){
         throw new Error('Jamble: missing required elements');
       }
 
       this.gameEl = gameEl;
       this.player = new Player(playerEl);
       this.elementRegistry = new LevelElementRegistry();
-      this.levelElements = new LevelElementManager(this.elementRegistry);
-      Jamble.registerCoreElements(this.elementRegistry, {
-        ensureTreeDom: (label: string) => this.ensureTreeDom(label),
-        ensureCeilingTreeDom: (id: string) => this.ensureCeilingTreeDom(id),
-        ensureBirdDom: (id: string) => this.ensureBirdDom(id)
-      });
-      const treeHostOrder: HTMLElement[] = [t1, t2, this.ensureTreeDom('3')];
-      let nextTreeHostIndex = 0;
-      const nextTreeHost = (): HTMLElement => {
-        if (!treeHostOrder[nextTreeHostIndex]){
-          const label = String(nextTreeHostIndex + 1);
-          treeHostOrder[nextTreeHostIndex] = this.ensureTreeDom(label);
-        }
-        return treeHostOrder[nextTreeHostIndex++];
-      };
-      const elementHosts: Record<string, HTMLElement> = {};
-      const resolveHost = (card: Jamble.ElementDeckEntry): HTMLElement => {
-        if (elementHosts[card.id]) return elementHosts[card.id];
-        let host: HTMLElement;
-        if (card.definitionId === 'tree.basic') host = nextTreeHost();
-        else if (card.definitionId === 'tree.ceiling') host = this.ensureCeilingTreeDom(card.id);
-        else if (card.definitionId === 'bird.basic') host = this.ensureBirdDom(card.id);
-        else host = this.ensureTreeDom(String(nextTreeHostIndex + 1));
-        elementHosts[card.id] = host;
-        return host;
-      };
+      this.levelElements = new LevelElementManager(gameEl, this.elementRegistry);
+      Jamble.registerCoreElements(this.elementRegistry);
 
       const canonicalElements = Jamble.deriveElementsSettings(Jamble.CoreDeckConfig);
       this.elementDeckPool = canonicalElements.deck.map(card => ({ ...card }));
       this.elementDeckPool.forEach(card => {
-        const host = resolveHost(card);
-        const instance = this.levelElements.spawnFromRegistry(card.definitionId, { instanceId: card.id, host, config: card.config, active: false });
-        if (instance) this.elementInstances.set(card.id, { definitionId: card.definitionId, name: card.name, type: card.type, config: card.config });
+        const instance = this.levelElements.spawnFromRegistry(card.definitionId, { instanceId: card.id, config: card.config, active: false });
+        if (instance) this.elementInstances.set(card.id, { definitionId: card.definitionId, name: card.name, type: card.type, emoji: card.emoji, config: card.config });
       });
       this.elementHandSlots = canonicalElements.hand.map(slot => ({ ...slot }));
       this.countdown = new Countdown(cdEl);
@@ -175,45 +148,6 @@ namespace Jamble {
       this.updateShuffleButtonState();
     }
 
-    private ensureTreeDom(label: string): HTMLElement {
-      const existing = this.gameEl.querySelector('.jamble-tree[data-tree="' + label + '"]') as HTMLElement | null;
-      if (existing) return existing;
-      const el = document.createElement('div');
-      el.className = 'jamble-tree';
-      el.setAttribute('data-tree', label);
-      el.style.left = '50%';
-      el.style.display = 'none';
-      this.gameEl.appendChild(el);
-      return el;
-    }
-
-    private ensureCeilingTreeDom(id: string): HTMLElement {
-      const existing = this.gameEl.querySelector('.jamble-tree-ceiling[data-ceiling="' + id + '"]') as HTMLElement | null;
-      if (existing) return existing;
-      const el = document.createElement('div');
-      el.className = 'jamble-tree jamble-tree-ceiling';
-      el.setAttribute('data-ceiling', id);
-      el.style.left = '50%';
-      el.style.top = '0';
-      el.style.bottom = '';
-      el.style.display = 'none';
-      this.gameEl.appendChild(el);
-      return el;
-    }
-
-    private ensureBirdDom(id: string): HTMLElement {
-      const existing = this.gameEl.querySelector('.jamble-bird[data-bird="' + id + '"]') as HTMLElement | null;
-      if (existing) return existing;
-      const el = document.createElement('div');
-      el.className = 'jamble-bird';
-      el.setAttribute('data-bird', id);
-      el.textContent = '🐦';
-      el.style.left = '50%';
-      el.style.display = 'none';
-      this.gameEl.appendChild(el);
-      return el;
-    }
-
     reset(): void {
       this.wiggle.stop();
       this.countdown.hide();
@@ -255,20 +189,20 @@ namespace Jamble {
       } catch(_e){}
     }
 
-    public getElementHand(): ReadonlyArray<{ id: string; definitionId: string; name: string; type: LevelElementType; active: boolean; available: boolean }> {
+    public getElementHand(): ReadonlyArray<{ id: string; definitionId: string; name: string; type: LevelElementType; emoji: string; active: boolean; available: boolean }> {
       return this.elementHandSlots.map((slot, index) => {
         if (!slot.cardId){
-          return { id: 'placeholder-' + index, definitionId: 'placeholder', name: 'Empty', type: 'empty', active: false, available: false };
+          return { id: 'placeholder-' + index, definitionId: 'placeholder', name: 'Empty', type: 'empty', emoji: '…', active: false, available: false };
         }
         const meta = this.elementInstances.get(slot.cardId) || this.elementDeckPool.find(card => card.id === slot.cardId);
         if (!meta){
-          return { id: slot.cardId, definitionId: 'unknown', name: 'Unknown', type: 'empty', active: false, available: false };
+          return { id: slot.cardId, definitionId: 'unknown', name: 'Unknown', type: 'empty', emoji: '❔', active: false, available: false };
         }
-        return { id: slot.cardId, definitionId: meta.definitionId, name: meta.name, type: meta.type, active: slot.active, available: true };
+        return { id: slot.cardId, definitionId: meta.definitionId, name: meta.name, type: meta.type, emoji: meta.emoji || '❔', active: slot.active, available: true };
       });
     }
 
-    public getElementDeck(): ReadonlyArray<{ id: string; definitionId: string; name: string; type: LevelElementType }> {
+    public getElementDeck(): ReadonlyArray<{ id: string; definitionId: string; name: string; type: LevelElementType; emoji: string }> {
       return this.elementDeckPool.slice();
     }
 

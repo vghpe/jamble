@@ -350,10 +350,12 @@ var Jamble;
                 return undefined;
             const cfg = (options.config !== undefined ? options.config : desc.defaults);
             const instId = options.instanceId || elementId;
+            const host = options.host || (desc.ensureHost ? desc.ensureHost(options.root, instId) : undefined);
             const factoryOptions = {
                 id: instId,
                 manager: options.manager,
-                host: options.host,
+                root: options.root,
+                host,
                 config: cfg
             };
             return desc.create(factoryOptions);
@@ -364,10 +366,11 @@ var Jamble;
 var Jamble;
 (function (Jamble) {
     class LevelElementManager {
-        constructor(registry) {
+        constructor(root, registry) {
             this.elements = new Map();
             this.activeIds = new Set();
             this.registry = null;
+            this.root = root;
             if (registry)
                 this.registry = registry;
         }
@@ -402,7 +405,8 @@ var Jamble;
                 manager: this,
                 config: options.config,
                 host: options.host,
-                instanceId: descriptorId
+                instanceId: descriptorId,
+                root: this.root
             });
             if (!instance)
                 return undefined;
@@ -599,49 +603,131 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
-    function registerCoreElements(registry, hostResolvers) {
-        registry.register({
+    const hostFactories = {
+        'tree-ground': (root, id) => {
+            let el = root.querySelector('.jamble-tree[data-element-id="' + id + '"]');
+            if (el)
+                return el;
+            el = root.querySelector('.jamble-tree:not([data-element-id])');
+            if (!el) {
+                el = document.createElement('div');
+                el.className = 'jamble-tree';
+                root.appendChild(el);
+            }
+            el.setAttribute('data-element-id', id);
+            if (!el.style.left)
+                el.style.left = '50%';
+            el.style.display = 'none';
+            return el;
+        },
+        'tree-ceiling': (root, id) => {
+            let el = root.querySelector('.jamble-tree.jamble-tree-ceiling[data-element-id="' + id + '"]');
+            if (el)
+                return el;
+            el = root.querySelector('.jamble-tree.jamble-tree-ceiling:not([data-element-id])');
+            if (!el) {
+                el = document.createElement('div');
+                el.className = 'jamble-tree jamble-tree-ceiling';
+                root.appendChild(el);
+            }
+            el.classList.add('jamble-tree', 'jamble-tree-ceiling');
+            el.setAttribute('data-element-id', id);
+            if (!el.style.left)
+                el.style.left = '50%';
+            el.style.display = 'none';
+            return el;
+        },
+        'bird-floating': (root, id) => {
+            let el = root.querySelector('.jamble-bird[data-element-id="' + id + '"]');
+            if (el)
+                return el;
+            el = root.querySelector('.jamble-bird:not([data-element-id])');
+            if (!el) {
+                el = document.createElement('div');
+                el.className = 'jamble-bird';
+                root.appendChild(el);
+            }
+            el.setAttribute('data-element-id', id);
+            if (!el.style.left)
+                el.style.left = '50%';
+            el.style.display = 'none';
+            return el;
+        }
+    };
+    const elementHostStyles = {
+        'tree-ground': `#jamble .jamble-tree { position: absolute; bottom: 0; width: 10px; height: 30px; background: #8d6e63; border-radius: 2px; }
+#jamble .jamble-tree::after { content: ""; position: absolute; bottom: 20px; left: -5px; width: 20px; height: 20px; background: #66bb6a; border-radius: 50%; }`,
+        'tree-ceiling': `#jamble .jamble-tree.jamble-tree-ceiling { top: 0; bottom: auto; }
+#jamble .jamble-tree.jamble-tree-ceiling::after { bottom: auto; top: 20px; }`,
+        'bird-floating': `#jamble .jamble-bird { position: absolute; bottom: 60px; width: 24px; height: 24px; background: none; font-size: 24px; line-height: 24px; text-align: center; }`
+    };
+    const CORE_ELEMENTS = [
+        {
             id: 'tree.basic',
             name: 'Tree',
+            emoji: '🌳',
             type: 'tree',
+            hostKind: 'tree-ground',
             defaults: {},
-            create: ({ id, host }) => {
-                const labelMatch = id.match(/(\d+)/);
-                const label = labelMatch ? labelMatch[1] : id;
-                const el = host || hostResolvers.ensureTreeDom(label);
+            ensureHost: (root, id) => hostFactories['tree-ground'](root, id),
+            create: ({ id, host, root }) => {
+                const el = host || hostFactories['tree-ground'](root, id);
                 return new Jamble.TreeElement(id, el, 'ground');
             }
-        });
-        registry.register({
+        },
+        {
             id: 'tree.ceiling',
-            name: 'Tree Ceiling',
+            name: 'Ceiling Tree',
+            emoji: '🌲',
             type: 'tree_ceiling',
+            hostKind: 'tree-ceiling',
             defaults: {},
-            create: ({ id, host }) => {
-                const el = host || hostResolvers.ensureCeilingTreeDom(id);
+            ensureHost: (root, id) => hostFactories['tree-ceiling'](root, id),
+            create: ({ id, host, root }) => {
+                const el = host || hostFactories['tree-ceiling'](root, id);
                 return new Jamble.TreeElement(id, el, 'ceiling');
             }
-        });
-        registry.register({
+        },
+        {
             id: 'bird.basic',
             name: 'Bird',
+            emoji: '🐦',
             type: 'bird',
+            hostKind: 'bird-floating',
             defaults: {},
-            create: ({ id, host }) => {
-                const el = host || hostResolvers.ensureBirdDom(id);
+            ensureHost: (root, id) => hostFactories['bird-floating'](root, id),
+            create: ({ id, host, root }) => {
+                const el = host || hostFactories['bird-floating'](root, id);
                 return new Jamble.BirdElement(id, el);
             }
-        });
+        }
+    ];
+    function registerCoreElements(registry) {
+        CORE_ELEMENTS.forEach(desc => registry.register(desc));
     }
     Jamble.registerCoreElements = registerCoreElements;
+    function getCoreElementDefinition(id) {
+        return CORE_ELEMENTS.find(def => def.id === id);
+    }
+    Jamble.getCoreElementDefinition = getCoreElementDefinition;
+    function getCoreElementDefinitions() {
+        return CORE_ELEMENTS;
+    }
+    Jamble.getCoreElementDefinitions = getCoreElementDefinitions;
+    function getElementStyles() {
+        const uniqueKinds = new Set();
+        CORE_ELEMENTS.forEach(def => uniqueKinds.add(def.hostKind));
+        return Array.from(uniqueKinds).map(kind => elementHostStyles[kind]).join('\n');
+    }
+    Jamble.getElementStyles = getElementStyles;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
     Jamble.CoreDeckConfig = {
         pool: [
-            { id: 'treeA', definitionId: 'tree.basic', name: 'Tree A', type: 'tree', quantity: 3 },
-            { id: 'treeCeil', definitionId: 'tree.ceiling', name: 'Ceiling Tree', type: 'tree_ceiling', quantity: 3 },
-            { id: 'birdA', definitionId: 'bird.basic', name: 'Bird A', type: 'bird', quantity: 3 }
+            { definitionId: 'tree.basic', quantity: 3 },
+            { definitionId: 'tree.ceiling', quantity: 3 },
+            { definitionId: 'bird.basic', quantity: 3 }
         ]
     };
     const HAND_SLOTS = 5;
@@ -652,14 +738,19 @@ var Jamble;
         const deck = [];
         config.pool.forEach(blueprint => {
             var _a;
+            const descriptor = Jamble.getCoreElementDefinition(blueprint.definitionId);
+            if (!descriptor)
+                return;
             const qty = Math.max(1, (_a = blueprint.quantity) !== null && _a !== void 0 ? _a : 1);
+            const baseName = blueprint.name || descriptor.name;
             for (let i = 0; i < qty; i++) {
-                const id = generateCardId(blueprint.id, i);
+                const id = generateCardId(blueprint.definitionId, i);
                 deck.push({
                     id,
                     definitionId: blueprint.definitionId,
-                    name: qty > 1 ? blueprint.name + ' ' + (i + 1) : blueprint.name,
-                    type: blueprint.type,
+                    name: qty > 1 ? baseName + ' ' + (i + 1) : baseName,
+                    type: descriptor.type,
+                    emoji: descriptor.emoji,
                     config: blueprint.config
                 });
             }
@@ -873,8 +964,6 @@ var Jamble;
             this.root = root;
             const gameEl = root.querySelector('.jamble-game');
             const playerEl = root.querySelector('.jamble-player');
-            const t1 = root.querySelector('.jamble-tree[data-tree="1"]');
-            const t2 = root.querySelector('.jamble-tree[data-tree="2"]');
             const cdEl = root.querySelector('.jamble-countdown');
             const resetBtn = root.querySelector('.jamble-reset');
             const levelEl = root.querySelector('.jamble-level');
@@ -883,50 +972,20 @@ var Jamble;
             const skillSlotsEl = root.querySelector('#skill-slots');
             const skillMenuEl = root.querySelector('#skill-menu');
             const elementHandEl = root.querySelector('#element-hand');
-            if (!gameEl || !playerEl || !t1 || !t2 || !cdEl || !resetBtn || !startBtn || !shuffleBtn) {
+            if (!gameEl || !playerEl || !cdEl || !resetBtn || !startBtn || !shuffleBtn) {
                 throw new Error('Jamble: missing required elements');
             }
             this.gameEl = gameEl;
             this.player = new Jamble.Player(playerEl);
             this.elementRegistry = new Jamble.LevelElementRegistry();
-            this.levelElements = new Jamble.LevelElementManager(this.elementRegistry);
-            Jamble.registerCoreElements(this.elementRegistry, {
-                ensureTreeDom: (label) => this.ensureTreeDom(label),
-                ensureCeilingTreeDom: (id) => this.ensureCeilingTreeDom(id),
-                ensureBirdDom: (id) => this.ensureBirdDom(id)
-            });
-            const treeHostOrder = [t1, t2, this.ensureTreeDom('3')];
-            let nextTreeHostIndex = 0;
-            const nextTreeHost = () => {
-                if (!treeHostOrder[nextTreeHostIndex]) {
-                    const label = String(nextTreeHostIndex + 1);
-                    treeHostOrder[nextTreeHostIndex] = this.ensureTreeDom(label);
-                }
-                return treeHostOrder[nextTreeHostIndex++];
-            };
-            const elementHosts = {};
-            const resolveHost = (card) => {
-                if (elementHosts[card.id])
-                    return elementHosts[card.id];
-                let host;
-                if (card.definitionId === 'tree.basic')
-                    host = nextTreeHost();
-                else if (card.definitionId === 'tree.ceiling')
-                    host = this.ensureCeilingTreeDom(card.id);
-                else if (card.definitionId === 'bird.basic')
-                    host = this.ensureBirdDom(card.id);
-                else
-                    host = this.ensureTreeDom(String(nextTreeHostIndex + 1));
-                elementHosts[card.id] = host;
-                return host;
-            };
+            this.levelElements = new Jamble.LevelElementManager(gameEl, this.elementRegistry);
+            Jamble.registerCoreElements(this.elementRegistry);
             const canonicalElements = Jamble.deriveElementsSettings(Jamble.CoreDeckConfig);
             this.elementDeckPool = canonicalElements.deck.map(card => ({ ...card }));
             this.elementDeckPool.forEach(card => {
-                const host = resolveHost(card);
-                const instance = this.levelElements.spawnFromRegistry(card.definitionId, { instanceId: card.id, host, config: card.config, active: false });
+                const instance = this.levelElements.spawnFromRegistry(card.definitionId, { instanceId: card.id, config: card.config, active: false });
                 if (instance)
-                    this.elementInstances.set(card.id, { definitionId: card.definitionId, name: card.name, type: card.type, config: card.config });
+                    this.elementInstances.set(card.id, { definitionId: card.definitionId, name: card.name, type: card.type, emoji: card.emoji, config: card.config });
             });
             this.elementHandSlots = canonicalElements.hand.map(slot => ({ ...slot }));
             this.countdown = new Jamble.Countdown(cdEl);
@@ -996,45 +1055,6 @@ var Jamble;
             this.shuffleAllowanceInitialized = false;
             this.updateShuffleButtonState();
         }
-        ensureTreeDom(label) {
-            const existing = this.gameEl.querySelector('.jamble-tree[data-tree="' + label + '"]');
-            if (existing)
-                return existing;
-            const el = document.createElement('div');
-            el.className = 'jamble-tree';
-            el.setAttribute('data-tree', label);
-            el.style.left = '50%';
-            el.style.display = 'none';
-            this.gameEl.appendChild(el);
-            return el;
-        }
-        ensureCeilingTreeDom(id) {
-            const existing = this.gameEl.querySelector('.jamble-tree-ceiling[data-ceiling="' + id + '"]');
-            if (existing)
-                return existing;
-            const el = document.createElement('div');
-            el.className = 'jamble-tree jamble-tree-ceiling';
-            el.setAttribute('data-ceiling', id);
-            el.style.left = '50%';
-            el.style.top = '0';
-            el.style.bottom = '';
-            el.style.display = 'none';
-            this.gameEl.appendChild(el);
-            return el;
-        }
-        ensureBirdDom(id) {
-            const existing = this.gameEl.querySelector('.jamble-bird[data-bird="' + id + '"]');
-            if (existing)
-                return existing;
-            const el = document.createElement('div');
-            el.className = 'jamble-bird';
-            el.setAttribute('data-bird', id);
-            el.textContent = '🐦';
-            el.style.left = '50%';
-            el.style.display = 'none';
-            this.gameEl.appendChild(el);
-            return el;
-        }
         reset() {
             this.wiggle.stop();
             this.countdown.hide();
@@ -1090,13 +1110,13 @@ var Jamble;
         getElementHand() {
             return this.elementHandSlots.map((slot, index) => {
                 if (!slot.cardId) {
-                    return { id: 'placeholder-' + index, definitionId: 'placeholder', name: 'Empty', type: 'empty', active: false, available: false };
+                    return { id: 'placeholder-' + index, definitionId: 'placeholder', name: 'Empty', type: 'empty', emoji: '…', active: false, available: false };
                 }
                 const meta = this.elementInstances.get(slot.cardId) || this.elementDeckPool.find(card => card.id === slot.cardId);
                 if (!meta) {
-                    return { id: slot.cardId, definitionId: 'unknown', name: 'Unknown', type: 'empty', active: false, available: false };
+                    return { id: slot.cardId, definitionId: 'unknown', name: 'Unknown', type: 'empty', emoji: '❔', active: false, available: false };
                 }
-                return { id: slot.cardId, definitionId: meta.definitionId, name: meta.name, type: meta.type, active: slot.active, available: true };
+                return { id: slot.cardId, definitionId: meta.definitionId, name: meta.name, type: meta.type, emoji: meta.emoji || '❔', active: slot.active, available: true };
             });
         }
         getElementDeck() {

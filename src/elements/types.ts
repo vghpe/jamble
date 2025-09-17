@@ -1,5 +1,6 @@
 namespace Jamble {
   export type LevelElementType = 'tree' | 'tree_ceiling' | 'bird' | 'empty';
+  export type ElementHostKind = 'tree-ground' | 'tree-ceiling' | 'bird-floating';
 
   export interface LevelElementLifecycleContext {
     manager: LevelElementManager;
@@ -39,20 +40,25 @@ namespace Jamble {
   export interface LevelElementDescriptor<TConfig = any> {
     id: string;
     name: string;
+    emoji: string;
     type: LevelElementType;
+    hostKind: ElementHostKind;
     defaults?: TConfig;
+    ensureHost?: (root: HTMLElement, id: string) => HTMLElement;
     create: (options: LevelElementFactoryOptions<TConfig>) => LevelElement;
   }
 
   export interface LevelElementFactoryOptions<TConfig = any> {
     id: string;
     manager: LevelElementManager;
+    root: HTMLElement;
     config: TConfig;
     host?: HTMLElement;
   }
 
   export interface LevelElementCreateOptions<TConfig = any> {
     manager: LevelElementManager;
+    root: HTMLElement;
     config?: TConfig;
     host?: HTMLElement;
     instanceId?: string;
@@ -78,10 +84,12 @@ namespace Jamble {
       if (!desc) return undefined;
       const cfg = (options.config !== undefined ? options.config : desc.defaults) as TConfig;
       const instId = options.instanceId || elementId;
+      const host = options.host || (desc.ensureHost ? desc.ensureHost(options.root, instId) : undefined);
       const factoryOptions: LevelElementFactoryOptions<TConfig> = {
         id: instId,
         manager: options.manager,
-        host: options.host,
+        root: options.root,
+        host,
         config: cfg
       };
       return desc.create(factoryOptions);
