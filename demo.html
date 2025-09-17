@@ -42,155 +42,105 @@
       </div>
     </div>
 
-    <!-- Minimal Debug Panel -->
+    <!-- Debug Panel -->
     <div id="jamble-debug" style="position:fixed;left:0;bottom:12px;width:100%;padding:0 12px;box-sizing:border-box;font-family:system-ui,sans-serif;z-index:1000">
       <details open>
         <summary>Debug</summary>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0 4px 0;gap:8px">
-          <div style="display:flex;gap:8px;align-items:center">
-            <label for="dbg-profile" style="font-size:12px;color:#555">Profile</label>
-            <select id="dbg-profile" style="min-width:200px"></select>
-            <button id="dbg-save" type="button">Save</button>
-            <button id="dbg-saveAs" type="button">Save As…</button>
-            <button id="dbg-revert" type="button">Revert changes</button>
-          </div>
-          <div style="display:flex;gap:12px;align-items:center">
-            <div id="dbg-dirty" style="font-size:12px;color:#a00;min-width:120px;text-align:right;visibility:hidden">Unsaved changes</div>
-          </div>
-        </div>
-        <!-- Skills Section -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;align-items:start;margin-top:8px">
-          <!-- Move Skill -->
+        <p style="margin:8px 0 12px 0;font-size:12px;color:#555">Changes apply immediately and reset on reload.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;align-items:start">
           <details style="background:#f9fff9;padding:8px;border-radius:6px;border:1px solid #cdeccd">
-            <summary style="font-weight:600; color:#2e7d32">Skill: Move</summary>
+            <summary style="font-weight:600;color:#2e7d32">Skill: Move</summary>
             <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
               <label for="sk-moveSpeed">Speed</label>
               <input id="sk-moveSpeed" type="number" step="1" min="10" max="600" style="width:120px">
             </div>
           </details>
-          <!-- Jump Config -->
           <details style="background:#f9fff9;padding:8px;border-radius:6px;border:1px solid #cdeccd">
-            <summary style="display:flex;align-items:center;justify-content:space-between;font-weight:600;color:#2e7d32">
-              <span>Skill: Jump</span>
-              <span id="sk-jumpStatus" style="font-size:12px;color:#2e7d32">Inherited</span>
-            </summary>
+            <summary style="font-weight:600;color:#2e7d32">Skill: Jump</summary>
             <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
               <label for="sk-jumpStrength">Strength</label>
               <input id="sk-jumpStrength" type="number" step="0.1" min="1" max="30" style="width:120px">
-              <span id="sk-jumpStrengthPreview" style="grid-column: 2 / 3; justify-self:start;font-size:12px;color:#555"></span>
               <label for="sk-jumpCd">Cooldown (ms)</label>
               <input id="sk-jumpCd" type="number" step="10" min="0" max="2000" style="width:120px">
-              <span id="sk-jumpCdPreview" style="grid-column: 2 / 3; justify-self:start;font-size:12px;color:#555"></span>
-              <label for="sk-jumpPreset">Preset</label>
-              <select id="sk-jumpPreset" style="width:160px"></select>
-              <button id="sk-applyJumpPreset" type="button" disabled>Apply</button>
             </div>
           </details>
-          <!-- Dash Config -->
-          <details style="background:#f9fff9;padding:8px;border-radius:6px;border:1px solid #cdeccd">
-            <summary style="display:flex;align-items:center;justify-content:space-between;font-weight:600;color:#2e7d32">
-              <span>Skill: Dash</span>
-              <span id="sk-dashStatus" style="font-size:12px;color:#2e7d32">Inherited</span>
-            </summary>
+          <details style="background:#f9fff9;padding:8px;border-radius:6px;border:1px solid#cdeccd">
+            <summary style="font-weight:600;color:#2e7d32">Skill: Dash</summary>
             <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
               <label for="sk-dashSpeed">Speed</label>
               <input id="sk-dashSpeed" type="number" step="5" min="0" max="1000" style="width:120px">
-              <span id="sk-dashSpeedPreview" style="grid-column: 2 / 3; justify-self:start;font-size:12px;color:#555"></span>
               <label for="sk-dashDur">Duration (ms)</label>
               <input id="sk-dashDur" type="number" step="10" min="0" max="2000" style="width:120px">
-              <span id="sk-dashDurPreview" style="grid-column: 2 / 3; justify-self:start;font-size:12px;color:#555"></span>
               <label for="sk-dashCd">Cooldown (ms)</label>
               <input id="sk-dashCd" type="number" step="10" min="0" max="2000" style="width:120px">
-              <span id="sk-dashCdPreview" style="grid-column: 2 / 3; justify-self:start;font-size:12px;color:#555"></span>
-              <label for="sk-dashPreset">Preset</label>
-              <select id="sk-dashPreset" style="width:160px"></select>
-              <button id="sk-applyDashPreset" type="button" disabled>Apply</button>
             </div>
           </details>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;align-items:start;margin-top:8px">
-          <!-- Mode & Animation toggles -->
           <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
             <label for="dbg-mode">Ping-pong mode</label>
             <input id="dbg-mode" type="checkbox" style="width:auto">
             <label for="dbg-squash">Squash animation</label>
             <input id="dbg-squash" type="checkbox" style="width:auto">
+            <label for="dbg-shuffleEnabled">Idle shuffle</label>
+            <input id="dbg-shuffleEnabled" type="checkbox" style="justify-self:start">
+            <label for="dbg-shuffleLimit">Shuffles per idle</label>
+            <input id="dbg-shuffleLimit" type="number" step="1" min="0" max="10" style="width:120px">
           </div>
-
-          <!-- Removed per-skill dash from global panel; managed in Skills section below -->
-
-          <!-- Animation Params -->
           <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
             <summary style="font-weight:600;color:#2e7d32">Animation</summary>
             <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
-              <label for="dbg-stretch">J stretch factor</label>
+              <label for="dbg-stretch">Air stretch</label>
               <input id="dbg-stretch" type="number" step="0.005" min="0" max="0.2" style="width:120px">
-              <label for="dbg-squashFactor">J squash factor</label>
+              <label for="dbg-squashFactor">Air squash</label>
               <input id="dbg-squashFactor" type="number" step="0.005" min="0" max="0.1" style="width:120px">
-              <label for="dbg-airMs">J smooth (ms)</label>
+              <label for="dbg-airMs">Air smoothing (ms)</label>
               <input id="dbg-airMs" type="number" step="10" min="0" max="500" style="width:120px">
-              <label for="dbg-landMs">Landing squash (ms)</label>
+              <label for="dbg-landMs">Land squash (ms)</label>
               <input id="dbg-landMs" type="number" step="10" min="0" max="1000" style="width:120px">
-              <label for="dbg-landSY">L squash scale Y</label>
+              <label for="dbg-landSY">Land scale Y</label>
               <input id="dbg-landSY" type="number" step="0.05" min="0.2" max="2" style="width:120px">
-              <label for="dbg-landSX">L squash scale X</label>
+              <label for="dbg-landSX">Land scale X</label>
               <input id="dbg-landSX" type="number" step="0.05" min="0.5" max="3" style="width:120px">
-              <label for="dbg-landEase">L ease (ms)</label>
+              <label for="dbg-landEase">Land ease (ms)</label>
               <input id="dbg-landEase" type="number" step="10" min="0" max="1000" style="width:120px">
             </div>
           </details>
-
-          <!-- Physics (Gravity) -->
           <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
             <summary style="font-weight:600;color:#2e7d32">Gravity</summary>
             <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
-              <label for="dbg-gUp">Gravity up</label>
+              <label for="dbg-gUp">Up gravity</label>
               <input id="dbg-gUp" type="number" step="0.01" min="0" max="5" style="width:120px">
-              <label for="dbg-gMid">Gravity mid</label>
+              <label for="dbg-gMid">Mid gravity</label>
               <input id="dbg-gMid" type="number" step="0.01" min="0" max="5" style="width:120px">
-              <label for="dbg-gDown">Gravity down</label>
+              <label for="dbg-gDown">Down gravity</label>
               <input id="dbg-gDown" type="number" step="0.01" min="0" max="5" style="width:120px">
             </div>
           </details>
-
-          <!-- Timings -->
           <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
             <summary style="font-weight:600;color:#2e7d32">Timings</summary>
             <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
               <label for="dbg-startFreeze">Start freeze (ms)</label>
-              <input id="dbg-startFreeze" type="number" step="50" min="0" max="10000" style="width:120px">
+              <input id="dbg-startFreeze" type="number" step="50" min="0" max="6000" style="width:120px">
               <label for="dbg-deathFreeze">Death freeze (ms)</label>
-              <input id="dbg-deathFreeze" type="number" step="10" min="0" max="5000" style="width:120px">
+              <input id="dbg-deathFreeze" type="number" step="10" min="0" max="2000" style="width:120px">
               <label for="dbg-resetDelay">Show reset delay (ms)</label>
               <input id="dbg-resetDelay" type="number" step="10" min="0" max="2000" style="width:120px">
             </div>
           </details>
-
-          <!-- Geometry / Trees -->
           <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
             <summary style="font-weight:600;color:#2e7d32">Geometry</summary>
             <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
-              <label for="dbg-startOffset">Player start offset (px)</label>
+              <label for="dbg-startOffset">Start offset (px)</label>
               <input id="dbg-startOffset" type="number" step="1" min="0" max="200" style="width:120px">
-              <label for="dbg-wiggleDist">Death wiggle distance (px)</label>
+              <label for="dbg-wiggleDist">Death wiggle (px)</label>
               <input id="dbg-wiggleDist" type="number" step="0.5" min="0" max="10" style="width:120px">
               <label for="dbg-treeMargin">Tree edge margin (%)</label>
-              <input id="dbg-treeMargin" type="number" step="1" min="0" max="40" style="width:120px">
-              <label for="dbg-treeGap">Tree min gap (%)</label>
-              <input id="dbg-treeGap" type="number" step="1" min="5" max="80" style="width:120px">
+              <input id="dbg-treeMargin" type="number" step="1" min="0" max="50" style="width:120px">
+              <label for="dbg-treeGap">Tree gap (%)</label>
+              <input id="dbg-treeGap" type="number" step="1" min="0" max="50" style="width:120px">
             </div>
           </details>
-          <!-- Shuffle Controls -->
-          <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
-            <summary style="font-weight:600;color:#2e7d32">Shuffle</summary>
-            <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
-              <label for="dbg-shuffleEnabled">Enable shuffle</label>
-              <input id="dbg-shuffleEnabled" type="checkbox" style="justify-self:start">
-              <label for="dbg-shuffleLimit">Shuffles per idle</label>
-              <input id="dbg-shuffleLimit" type="number" step="1" min="0" max="10" style="width:120px">
-            </div>
-          </details>
-          <!-- Deck View -->
           <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
             <summary style="font-weight:600;color:#2e7d32">Level Elements</summary>
             <ul id="dbg-deck" style="list-style:none;padding:0;margin:6px 0 0 0;font-size:13px;color:#2e7d32"></ul>
@@ -203,476 +153,114 @@
     <script>
       (function(){
         if (!window.Jamble || !window.Jamble.Game) return;
+
         var root = document.getElementById('jamble');
         var game = new window.Jamble.Game(root);
-        window.__game = game; document.getElementById('jamble').__game = game;
+        window.__game = game;
         game.start();
 
-        // Debug bindings
-        // Removed legacy global jump strength input
-        var modeEl = document.getElementById('dbg-mode');
-        var squashEl = document.getElementById('dbg-squash');
-        var stretchEl = document.getElementById('dbg-stretch');
-        var squashFactorEl = document.getElementById('dbg-squashFactor');
-        var airMsEl = document.getElementById('dbg-airMs');
-        var landMsEl = document.getElementById('dbg-landMs');
-        var landSYEl = document.getElementById('dbg-landSY');
-        var landSXEl = document.getElementById('dbg-landSX');
-        var landEaseEl = document.getElementById('dbg-landEase');
-        var gUpEl = document.getElementById('dbg-gUp');
-        var gMidEl = document.getElementById('dbg-gMid');
-        var gDownEl = document.getElementById('dbg-gDown');
-        var startFreezeEl = document.getElementById('dbg-startFreeze');
-        var deathFreezeEl = document.getElementById('dbg-deathFreeze');
-        var resetDelayEl = document.getElementById('dbg-resetDelay');
-        var startOffsetEl = document.getElementById('dbg-startOffset');
-        var wiggleDistEl = document.getElementById('dbg-wiggleDist');
-        var treeMarginEl = document.getElementById('dbg-treeMargin');
-        var treeGapEl = document.getElementById('dbg-treeGap');
-        var shuffleEnabledEl = document.getElementById('dbg-shuffleEnabled');
-        var shuffleLimitEl = document.getElementById('dbg-shuffleLimit');
+        var settings = window.Jamble.Settings;
+        var skillManager = game.getSkillManager();
+
+        var controls = {
+          moveSpeed: document.getElementById('sk-moveSpeed'),
+          jumpStrength: document.getElementById('sk-jumpStrength'),
+          jumpCooldown: document.getElementById('sk-jumpCd'),
+          dashSpeed: document.getElementById('sk-dashSpeed'),
+          dashDuration: document.getElementById('sk-dashDur'),
+          dashCooldown: document.getElementById('sk-dashCd'),
+          mode: document.getElementById('dbg-mode'),
+          squashToggle: document.getElementById('dbg-squash'),
+          stretch: document.getElementById('dbg-stretch'),
+          squashFactor: document.getElementById('dbg-squashFactor'),
+          airMs: document.getElementById('dbg-airMs'),
+          landMs: document.getElementById('dbg-landMs'),
+          landSY: document.getElementById('dbg-landSY'),
+          landSX: document.getElementById('dbg-landSX'),
+          landEase: document.getElementById('dbg-landEase'),
+          gUp: document.getElementById('dbg-gUp'),
+          gMid: document.getElementById('dbg-gMid'),
+          gDown: document.getElementById('dbg-gDown'),
+          startFreeze: document.getElementById('dbg-startFreeze'),
+          deathFreeze: document.getElementById('dbg-deathFreeze'),
+          resetDelay: document.getElementById('dbg-resetDelay'),
+          startOffset: document.getElementById('dbg-startOffset'),
+          wiggleDist: document.getElementById('dbg-wiggleDist'),
+          treeMargin: document.getElementById('dbg-treeMargin'),
+          treeGap: document.getElementById('dbg-treeGap'),
+          shuffleEnabled: document.getElementById('dbg-shuffleEnabled'),
+          shuffleLimit: document.getElementById('dbg-shuffleLimit')
+        };
+
         var elementHandEl = document.getElementById('element-hand');
         var deckEl = document.getElementById('dbg-deck');
-        var saveBtn = document.getElementById('dbg-save');
-        var profileSel = document.getElementById('dbg-profile');
-        var revertBtn = document.getElementById('dbg-revert');
-        var saveAsBtn = document.getElementById('dbg-saveAs');
-        var dirtyEl = document.getElementById('dbg-dirty');
+        var skillSlots = document.getElementById('skill-slots');
+        var skillMenu = document.getElementById('skill-menu');
+        var slotEls = skillSlots ? Array.from(skillSlots.querySelectorAll('.jamble-skill-slot')) : [];
+        var LETTER = { move: 'M', jump: 'J', dash: 'D' };
 
-        // Skills UI refs
-        var smSpeedEl = document.getElementById('sk-moveSpeed');
-        var sjStrengthEl = document.getElementById('sk-jumpStrength');
-        var sjCdEl = document.getElementById('sk-jumpCd');
-        var sjPresetSel = document.getElementById('sk-jumpPreset');
-        var sjApplyBtn = document.getElementById('sk-applyJumpPreset');
-        var sjStrengthPreview = document.getElementById('sk-jumpStrengthPreview');
-        var sjCdPreview = document.getElementById('sk-jumpCdPreview');
-        var sjStatus = document.getElementById('sk-jumpStatus');
-        var sdSpeedEl = document.getElementById('sk-dashSpeed');
-        var sdDurEl = document.getElementById('sk-dashDur');
-        var sdCdEl = document.getElementById('sk-dashCd');
-        var sdPresetSel = document.getElementById('sk-dashPreset');
-        var sdApplyBtn = document.getElementById('sk-applyDashPreset');
-        var sdSpeedPreview = document.getElementById('sk-dashSpeedPreview');
-        var sdDurPreview = document.getElementById('sk-dashDurPreview');
-        var sdCdPreview = document.getElementById('sk-dashCdPreview');
-        var sdStatus = document.getElementById('sk-dashStatus');
+        function toNumber(value, fallback){
+          var n = Number(value);
+          return Number.isFinite(n) ? n : fallback;
+        }
 
-        // Track active preset names per-skill (UI only)
-        var activePresets = { jump: null, dash: null };
+        function getLoadout(){
+          var load = settings.skills.loadout || { movement: [] };
+          return (load.movement || []).slice();
+        }
 
-        var baselineJSON = null; // stringified snapshot of last loaded/saved profile
-
-        function clamp(n, min, max){ n = Number(n); if (Number.isNaN(n)) return min; return Math.max(min, Math.min(max, n)); }
-        function syncFromSettings(){
-          var s = window.Jamble.Settings.current;
-          
-          if (smSpeedEl) smSpeedEl.value = String(s.playerSpeed);
-          if (modeEl) modeEl.checked = (s.mode === 'pingpong');
-          if (squashEl) squashEl.checked = !!s.squashEnabled;
-          // dashSpeed/duration are per-skill now; keep legacy fields unused
-          if (stretchEl) stretchEl.value = String(s.stretchFactor);
-          if (squashFactorEl) squashFactorEl.value = String(s.squashFactor);
-          if (airMsEl) airMsEl.value = String(s.airTransformSmoothingMs);
-          if (landMsEl) landMsEl.value = String(s.landSquashDurationMs);
-          if (landSYEl) landSYEl.value = String(s.landScaleY);
-          if (landSXEl) landSXEl.value = String(s.landScaleX);
-          if (landEaseEl) landEaseEl.value = String(s.landEaseMs);
-          if (gUpEl) gUpEl.value = String(s.gravityUp);
-          if (gMidEl) gMidEl.value = String(s.gravityMid);
-          if (gDownEl) gDownEl.value = String(s.gravityDown);
-          if (startFreezeEl) startFreezeEl.value = String(s.startFreezeTime);
-          if (deathFreezeEl) deathFreezeEl.value = String(s.deathFreezeTime);
-          if (resetDelayEl) resetDelayEl.value = String(s.showResetDelayMs);
-          if (startOffsetEl) startOffsetEl.value = String(s.playerStartOffset);
-          if (wiggleDistEl) wiggleDistEl.value = String(s.deathWiggleDistance);
-          if (treeMarginEl) treeMarginEl.value = String(s.treeEdgeMarginPct);
-          if (treeGapEl) treeGapEl.value = String(s.treeMinGapPct);
-          if (shuffleEnabledEl) shuffleEnabledEl.checked = !!s.shuffleEnabled;
-          if (shuffleLimitEl) shuffleLimitEl.value = String(s.shuffleLimit ?? 0);
-          // Skills
-          var loadout = window.Jamble.Settings.skills.loadout || { movement: ['move','jump','dash'], utility: [], ultimate: [] };
-          var jc = window.Jamble.Settings.skills.configs.jump || { strength: 7, cooldownMs: 0 };
-          var dc = window.Jamble.Settings.skills.configs.dash || { speed: 280, durationMs: 220, cooldownMs: 150 };
-          if (sjStrengthEl) sjStrengthEl.value = String(jc.strength);
-          if (sjCdEl) sjCdEl.value = String(jc.cooldownMs || 0);
-          if (sdSpeedEl) sdSpeedEl.value = String(dc.speed);
-          if (sdDurEl) sdDurEl.value = String(dc.durationMs);
-          if (sdCdEl) sdCdEl.value = String(dc.cooldownMs);
-          // do not change baseline here; use markBaseline() when profile load/reset/save happens
-          updateDirty();
-          updateSaveEnabled();
-          // Update in-game skills UI
+        function setLoadout(arr){
+          settings.skills.loadout.movement = arr.slice(0, 4);
+          applySkillsFromSettings();
           renderSkillSlotsAndMenu();
         }
-        // Apply Settings.skills (configs + loadout) to the live SkillManager
+
         function applySkillsFromSettings(){
-          var mgr = game.getSkillManager();
-          var jc = (window.Jamble.Settings.skills && window.Jamble.Settings.skills.configs && window.Jamble.Settings.skills.configs.jump) || null;
-          var dc = (window.Jamble.Settings.skills && window.Jamble.Settings.skills.configs && window.Jamble.Settings.skills.configs.dash) || null;
-          if (jc) mgr.setConfig('jump', jc);
-          if (dc) mgr.setConfig('dash', dc);
-          mgr.clear();
-          var load = (window.Jamble.Settings.skills && window.Jamble.Settings.skills.loadout) || { movement: ['jump','dash'], utility: [], ultimate: [] };
-          (load.movement||[]).forEach(function(id){ try { mgr.equip(id); } catch(e){} });
-        }
-        function populateSkillPresets(){
-          var mgr = game.getSkillManager();
-          mgr.listPresets('jump').then(function(x){ if (sjPresetSel){ sjPresetSel.innerHTML=''; var none=document.createElement('option'); none.value=''; none.textContent='(none)'; sjPresetSel.appendChild(none); (x&&x.presets||[]).forEach(function(n){ var o=document.createElement('option'); o.value=n; o.textContent=n; sjPresetSel.appendChild(o); }); sjPresetSel.value = activePresets.jump || ''; sjApplyBtn.disabled = !sjPresetSel.value; }});
-          mgr.listPresets('dash').then(function(x){ if (sdPresetSel){ sdPresetSel.innerHTML=''; var none=document.createElement('option'); none.value=''; none.textContent='(none)'; sdPresetSel.appendChild(none); (x&&x.presets||[]).forEach(function(n){ var o=document.createElement('option'); o.value=n; o.textContent=n; sdPresetSel.appendChild(o); }); sdPresetSel.value = activePresets.dash || ''; sdApplyBtn.disabled = !sdPresetSel.value; }});
-        }
-        function updatePresetPreviews(){
-          var mgr = game.getSkillManager();
-          // Jump preview
-          if (sjPresetSel && sjPresetSel.value){
-            fetch('dist/skill-presets/jump/' + encodeURIComponent(sjPresetSel.value)).then(r=>r.json()).then(function(j){
-              if (sjStrengthPreview) sjStrengthPreview.textContent = '(preset: '+ (j.strength ?? '-') +')';
-              if (sjCdPreview) sjCdPreview.textContent = '(preset: '+ (j.cooldownMs ?? 0) +')';
-            });
-          } else {
-            if (sjStrengthPreview) sjStrengthPreview.textContent = '';
-            if (sjCdPreview) sjCdPreview.textContent = '';
-          }
-          // Dash preview
-          if (sdPresetSel && sdPresetSel.value){
-            fetch('dist/skill-presets/dash/' + encodeURIComponent(sdPresetSel.value)).then(r=>r.json()).then(function(d){
-              if (sdSpeedPreview) sdSpeedPreview.textContent = '(preset: '+ (d.speed ?? '-') +')';
-              if (sdDurPreview) sdDurPreview.textContent = '(preset: '+ (d.durationMs ?? '-') +')';
-              if (sdCdPreview) sdCdPreview.textContent = '(preset: '+ (d.cooldownMs ?? 0) +')';
-            });
-          } else {
-            if (sdSpeedPreview) sdSpeedPreview.textContent = '';
-            if (sdDurPreview) sdDurPreview.textContent = '';
-            if (sdCdPreview) sdCdPreview.textContent = '';
-          }
-        }
-        function updatePresetStatus(){
-          // Jump status
-          var jc = window.Jamble.Settings.skills.configs.jump || {};
-          if (!activePresets.jump){
-            if (sjStatus) sjStatus.textContent = 'Inherited';
-            if (sjApplyBtn) sjApplyBtn.textContent = 'Apply';
-          } else {
-            if (sjStatus) sjStatus.textContent = 'Active: ' + activePresets.jump;
-            // Compare against selected preset preview to toggle Apply/Revert label
-            if (sjPresetSel && sjPresetSel.value === activePresets.jump){
-              // Check adjusted
-              fetch('dist/skill-presets/jump/' + encodeURIComponent(activePresets.jump)).then(r=>r.json()).then(function(p){
-                var adjusted = ((''+(jc.strength)).trim() !== (''+(p.strength)).trim()) || (Number(jc.cooldownMs||0) !== Number(p.cooldownMs||0));
-                if (sjStatus) sjStatus.textContent = adjusted ? ('Adjusted from ' + activePresets.jump) : ('Active: ' + activePresets.jump);
-                if (sjApplyBtn) { sjApplyBtn.textContent = adjusted ? 'Revert' : 'Reapply'; sjApplyBtn.disabled = false; }
-              });
-            } else {
-              if (sjApplyBtn) { sjApplyBtn.textContent = 'Apply'; sjApplyBtn.disabled = !(sjPresetSel && sjPresetSel.value); }
-            }
-          }
-          // Dash status
-          var dc = window.Jamble.Settings.skills.configs.dash || {};
-          if (!activePresets.dash){ if (sdStatus) sdStatus.textContent = 'Inherited'; if (sdApplyBtn) sdApplyBtn.textContent = 'Apply'; }
-          else {
-            if (sdStatus) sdStatus.textContent = 'Active: ' + activePresets.dash;
-            if (sdPresetSel && sdPresetSel.value === activePresets.dash){
-              fetch('dist/skill-presets/dash/' + encodeURIComponent(activePresets.dash)).then(r=>r.json()).then(function(p){
-                var adjusted = (Number(dc.speed) !== Number(p.speed)) || (Number(dc.durationMs) !== Number(p.durationMs)) || (Number(dc.cooldownMs) !== Number(p.cooldownMs));
-                if (sdStatus) sdStatus.textContent = adjusted ? ('Adjusted from ' + activePresets.dash) : ('Active: ' + activePresets.dash);
-                if (sdApplyBtn) { sdApplyBtn.textContent = adjusted ? 'Revert' : 'Reapply'; sdApplyBtn.disabled = false; }
-              });
-            } else {
-              if (sdApplyBtn) { sdApplyBtn.textContent = 'Apply'; sdApplyBtn.disabled = !(sdPresetSel && sdPresetSel.value); }
-            }
-          }
-        }
-        // Debug panel edits no longer manage equip toggles; use in-game menu
-        function onJumpCfg(){
-          var cfg = window.Jamble.Settings.skills.configs.jump || {};
-          if (sjStrengthEl) cfg.strength = Number(clamp(sjStrengthEl.value,1,30));
-          if (sjCdEl) cfg.cooldownMs = Math.round(Number(clamp(sjCdEl.value,0,2000)));
-          window.Jamble.Settings.skills.configs.jump = cfg;
-          var mgr = game.getSkillManager();
-          mgr.patchConfig('jump', cfg); mgr.unequip('jump'); mgr.equip('jump');
-          updateDirty();
-          updatePresetStatus();
-        }
-        function onDashCfg(){
-          var cfg = window.Jamble.Settings.skills.configs.dash || {};
-          if (sdSpeedEl) cfg.speed = Math.round(Number(clamp(sdSpeedEl.value,0,1000)));
-          if (sdDurEl) cfg.durationMs = Math.round(Number(clamp(sdDurEl.value,0,2000)));
-          if (sdCdEl) cfg.cooldownMs = Math.round(Number(clamp(sdCdEl.value,0,2000)));
-          window.Jamble.Settings.skills.configs.dash = cfg;
-          var mgr = game.getSkillManager();
-          mgr.patchConfig('dash', cfg); mgr.unequip('dash'); mgr.equip('dash');
-          updateDirty();
-          updatePresetStatus();
-        }
-        function applyJumpPreset(){ if (!sjPresetSel) return; var name=sjPresetSel.value; if (!name) return; var mgr=game.getSkillManager(); mgr.applyPreset('jump', name).then(function(){ var cfg=mgr.getConfig('jump')||{}; window.Jamble.Settings.skills.configs.jump = cfg; activePresets.jump = name; syncFromSettings(); mgr.unequip('jump'); mgr.equip('jump'); updateDirty(); updatePresetStatus(); }); }
-        function applyDashPreset(){ if (!sdPresetSel) return; var name=sdPresetSel.value; if (!name) return; var mgr=game.getSkillManager(); mgr.applyPreset('dash', name).then(function(){ var cfg=mgr.getConfig('dash')||{}; window.Jamble.Settings.skills.configs.dash = cfg; activePresets.dash = name; syncFromSettings(); mgr.unequip('dash'); mgr.equip('dash'); updateDirty(); updatePresetStatus(); }); }
-        async function unapplyPreset(skillId){
-          // Load baseline config for this skill from the active profile file; fallback to defaults
-          var active = window.Jamble.Settings.activeName || 'default.json';
-          try {
-            var res = await fetch('dist/profiles/' + encodeURIComponent(active));
-            var data = await res.json();
-            var cfg = (data && data.skills && data.skills.configs && data.skills.configs[skillId]) || null;
-            if (!cfg){
-              // fallback to legacy/current defaults
-              if (skillId === 'jump') cfg = { strength: window.Jamble.Settings.current.jumpStrength, cooldownMs: 0 };
-              else if (skillId === 'dash') cfg = { speed: window.Jamble.Settings.current.dashSpeed, durationMs: window.Jamble.Settings.current.dashDurationMs, cooldownMs: 150 };
-            }
-            if (cfg){
-              window.Jamble.Settings.skills.configs[skillId] = cfg;
-              var mgr = game.getSkillManager();
-              mgr.setConfig(skillId, cfg);
-              mgr.unequip(skillId); mgr.equip(skillId);
-              syncFromSettings();
-              updateDirty();
-            }
-          } catch(_e){ /* ignore */ }
-          if (skillId === 'jump') activePresets.jump = null; else if (skillId === 'dash') activePresets.dash = null;
-          updatePresetStatus();
-        }
-        if (sjPresetSel) sjPresetSel.addEventListener('change', function(){ if (!sjPresetSel.value){ unapplyPreset('jump'); } updatePresetPreviews(); updatePresetStatus(); sjApplyBtn.disabled = !sjPresetSel.value; });
-        if (sdPresetSel) sdPresetSel.addEventListener('change', function(){ if (!sdPresetSel.value){ unapplyPreset('dash'); } updatePresetPreviews(); updatePresetStatus(); sdApplyBtn.disabled = !sdPresetSel.value; });
-        function markBaseline(){ baselineJSON = JSON.stringify(window.Jamble.Settings.toJSON()); updateDirty(); updateSaveEnabled(); }
-        function updateSaveEnabled(){
-          if (!saveBtn) return;
-          var name = (window.Jamble.Settings && window.Jamble.Settings.activeName) || 'default.json';
-          saveBtn.disabled = (name === 'default.json');
-          saveBtn.title = saveBtn.disabled ? 'Cannot save over default.json' : '';
-        }
-        function updateDirty(){
-          if (!dirtyEl) return;
-          try {
-            var now = JSON.stringify(window.Jamble.Settings.toJSON());
-            var isDirty = baselineJSON !== null && now !== baselineJSON;
-            dirtyEl.style.visibility = isDirty ? 'visible' : 'hidden';
-          } catch(_e){ dirtyEl.style.visibility = 'hidden'; }
-        }
-        function onInput(){
-          
-          var currentSettings = window.Jamble.Settings.current || {};
-          var p = smSpeedEl ? clamp(smSpeedEl.value, 10, 600) : undefined;
-          var st = stretchEl ? clamp(stretchEl.value, 0, 0.2) : undefined;
-          var sq = squashFactorEl ? clamp(squashFactorEl.value, 0, 0.1) : undefined;
-          var am = airMsEl ? clamp(airMsEl.value, 0, 500) : undefined;
-          var lm = landMsEl ? clamp(landMsEl.value, 0, 1000) : undefined;
-          var lsy = landSYEl ? clamp(landSYEl.value, 0.2, 2) : undefined;
-          var lsx = landSXEl ? clamp(landSXEl.value, 0.5, 3) : undefined;
-          var le = landEaseEl ? clamp(landEaseEl.value, 0, 1000) : undefined;
-          var gu = gUpEl ? clamp(gUpEl.value, 0, 5) : undefined;
-          var gm = gMidEl ? clamp(gMidEl.value, 0, 5) : undefined;
-          var gd = gDownEl ? clamp(gDownEl.value, 0, 5) : undefined;
-          var sf = startFreezeEl ? clamp(startFreezeEl.value, 0, 10000) : undefined;
-          var df = deathFreezeEl ? clamp(deathFreezeEl.value, 0, 5000) : undefined;
-          var rd = resetDelayEl ? clamp(resetDelayEl.value, 0, 2000) : undefined;
-          var so = startOffsetEl ? clamp(startOffsetEl.value, 0, 200) : undefined;
-          var wd = wiggleDistEl ? clamp(wiggleDistEl.value, 0, 10) : undefined;
-          var tm = treeMarginEl ? clamp(treeMarginEl.value, 0, 40) : undefined;
-          var tg = treeGapEl ? clamp(treeGapEl.value, 5, 80) : undefined;
-          var shLimit = shuffleLimitEl ? clamp(shuffleLimitEl.value, 0, 10) : undefined;
-          var patch = {};
-          var shuffleChanged = false;
-          
-          if (p !== undefined) patch.playerSpeed = Number(p);
-          if (modeEl) patch.mode = modeEl.checked ? 'pingpong' : 'idle';
-          if (squashEl) patch.squashEnabled = !!squashEl.checked;
-          // Dash speed/duration are configured per-skill in the Skills section
-          if (st !== undefined) patch.stretchFactor = Number(st);
-          if (sq !== undefined) patch.squashFactor = Number(sq);
-          if (am !== undefined) patch.airTransformSmoothingMs = Math.round(Number(am));
-          if (lm !== undefined) patch.landSquashDurationMs = Math.round(Number(lm));
-          if (lsy !== undefined) patch.landScaleY = Number(lsy);
-          if (lsx !== undefined) patch.landScaleX = Number(lsx);
-          if (le !== undefined) patch.landEaseMs = Math.round(Number(le));
-          if (gu !== undefined) patch.gravityUp = Number(gu);
-          if (gm !== undefined) patch.gravityMid = Number(gm);
-          if (gd !== undefined) patch.gravityDown = Number(gd);
-          if (sf !== undefined) patch.startFreezeTime = Math.round(Number(sf));
-          if (df !== undefined) patch.deathFreezeTime = Math.round(Number(df));
-          if (rd !== undefined) patch.showResetDelayMs = Math.round(Number(rd));
-          if (so !== undefined) patch.playerStartOffset = Math.round(Number(so));
-          if (wd !== undefined) patch.deathWiggleDistance = Number(wd);
-          if (tm !== undefined) patch.treeEdgeMarginPct = Math.round(Number(tm));
-          if (tg !== undefined) patch.treeMinGapPct = Math.round(Number(tg));
-          if (shuffleEnabledEl){
-            var newShuffleEnabled = !!shuffleEnabledEl.checked;
-            if (!!currentSettings.shuffleEnabled !== newShuffleEnabled) shuffleChanged = true;
-            patch.shuffleEnabled = newShuffleEnabled;
-          }
-          if (shLimit !== undefined){
-            var limitVal = Math.round(Number(shLimit));
-            if (Number(currentSettings.shuffleLimit) !== limitVal) shuffleChanged = true;
-            patch.shuffleLimit = limitVal;
-          }
-          window.Jamble.Settings.update(patch);
-          updateDirty();
-          if (shuffleChanged && game && typeof game.refreshShuffleSettings === 'function') game.refreshShuffleSettings();
+          var jumpCfg = settings.skills.configs.jump || {};
+          var dashCfg = settings.skills.configs.dash || {};
+          skillManager.clear();
+          if (Object.keys(jumpCfg).length) skillManager.setConfig('jump', { ...jumpCfg });
+          if (Object.keys(dashCfg).length) skillManager.setConfig('dash', { ...dashCfg });
+          var lineup = getLoadout();
+          if (!lineup.length) lineup = ['move','jump','dash'];
+          lineup.forEach(function(id){ try { skillManager.equip(id); } catch(_e){} });
         }
 
-        if (smSpeedEl) smSpeedEl.addEventListener('input', onInput);
-        if (modeEl) modeEl.addEventListener('change', onInput);
-        if (squashEl) squashEl.addEventListener('change', onInput);
-        if (stretchEl) stretchEl.addEventListener('input', onInput);
-        if (squashFactorEl) squashFactorEl.addEventListener('input', onInput);
-        if (airMsEl) airMsEl.addEventListener('input', onInput);
-        if (landMsEl) landMsEl.addEventListener('input', onInput);
-        if (landSYEl) landSYEl.addEventListener('input', onInput);
-        if (landSXEl) landSXEl.addEventListener('input', onInput);
-        if (landEaseEl) landEaseEl.addEventListener('input', onInput);
-        if (gUpEl) gUpEl.addEventListener('input', onInput);
-        if (gMidEl) gMidEl.addEventListener('input', onInput);
-        if (gDownEl) gDownEl.addEventListener('input', onInput);
-        if (startFreezeEl) startFreezeEl.addEventListener('input', onInput);
-        if (deathFreezeEl) deathFreezeEl.addEventListener('input', onInput);
-        if (resetDelayEl) resetDelayEl.addEventListener('input', onInput);
-        if (startOffsetEl) startOffsetEl.addEventListener('input', onInput);
-        if (wiggleDistEl) wiggleDistEl.addEventListener('input', onInput);
-        if (treeMarginEl) treeMarginEl.addEventListener('input', onInput);
-        if (treeGapEl) treeGapEl.addEventListener('input', onInput);
-        if (shuffleEnabledEl) shuffleEnabledEl.addEventListener('change', onInput);
-        if (shuffleLimitEl) shuffleLimitEl.addEventListener('input', onInput);
-        if (sjStrengthEl) sjStrengthEl.addEventListener('input', onJumpCfg);
-        if (sjCdEl) sjCdEl.addEventListener('input', onJumpCfg);
-        if (sdSpeedEl) sdSpeedEl.addEventListener('input', onDashCfg);
-        if (sdDurEl) sdDurEl.addEventListener('input', onDashCfg);
-        if (sdCdEl) sdCdEl.addEventListener('input', onDashCfg);
-        if (sjApplyBtn) sjApplyBtn.addEventListener('click', applyJumpPreset);
-        if (sdApplyBtn) sdApplyBtn.addEventListener('click', applyDashPreset);
-
-        // Save/Load/Reset wiring
-        function saveProfile(){
-          var name = window.Jamble.Settings.activeName || 'default.json';
-          if (name === 'default.json') return; // block saving over default
-          fetch('/__profiles/' + encodeURIComponent(name), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(window.Jamble.Settings.toJSON())
-          }).then(function(res){ if (!res.ok) throw new Error('Save failed'); return res.text(); })
-            .then(function(){
-              // Update store baseline to the newly saved values so Revert matches the save
-              if (window.Jamble && window.Jamble.Settings && window.Jamble.Settings.markBaseline){
-                window.Jamble.Settings.markBaseline(name);
-              }
-              markBaseline();
-            })
-            .catch(function(err){ console.error(err); });
-        }
-        function revertProfile(){
-          window.Jamble.Settings.revertToProfile();
-          syncFromSettings();
-          applySkillsFromSettings();
-          updateDirty();
-          updatePresetStatus();
-        }
-        var profilesCache = [];
-        function populateProfiles(){
-          fetch('/__profiles').then(function(r){ return r.json(); }).then(function(data){
-            var list = (data && data.profiles) || [];
-            profilesCache = list.slice();
-            if (!profileSel) return;
-            profileSel.innerHTML = '';
-            list.forEach(function(name){
-              var opt = document.createElement('option');
-              opt.value = name; opt.textContent = name; profileSel.appendChild(opt);
-            });
-            // Try to select the active one
-            var active = window.Jamble.Settings.activeName || 'default.json';
-            var found = Array.from(profileSel.options).some(function(o){ return o.value === active; });
-            profileSel.value = found ? active : (list[0] || '');
-            updateSaveEnabled();
-          }).catch(function(err){ console.error(err); });
-        }
-        function suggestName(){
-          var active = window.Jamble.Settings.activeName || 'default.json';
-          if (active.toLowerCase() === 'default.json') return 'my-profile.json';
-          if (active.toLowerCase().endsWith('.json')) return active.slice(0, -5) + '-copy.json';
-          return active + '-copy.json';
-        }
-        function validateFileName(name){
-          if (!name) return null;
-          name = String(name).trim();
-          if (!name.toLowerCase().endsWith('.json')) name += '.json';
-          if (name.includes('/') || name.includes('\\')) return null;
-          if (name.toLowerCase() === 'default.json') return null;
-          return name;
-        }
-        function saveAsProfile(){
-          var name = prompt('Save as filename (saved under dist/profiles/):', suggestName());
-          name = validateFileName(name);
-          if (!name){ alert('Invalid filename. Must be a .json under dist/profiles and not "default.json".'); return; }
-          var exists = profilesCache.indexOf(name) !== -1;
-          if (exists && !confirm('"' + name + '" already exists. Overwrite?')) return;
-          fetch('/__profiles/' + encodeURIComponent(name), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(window.Jamble.Settings.toJSON())
-          }).then(function(res){ if (!res.ok) throw new Error('Save failed'); return res.text(); })
-            .then(function(){
-              // Load the saved profile to set activeName/baseline and refresh dropdown
-              var url = 'dist/profiles/' + name;
-              window.Jamble.Settings.loadFrom(url).then(function(){ populateProfiles(); syncFromSettings(); applySkillsFromSettings(); markBaseline(); updatePresetStatus(); });
-            })
-            .catch(function(err){ console.error(err); });
-        }
-        function loadSelectedProfile(){
-          if (!profileSel || !profileSel.value) return;
-          var url = 'dist/profiles/' + profileSel.value;
-          window.Jamble.Settings.loadFrom(url).then(function(){ syncFromSettings(); applySkillsFromSettings(); markBaseline(); updatePresetStatus(); });
-        }
-        if (saveBtn) saveBtn.addEventListener('click', saveProfile);
-        if (revertBtn) revertBtn.addEventListener('click', revertProfile);
-        if (profileSel) profileSel.addEventListener('change', loadSelectedProfile);
-        if (saveAsBtn) saveAsBtn.addEventListener('click', saveAsProfile);
-
-        // Prevent debug interactions from triggering game pointer handler
-        var dbg = document.getElementById('jamble-debug');
-        if (dbg){
-          dbg.addEventListener('pointerdown', function(ev){ ev.stopPropagation(); });
-          dbg.addEventListener('click', function(ev){ ev.stopPropagation(); });
-        }
-        var skillMenu = document.getElementById('skill-menu');
-        if (skillMenu){
-          // Keep clicks from reaching game handler and wire interactivity
-          skillMenu.addEventListener('pointerdown', function(ev){ ev.stopPropagation(); });
-          skillMenu.addEventListener('click', function(ev){ ev.stopPropagation(); });
-          // Slot/unslot skills on tap
-          skillMenu.addEventListener('click', function(ev){
-            var t = ev.target;
-            if (!t || !t.classList || !t.classList.contains('jamble-skill-btn')) return;
-            var id = t.getAttribute('data-skill');
-            if (!id || id==='empty') return;
-            var l = getLoadout();
-            var idx = l.indexOf(id);
-            if (idx !== -1){ l.splice(idx,1); setLoadout(l); return; }
-            if (l.length >= 4) return; // no free slot
-            l.push(id); setLoadout(l);
+        function renderSkillSlotsAndMenu(){
+          var load = getLoadout();
+          if (!slotEls.length && skillSlots){ slotEls = Array.from(skillSlots.querySelectorAll('.jamble-skill-slot')); }
+          slotEls.forEach(function(el, idx){
+            var id = load[idx];
+            el.textContent = id ? (LETTER[id] || id.charAt(0).toUpperCase()) : '';
           });
-        }
-
-        if (elementHandEl){
-          elementHandEl.addEventListener('pointerdown', function(ev){ ev.stopPropagation(); });
-          elementHandEl.addEventListener('click', function(ev){ ev.stopPropagation(); });
+          if (!skillMenu) return;
+          var btns = Array.from(skillMenu.querySelectorAll('.jamble-skill-btn'));
+          btns.forEach(function(btn){
+            var id = btn.getAttribute('data-skill');
+            if (!id || id === 'empty') return;
+            btn.classList.toggle('jamble-active', load.indexOf(id) !== -1);
+          });
         }
 
         function renderDeckList(){
-          if (!deckEl) return;
+          if (!deckEl || !game.getElementDeck) return;
           var hand = game.getElementHand ? game.getElementHand() : [];
-          var deck = game.getElementDeck ? game.getElementDeck() : [];
+          var deck = game.getElementDeck();
           deckEl.innerHTML = '';
           deck.forEach(function(card){
-            var item = document.createElement('li');
+            var li = document.createElement('li');
             var inHand = hand.some(function(h){ return h.id === card.id && h.available; });
-            item.textContent = card.name + (inHand ? ' (in hand)' : '');
-            deckEl.appendChild(item);
+            li.textContent = card.name + (inHand ? ' (in hand)' : '');
+            deckEl.appendChild(li);
           });
         }
 
-        function getElementCardIcon(card){
-          if (!card || !card.definitionId) return '…';
-          switch(card.definitionId){
-            case 'bird.basic': return '🐦';
-            case 'tree.basic': return '🌳';
-            default: return '❔';
-          }
+        function iconForCard(card){
+          if (!card) return '…';
+          if (card.definitionId === 'bird.basic') return '🐦';
+          if (card.definitionId === 'tree.ceiling') return '🌲';
+          if (card.definitionId === 'tree.basic') return '🌳';
+          return '❔';
         }
 
         function renderElementHand(hand){
@@ -680,22 +268,24 @@
           var cards = Array.isArray(hand) ? hand : (game.getElementHand ? game.getElementHand() : []);
           var maxSlots = 5;
           elementHandEl.innerHTML = '';
-          for (let idx = 0; idx < maxSlots; idx++){
-            const card = cards[idx];
-            const btn = document.createElement('button');
+          for (var idx = 0; idx < maxSlots; idx++){
+            var card = cards[idx];
+            var btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'jamble-element-card';
             if (card && card.available){
-              btn.textContent = getElementCardIcon(card);
+              btn.textContent = iconForCard(card);
               btn.setAttribute('aria-label', card.name || 'Element');
               if (card.active) btn.classList.add('jamble-active');
-              btn.addEventListener('click', function(ev){
-                ev.preventDefault();
-                ev.stopPropagation();
-                if (typeof game.setElementCardActive === 'function'){
-                  game.setElementCardActive(card.id, !card.active);
-                }
-              });
+              (function(cardId, active){
+                btn.addEventListener('click', function(ev){
+                  ev.preventDefault();
+                  ev.stopPropagation();
+                  if (typeof game.setElementCardActive === 'function'){
+                    game.setElementCardActive(cardId, !active);
+                  }
+                });
+              })(card.id, card.active);
             } else {
               btn.textContent = '…';
               btn.disabled = true;
@@ -705,38 +295,139 @@
           }
         }
 
-        window.addEventListener('jamble:elementHandChanged', function(ev){ renderElementHand(ev && ev.detail); renderDeckList(); });
+        function syncFromSettings(){
+          var s = settings.current;
+          if (controls.moveSpeed) controls.moveSpeed.value = String(s.playerSpeed);
+          if (controls.mode) controls.mode.checked = (s.mode === 'pingpong');
+          if (controls.squashToggle) controls.squashToggle.checked = !!s.squashEnabled;
+          if (controls.stretch) controls.stretch.value = String(s.stretchFactor);
+          if (controls.squashFactor) controls.squashFactor.value = String(s.squashFactor);
+          if (controls.airMs) controls.airMs.value = String(s.airTransformSmoothingMs);
+          if (controls.landMs) controls.landMs.value = String(s.landSquashDurationMs);
+          if (controls.landSY) controls.landSY.value = String(s.landScaleY);
+          if (controls.landSX) controls.landSX.value = String(s.landScaleX);
+          if (controls.landEase) controls.landEase.value = String(s.landEaseMs);
+          if (controls.gUp) controls.gUp.value = String(s.gravityUp);
+          if (controls.gMid) controls.gMid.value = String(s.gravityMid);
+          if (controls.gDown) controls.gDown.value = String(s.gravityDown);
+          if (controls.startFreeze) controls.startFreeze.value = String(s.startFreezeTime);
+          if (controls.deathFreeze) controls.deathFreeze.value = String(s.deathFreezeTime);
+          if (controls.resetDelay) controls.resetDelay.value = String(s.showResetDelayMs);
+          if (controls.startOffset) controls.startOffset.value = String(s.playerStartOffset);
+          if (controls.wiggleDist) controls.wiggleDist.value = String(s.deathWiggleDistance);
+          if (controls.treeMargin) controls.treeMargin.value = String(s.treeEdgeMarginPct);
+          if (controls.treeGap) controls.treeGap.value = String(s.treeMinGapPct);
+          if (controls.shuffleEnabled) controls.shuffleEnabled.checked = !!s.shuffleEnabled;
+          if (controls.shuffleLimit) controls.shuffleLimit.value = String(s.shuffleLimit);
 
-        // Initial sync and after settings load (HTTP mode)
-        syncFromSettings();
-        // Establish initial baseline after the initial HTTP load finishes
-        window.addEventListener('jamble:settingsLoaded', function(){ syncFromSettings(); applySkillsFromSettings(); markBaseline(); populateProfiles(); populateSkillPresets(); updatePresetStatus(); });
+          var jumpCfg = settings.skills.configs.jump || {};
+          if (controls.jumpStrength) controls.jumpStrength.value = String(jumpCfg.strength ?? s.jumpStrength);
+          if (controls.jumpCooldown) controls.jumpCooldown.value = String(jumpCfg.cooldownMs ?? 0);
+          var dashCfg = settings.skills.configs.dash || {};
+          if (controls.dashSpeed) controls.dashSpeed.value = String(dashCfg.speed ?? s.dashSpeed);
+          if (controls.dashDuration) controls.dashDuration.value = String(dashCfg.durationMs ?? s.dashDurationMs);
+          if (controls.dashCooldown) controls.dashCooldown.value = String(dashCfg.cooldownMs ?? 150);
 
-        // In-game skills UI logic
-        var slotEls = [];
-        var menuEl = null;
-        var letter = { move: 'M', jump: 'J', dash: 'D' };
-        function getLoadout(){ var l=window.Jamble.Settings.skills.loadout || { movement: [] }; return (l.movement||[]).slice(); }
-        function setLoadout(arr){ window.Jamble.Settings.skills.loadout.movement = arr.slice(0,4); applySkillsFromSettings(); renderSkillSlotsAndMenu(); updateDirty(); }
-        function renderSkillSlotsAndMenu(){
-          if (!slotEls || slotEls.length === 0) slotEls = Array.from(document.querySelectorAll('#skill-slots .jamble-skill-slot'));
-          if (!menuEl) menuEl = document.getElementById('skill-menu');
-          var l = getLoadout().slice(0,4);
-          // slots
-          // Guard against early calls before `letter` is initialized
-          var letterMap = (typeof letter !== 'undefined' && letter) ? letter : { move: 'M', jump: 'J', dash: 'D' };
-          slotEls.forEach(function(el,i){ el.textContent = l[i] ? (letterMap[l[i]]||'') : ''; });
-          // menu active state
-          if (!menuEl) return;
-          var btns = Array.from(menuEl.querySelectorAll('.jamble-skill-btn'));
-          btns.forEach(function(b){ var id=b.getAttribute('data-skill'); if (!id || id==='empty') return; var active = l.indexOf(id) !== -1; b.classList.toggle('jamble-active', active); });
+          renderSkillSlotsAndMenu();
+          renderElementHand();
+          renderDeckList();
         }
-        // Click handler is attached above via `skillMenu`
-        // Initial paint
+
+        function bindNumber(input, getter, setter){
+          if (!input) return;
+          input.addEventListener('change', function(){
+            var current = getter();
+            var value = toNumber(input.value, current);
+            setter(value);
+          });
+        }
+
+        if (controls.moveSpeed) bindNumber(controls.moveSpeed, function(){ return settings.current.playerSpeed; }, function(value){ settings.update({ playerSpeed: value }); });
+        if (controls.mode) controls.mode.addEventListener('change', function(){ settings.update({ mode: controls.mode.checked ? 'pingpong' : 'idle' }); });
+        if (controls.squashToggle) controls.squashToggle.addEventListener('change', function(){ settings.update({ squashEnabled: controls.squashToggle.checked }); });
+
+        bindNumber(controls.stretch, function(){ return settings.current.stretchFactor; }, function(value){ settings.update({ stretchFactor: value }); });
+        bindNumber(controls.squashFactor, function(){ return settings.current.squashFactor; }, function(value){ settings.update({ squashFactor: value }); });
+        bindNumber(controls.airMs, function(){ return settings.current.airTransformSmoothingMs; }, function(value){ settings.update({ airTransformSmoothingMs: value }); });
+        bindNumber(controls.landMs, function(){ return settings.current.landSquashDurationMs; }, function(value){ settings.update({ landSquashDurationMs: value }); });
+        bindNumber(controls.landSY, function(){ return settings.current.landScaleY; }, function(value){ settings.update({ landScaleY: value }); });
+        bindNumber(controls.landSX, function(){ return settings.current.landScaleX; }, function(value){ settings.update({ landScaleX: value }); });
+        bindNumber(controls.landEase, function(){ return settings.current.landEaseMs; }, function(value){ settings.update({ landEaseMs: value }); });
+
+        bindNumber(controls.gUp, function(){ return settings.current.gravityUp; }, function(value){ settings.update({ gravityUp: value }); });
+        bindNumber(controls.gMid, function(){ return settings.current.gravityMid; }, function(value){ settings.update({ gravityMid: value }); });
+        bindNumber(controls.gDown, function(){ return settings.current.gravityDown; }, function(value){ settings.update({ gravityDown: value }); });
+
+        bindNumber(controls.startFreeze, function(){ return settings.current.startFreezeTime; }, function(value){ settings.update({ startFreezeTime: value }); });
+        bindNumber(controls.deathFreeze, function(){ return settings.current.deathFreezeTime; }, function(value){ settings.update({ deathFreezeTime: value }); });
+        bindNumber(controls.resetDelay, function(){ return settings.current.showResetDelayMs; }, function(value){ settings.update({ showResetDelayMs: value }); });
+        bindNumber(controls.startOffset, function(){ return settings.current.playerStartOffset; }, function(value){ settings.update({ playerStartOffset: value }); });
+        bindNumber(controls.wiggleDist, function(){ return settings.current.deathWiggleDistance; }, function(value){ settings.update({ deathWiggleDistance: value }); });
+        bindNumber(controls.treeMargin, function(){ return settings.current.treeEdgeMarginPct; }, function(value){ settings.update({ treeEdgeMarginPct: value }); });
+        bindNumber(controls.treeGap, function(){ return settings.current.treeMinGapPct; }, function(value){ settings.update({ treeMinGapPct: value }); });
+        if (controls.shuffleEnabled) controls.shuffleEnabled.addEventListener('change', function(){ settings.update({ shuffleEnabled: controls.shuffleEnabled.checked }); });
+        bindNumber(controls.shuffleLimit, function(){ return settings.current.shuffleLimit; }, function(value){ settings.update({ shuffleLimit: value }); });
+
+        bindNumber(controls.jumpStrength, function(){ return settings.skills.configs.jump?.strength ?? settings.current.jumpStrength; }, function(value){
+          settings.update({ jumpStrength: value });
+          settings.skills.configs.jump = { ...(settings.skills.configs.jump || {}), strength: value };
+          applySkillsFromSettings();
+        });
+        bindNumber(controls.jumpCooldown, function(){ return settings.skills.configs.jump?.cooldownMs ?? 0; }, function(value){
+          settings.skills.configs.jump = { ...(settings.skills.configs.jump || {}), cooldownMs: value };
+          applySkillsFromSettings();
+        });
+        bindNumber(controls.dashSpeed, function(){ return settings.skills.configs.dash?.speed ?? settings.current.dashSpeed; }, function(value){
+          settings.update({ dashSpeed: value });
+          settings.skills.configs.dash = { ...(settings.skills.configs.dash || {}), speed: value };
+          applySkillsFromSettings();
+        });
+        bindNumber(controls.dashDuration, function(){ return settings.skills.configs.dash?.durationMs ?? settings.current.dashDurationMs; }, function(value){
+          settings.update({ dashDurationMs: value });
+          settings.skills.configs.dash = { ...(settings.skills.configs.dash || {}), durationMs: value };
+          applySkillsFromSettings();
+        });
+        bindNumber(controls.dashCooldown, function(){ return settings.skills.configs.dash?.cooldownMs ?? 150; }, function(value){
+          settings.skills.configs.dash = { ...(settings.skills.configs.dash || {}), cooldownMs: value };
+          applySkillsFromSettings();
+        });
+
+        if (skillMenu){
+          skillMenu.addEventListener('pointerdown', function(ev){ ev.stopPropagation(); });
+          skillMenu.addEventListener('click', function(ev){ ev.stopPropagation(); });
+          skillMenu.addEventListener('click', function(ev){
+            var target = ev.target;
+            if (!target || !target.classList || !target.classList.contains('jamble-skill-btn')) return;
+            var id = target.getAttribute('data-skill');
+            if (!id || id === 'empty') return;
+            var load = getLoadout();
+            var idx = load.indexOf(id);
+            if (idx !== -1){
+              load.splice(idx,1);
+            } else {
+              if (load.length >= 4) return;
+              load.push(id);
+            }
+            setLoadout(load);
+          });
+        }
+
+        if (elementHandEl){
+          elementHandEl.addEventListener('pointerdown', function(ev){ ev.stopPropagation(); });
+          elementHandEl.addEventListener('click', function(ev){ ev.stopPropagation(); });
+        }
+
+        window.addEventListener('jamble:elementHandChanged', function(ev){
+          renderElementHand(ev && ev.detail);
+          renderDeckList();
+        });
+
+        syncFromSettings();
+        applySkillsFromSettings();
         renderSkillSlotsAndMenu();
-        renderElementHand();
         renderDeckList();
+        renderElementHand();
       })();
     </script>
   </body>
-  </html>
+</html>

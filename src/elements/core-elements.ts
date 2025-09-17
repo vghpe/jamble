@@ -5,6 +5,7 @@
 namespace Jamble {
   export function registerCoreElements(registry: LevelElementRegistry, hostResolvers: {
     ensureTreeDom(label: string): HTMLElement;
+    ensureCeilingTreeDom(id: string): HTMLElement;
     ensureBirdDom(id: string): HTMLElement;
   }): void {
     registry.register({
@@ -14,7 +15,18 @@ namespace Jamble {
       defaults: {},
       create: ({ id, host }) => {
         const el = host || hostResolvers.ensureTreeDom(id.replace(/[^0-9]+/g, '') || id);
-        return new TreeElement(id, el);
+        return new TreeElement(id, el, 'ground');
+      }
+    });
+
+    registry.register({
+      id: 'tree.ceiling',
+      name: 'Tree Ceiling',
+      type: 'tree_ceiling',
+      defaults: {},
+      create: ({ id, host }) => {
+        const el = host || hostResolvers.ensureCeilingTreeDom(id);
+        return new TreeElement(id, el, 'ceiling');
       }
     });
 

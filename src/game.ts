@@ -73,19 +73,8 @@ namespace Jamble {
       this.levelElements = new LevelElementManager(this.elementRegistry);
       Jamble.registerCoreElements(this.elementRegistry, {
         ensureTreeDom: (label: string) => this.ensureTreeDom(label),
+        ensureCeilingTreeDom: (id: string) => this.ensureCeilingTreeDom(id),
         ensureBirdDom: (id: string) => this.ensureBirdDom(id)
-      });
-      this.elementRegistry.register({
-        id: 'bird.basic',
-        name: 'Bird',
-        type: 'tree',
-        defaults: {},
-        create: ({ id, host }) => {
-          if (!host) throw new Error('Bird element requires a host element');
-          if (!host.classList.contains('jamble-bird')) host.classList.add('jamble-bird');
-          host.textContent = '🐦';
-          return new BirdElement(id, host);
-        }
       });
       const treeHostOrder: HTMLElement[] = [t1, t2, this.ensureTreeDom('3')];
       let nextTreeHostIndex = 0;
@@ -101,6 +90,7 @@ namespace Jamble {
         if (elementHosts[card.id]) return elementHosts[card.id];
         let host: HTMLElement;
         if (card.definitionId === 'tree.basic') host = nextTreeHost();
+        else if (card.definitionId === 'tree.ceiling') host = this.ensureCeilingTreeDom(card.id);
         else if (card.definitionId === 'bird.basic') host = this.ensureBirdDom(card.id);
         else host = this.ensureTreeDom(String(nextTreeHostIndex + 1));
         elementHosts[card.id] = host;
@@ -192,6 +182,21 @@ namespace Jamble {
       el.className = 'jamble-tree';
       el.setAttribute('data-tree', label);
       el.style.left = '50%';
+      el.style.display = 'none';
+      this.gameEl.appendChild(el);
+      return el;
+    }
+
+    private ensureCeilingTreeDom(id: string): HTMLElement {
+      const existing = this.gameEl.querySelector('.jamble-tree-ceiling[data-ceiling="' + id + '"]') as HTMLElement | null;
+      if (existing) return existing;
+      const el = document.createElement('div');
+      el.className = 'jamble-tree jamble-tree-ceiling';
+      el.setAttribute('data-ceiling', id);
+      el.textContent = '🌲';
+      el.style.left = '50%';
+      el.style.top = '0';
+      el.style.bottom = '';
       el.style.display = 'none';
       this.gameEl.appendChild(el);
       return el;

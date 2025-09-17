@@ -36,6 +36,7 @@ namespace Jamble {
   export const CoreDeckConfig: DeckConfig = {
     pool: [
       { id: 'treeA', definitionId: 'tree.basic', name: 'Tree A', type: 'tree', quantity: 3 },
+      { id: 'treeCeil', definitionId: 'tree.ceiling', name: 'Ceiling Tree', type: 'tree_ceiling', quantity: 3 },
       { id: 'birdA', definitionId: 'bird.basic', name: 'Bird A', type: 'bird', quantity: 3 }
     ]
   };
