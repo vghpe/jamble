@@ -3,6 +3,7 @@
 /// <reference path="./countdown.ts" />
 /// <reference path="./wiggle.ts" />
 /// <reference path="./settings.ts" />
+/// <reference path="./elements/registry.ts" />
 /// <reference path="./skills/types.ts" />
 /// <reference path="./skills/manager.ts" />
 /// <reference path="./skills/jump.ts" />
@@ -14,9 +15,9 @@ namespace Jamble {
     private player: Player;
     private levelElements: LevelElementManager;
     private elementRegistry: LevelElementRegistry;
-    private elementDeckPool: Array<{ id: string; definitionId: string; name: string; type: LevelElementType }>;
+    private elementDeckPool: Array<{ id: string; definitionId: string; name: string; type: LevelElementType; config?: any }>;
     private elementHandSlots: Array<{ slotId: string; cardId: string | null; active: boolean }>;
-    private elementInstances = new Map<string, { definitionId: string; name: string; type: LevelElementType }>();
+    private elementInstances = new Map<string, { definitionId: string; name: string; type: LevelElementType; config?: any }>();
     private countdown: Countdown;
     private resetBtn: HTMLButtonElement;
     private startBtn: HTMLButtonElement;
@@ -67,27 +68,9 @@ namespace Jamble {
       this.player = new Player(playerEl);
       this.elementRegistry = new LevelElementRegistry();
       this.levelElements = new LevelElementManager(this.elementRegistry);
-      this.elementRegistry.register({
-        id: 'tree.basic',
-        name: 'Tree',
-        type: 'tree',
-        defaults: {},
-        create: ({ id, host }) => {
-          if (!host) throw new Error('Tree element requires a host element');
-          return new TreeElement(id, host);
-        }
-      });
-      this.elementRegistry.register({
-        id: 'bird.basic',
-        name: 'Bird',
-        type: 'bird',
-        defaults: {},
-        create: ({ id, host }) => {
-          if (!host) throw new Error('Bird element requires a host element');
-          if (!host.classList.contains('jamble-bird')) host.classList.add('jamble-bird');
-          host.textContent = '🐦';
-          return new BirdElement(id, host);
-        }
+      Jamble.registerCoreElements(this.elementRegistry, {
+        ensureTreeDom: (label: string) => this.ensureTreeDom(label),
+        ensureBirdDom: (id: string) => this.ensureBirdDom(id)
       });
       this.elementRegistry.register({
         id: 'bird.basic',
@@ -101,76 +84,34 @@ namespace Jamble {
           return new BirdElement(id, host);
         }
       });
-      const elementHosts: Record<string, HTMLElement> = {
-        tree1: t1,
-        tree2: t2,
-        tree3: this.ensureTreeDom('3')
+      const treeHostOrder: HTMLElement[] = [t1, t2, this.ensureTreeDom('3')];
+      let nextTreeHostIndex = 0;
+      const nextTreeHost = (): HTMLElement => {
+        if (!treeHostOrder[nextTreeHostIndex]){
+          const label = String(nextTreeHostIndex + 1);
+          treeHostOrder[nextTreeHostIndex] = this.ensureTreeDom(label);
+        }
+        return treeHostOrder[nextTreeHostIndex++];
       };
-
-      const elementsSettings = Jamble.Settings.elements;
-      const fallbackDeck: Jamble.ElementDeckEntry[] = [
-        { id: 'tree1', definitionId: 'tree.basic', name: 'Tree A', type: 'tree' },
-        { id: 'tree2', definitionId: 'tree.basic', name: 'Tree B', type: 'tree' },
-        { id: 'tree3', definitionId: 'tree.basic', name: 'Tree C', type: 'tree' },
-        { id: 'bird1', definitionId: 'bird.basic', name: 'Bird A', type: 'bird' },
-        { id: 'bird2', definitionId: 'bird.basic', name: 'Bird B', type: 'bird' },
-        { id: 'bird3', definitionId: 'bird.basic', name: 'Bird C', type: 'bird' }
-      ];
-
-      const deckConfig: Jamble.ElementDeckEntry[] = (elementsSettings.deck && elementsSettings.deck.length > 0)
-        ? elementsSettings.deck.slice()
-        : fallbackDeck.slice();
-
-      const ensureCard = (id: string, definitionId: string, name: string, type: LevelElementType): void => {
-        if (!deckConfig.some(card => card.id === id)) deckConfig.push({ id, definitionId, name, type });
-      };
-      ensureCard('bird1', 'bird.basic', 'Bird A', 'bird');
-      ensureCard('bird2', 'bird.basic', 'Bird B', 'bird');
-      ensureCard('bird3', 'bird.basic', 'Bird C', 'bird');
-
+      const elementHosts: Record<string, HTMLElement> = {};
       const resolveHost = (card: Jamble.ElementDeckEntry): HTMLElement => {
         if (elementHosts[card.id]) return elementHosts[card.id];
         let host: HTMLElement;
-        if (card.definitionId === 'tree.basic'){
-          const labelMatch = card.id.match(/(\d+)/);
-          const label = labelMatch ? labelMatch[1] : String(Object.keys(elementHosts).length + 1);
-          host = this.ensureTreeDom(label);
-        } else if (card.definitionId === 'bird.basic'){
-          host = this.ensureBirdDom(card.id);
-        } else {
-          host = this.ensureTreeDom(String(Object.keys(elementHosts).length + 1));
-        }
+        if (card.definitionId === 'tree.basic') host = nextTreeHost();
+        else if (card.definitionId === 'bird.basic') host = this.ensureBirdDom(card.id);
+        else host = this.ensureTreeDom(String(nextTreeHostIndex + 1));
         elementHosts[card.id] = host;
         return host;
       };
 
-      this.elementDeckPool = deckConfig.map(card => ({ id: card.id, definitionId: card.definitionId, name: card.name, type: card.type }));
-      this.elementHandSlots = Array.from({ length: 5 }).map((_, idx) => ({ slotId: 'slot-' + idx, cardId: null, active: false }));
-
-      deckConfig.forEach(card => {
+      const canonicalElements = Jamble.deriveElementsSettings(Jamble.CoreDeckConfig);
+      this.elementDeckPool = canonicalElements.deck.map(card => ({ ...card }));
+      this.elementDeckPool.forEach(card => {
         const host = resolveHost(card);
-        const instance = this.levelElements.spawnFromRegistry(card.definitionId, { instanceId: card.id, host, active: false });
-        if (instance) this.elementInstances.set(card.id, { definitionId: card.definitionId, name: card.name, type: card.type });
+        const instance = this.levelElements.spawnFromRegistry(card.definitionId, { instanceId: card.id, host, config: card.config, active: false });
+        if (instance) this.elementInstances.set(card.id, { definitionId: card.definitionId, name: card.name, type: card.type, config: card.config });
       });
-
-      const handConfig = (elementsSettings.hand && elementsSettings.hand.length > 0) ? elementsSettings.hand.slice() : undefined;
-      this.elementHandSlots.forEach((slot, idx) => {
-        const cfg = handConfig && handConfig[idx] ? handConfig[idx] : null;
-        const fallbackCard = this.elementDeckPool[idx] ? this.elementDeckPool[idx].id : null;
-        const cardId = cfg?.cardId ?? fallbackCard;
-        const validCard = cardId && this.elementDeckPool.some(card => card.id === cardId) ? cardId : null;
-        slot.cardId = validCard;
-        slot.active = cfg ? !!cfg.active : !!validCard;
-        slot.slotId = cfg?.slotId || slot.slotId;
-      });
-
-      if (this.elementHandSlots.every(slot => slot.cardId !== 'bird1')){
-        const target = this.elementHandSlots.find(slot => !slot.cardId);
-        if (target) {
-          target.cardId = 'bird1';
-          target.active = true;
-        }
-      }
+      this.elementHandSlots = canonicalElements.hand.map(slot => ({ ...slot }));
       this.countdown = new Countdown(cdEl);
       this.resetBtn = resetBtn;
       this.startBtn = startBtn;
@@ -299,20 +240,12 @@ namespace Jamble {
       if (triggerShuffle && activeCount > 0) this.shuffleElements();
       this.updateShuffleButtonState();
       this.emitElementHandChanged();
-      this.persistElementState();
     }
 
     private emitElementHandChanged(): void {
       try {
         window.dispatchEvent(new CustomEvent('jamble:elementHandChanged', { detail: this.getElementHand() }));
       } catch(_e){}
-    }
-
-    private persistElementState(): void {
-      Jamble.Settings.setElements({
-        deck: this.elementDeckPool.map(card => ({ ...card })),
-        hand: this.elementHandSlots.map(slot => ({ ...slot }))
-      });
     }
 
     public getElementHand(): ReadonlyArray<{ id: string; definitionId: string; name: string; type: LevelElementType; active: boolean; available: boolean }> {

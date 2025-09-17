@@ -1,4 +1,5 @@
 /// <reference path="./level-elements.ts" />
+/// <reference path="./elements/deck-config.ts" />
 namespace Jamble {
   export type Mode = 'idle' | 'pingpong';
 
@@ -45,25 +46,6 @@ namespace Jamble {
     landEaseMs: number;              // transition time when returning to normal after landing
   }
 
-  export interface ElementDeckEntry {
-    id: string;
-    definitionId: string;
-    name: string;
-    type: LevelElementType;
-    config?: any;
-  }
-
-  export interface ElementHandSlotConfig {
-    slotId: string;
-    cardId: string | null;
-    active: boolean;
-  }
-
-  export interface ElementsSettings {
-    deck: ElementDeckEntry[];
-    hand: ElementHandSlotConfig[];
-  }
-
   export interface SkillsProfile {
     loadout: { movement: string[]; utility: string[]; ultimate: string[] };
     configs: { [skillId: string]: any };
@@ -97,33 +79,6 @@ namespace Jamble {
     landEaseMs: 100,
   };
 
-  function defaultElements(): ElementsSettings {
-    return {
-      deck: [
-        { id: 'tree1', definitionId: 'tree.basic', name: 'Tree A', type: 'tree' },
-        { id: 'tree2', definitionId: 'tree.basic', name: 'Tree B', type: 'tree' },
-        { id: 'tree3', definitionId: 'tree.basic', name: 'Tree C', type: 'tree' },
-        { id: 'bird1', definitionId: 'bird.basic', name: 'Bird A', type: 'bird' },
-        { id: 'bird2', definitionId: 'bird.basic', name: 'Bird B', type: 'bird' },
-        { id: 'bird3', definitionId: 'bird.basic', name: 'Bird C', type: 'bird' }
-      ],
-      hand: [
-        { slotId: 'slot-0', cardId: 'tree1', active: true },
-        { slotId: 'slot-1', cardId: 'tree2', active: true },
-        { slotId: 'slot-2', cardId: 'tree3', active: true },
-        { slotId: 'slot-3', cardId: 'bird1', active: true },
-        { slotId: 'slot-4', cardId: 'bird2', active: true }
-      ]
-    };
-  }
-
-  function cloneElements(src: ElementsSettings): ElementsSettings {
-    return {
-      deck: src.deck.map(card => ({ ...card })),
-      hand: src.hand.map(slot => ({ ...slot }))
-    };
-  }
-
   export class SettingsStore {
     private _current: SettingsShape;
     private _loadedFrom: string | null = null;
@@ -131,14 +86,19 @@ namespace Jamble {
     private _profileBaseline: SettingsShape | null = null;
     private _skills: SkillsProfile = { loadout: { movement: ['move','jump','dash'], utility: [], ultimate: [] }, configs: {} };
     private _skillsBaseline: SkillsProfile | null = null;
-    private _elements: ElementsSettings = defaultElements();
+    private _elements: ElementsSettings = Jamble.deriveElementsSettings(Jamble.CoreDeckConfig);
     private _elementsBaseline: ElementsSettings | null = null;
 
     constructor(initial?: Partial<SettingsShape>){
       this._current = { ...embeddedDefaults, ...(initial ?? {}) };
     }
 
-    get elements(): ElementsSettings { return cloneElements(this._elements); }
+    get elements(): ElementsSettings {
+      return {
+        deck: this._elements.deck.map(card => ({ ...card })),
+        hand: this._elements.hand.map(slot => ({ ...slot }))
+      };
+    }
 
     get current(): SettingsShape { return this._current; }
     get source(): string | null { return this._loadedFrom; }
@@ -152,7 +112,7 @@ namespace Jamble {
     reset(): void {
       this._current = { ...embeddedDefaults };
       this._skills = { loadout: { movement: ['move','jump','dash'], utility: [], ultimate: [] }, configs: {} };
-      this._elements = defaultElements();
+      this._elements = Jamble.deriveElementsSettings(Jamble.CoreDeckConfig);
     }
 
     /** Marks the current settings as the active profile baseline, with an optional name label. */
@@ -168,7 +128,10 @@ namespace Jamble {
         },
         configs: JSON.parse(JSON.stringify(this._skills.configs || {}))
       };
-      this._elementsBaseline = cloneElements(this._elements);
+      this._elementsBaseline = {
+        deck: this._elements.deck.map(card => ({ ...card })),
+        hand: this._elements.hand.map(slot => ({ ...slot }))
+      };
     }
 
     /** Revert current settings to the active profile baseline, if any. */
@@ -186,7 +149,10 @@ namespace Jamble {
         };
       }
       if (this._elementsBaseline){
-        this._elements = cloneElements(this._elementsBaseline);
+        this._elements = {
+          deck: this._elementsBaseline.deck.map(card => ({ ...card })),
+          hand: this._elementsBaseline.hand.map(slot => ({ ...slot }))
+        };
       }
     }
 
@@ -196,7 +162,6 @@ namespace Jamble {
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         const skills = (data && data.skills) || null;
-        const elements = (data && data.elements) || null;
         this._current = { ...embeddedDefaults, ...(data && data.game ? data.game : data) };
         // Migrate or load skills section
         if (skills && skills.loadout && skills.configs){
@@ -208,24 +173,7 @@ namespace Jamble {
             dash: { speed: (this._current as any).dashSpeed ?? 280, durationMs: (this._current as any).dashDurationMs ?? 220, cooldownMs: 150 }
           }};
         }
-        if (elements && Array.isArray(elements.deck) && Array.isArray(elements.hand)){
-          this._elements = {
-            deck: elements.deck.map((card: any) => ({
-              id: String(card.id),
-              definitionId: String(card.definitionId || card.type || 'tree.basic'),
-              name: String(card.name || card.id),
-              type: (card.type || 'tree') as LevelElementType,
-              config: card.config
-            })),
-            hand: elements.hand.map((slot: any, idx: number) => ({
-              slotId: String(slot.slotId || 'slot-' + idx),
-              cardId: typeof slot.cardId === 'string' ? slot.cardId : null,
-              active: !!slot.active
-            }))
-          };
-        } else {
-          this._elements = defaultElements();
-        }
+        this._elements = Jamble.deriveElementsSettings(Jamble.CoreDeckConfig);
         this._loadedFrom = url;
         // Derive a simple active name from the URL path (filename)
         try {
@@ -241,12 +189,12 @@ namespace Jamble {
         this._activeName = null;
         this._profileBaseline = { ...this._current };
         this._skills = { loadout: { movement: ['move','jump','dash'], utility: [], ultimate: [] }, configs: { jump: { strength: this._current.jumpStrength }, dash: { speed: 280, durationMs: 220, cooldownMs: 150 } } };
-        this._elements = defaultElements();
+        this._elements = Jamble.deriveElementsSettings(Jamble.CoreDeckConfig);
       }
     }
 
     setElements(next: ElementsSettings): void {
-      this._elements = cloneElements(next);
+        this._elements = Jamble.deriveElementsSettings(Jamble.CoreDeckConfig);
     }
 
     toJSON(): any {
@@ -256,7 +204,10 @@ namespace Jamble {
         // new structured sections
         game: { ...this._current },
         skills: { loadout: this._skills.loadout, configs: this._skills.configs },
-        elements: cloneElements(this._elements)
+        elements: {
+          deck: this._elements.deck.map(card => ({ ...card })),
+          hand: this._elements.hand.map(slot => ({ ...slot }))
+        }
       };
     }
   }
