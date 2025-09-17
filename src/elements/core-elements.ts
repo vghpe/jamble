@@ -1,4 +1,6 @@
-/// <reference path="../level-elements.ts" />
+/// <reference path="./types.ts" />
+/// <reference path="./tree.ts" />
+/// <reference path="./bird.ts" />
 
 namespace Jamble {
   export function registerCoreElements(registry: LevelElementRegistry, hostResolvers: {
@@ -23,8 +25,6 @@ namespace Jamble {
       defaults: {},
       create: ({ id, host }) => {
         const el = host || hostResolvers.ensureBirdDom(id);
-        if (!el.classList.contains('jamble-bird')) el.classList.add('jamble-bird');
-        el.textContent = '🐦';
         return new BirdElement(id, el);
       }
     });

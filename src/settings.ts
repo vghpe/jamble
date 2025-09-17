@@ -1,4 +1,4 @@
-/// <reference path="./level-elements.ts" />
+/// <reference path="./elements/types.ts" />
 /// <reference path="./elements/deck-config.ts" />
 namespace Jamble {
   export type Mode = 'idle' | 'pingpong';

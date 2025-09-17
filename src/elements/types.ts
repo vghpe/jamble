@@ -1,0 +1,90 @@
+namespace Jamble {
+  export type LevelElementType = 'tree' | 'bird' | 'empty';
+
+  export interface LevelElementLifecycleContext {
+    manager: LevelElementManager;
+  }
+
+  export interface LevelElementTickContext {
+    manager: LevelElementManager;
+    deltaMs: number;
+  }
+
+  export interface LevelElementCollisionContext {
+    manager: LevelElementManager;
+  }
+
+  export interface LevelElement {
+    readonly id: string;
+    readonly type: LevelElementType;
+    readonly el: HTMLElement;
+    readonly collidable: boolean;
+    rect(): DOMRect;
+    init?(ctx: LevelElementLifecycleContext): void;
+    activate?(ctx: LevelElementLifecycleContext): void;
+    deactivate?(ctx: LevelElementLifecycleContext): void;
+    tick?(ctx: LevelElementTickContext): void;
+    onCollision?(ctx: LevelElementCollisionContext): void;
+    dispose?(ctx: LevelElementLifecycleContext): void;
+  }
+
+  export interface PositionableLevelElement extends LevelElement {
+    setLeftPct(pct: number): void;
+  }
+
+  export function isPositionableLevelElement(el: LevelElement): el is PositionableLevelElement {
+    return typeof (el as PositionableLevelElement).setLeftPct === 'function';
+  }
+
+  export interface LevelElementDescriptor<TConfig = any> {
+    id: string;
+    name: string;
+    type: LevelElementType;
+    defaults?: TConfig;
+    create: (options: LevelElementFactoryOptions<TConfig>) => LevelElement;
+  }
+
+  export interface LevelElementFactoryOptions<TConfig = any> {
+    id: string;
+    manager: LevelElementManager;
+    config: TConfig;
+    host?: HTMLElement;
+  }
+
+  export interface LevelElementCreateOptions<TConfig = any> {
+    manager: LevelElementManager;
+    config?: TConfig;
+    host?: HTMLElement;
+    instanceId?: string;
+  }
+
+  export class LevelElementRegistry {
+    private descriptors = new Map<string, LevelElementDescriptor<any>>();
+
+    register<TConfig = any>(desc: LevelElementDescriptor<TConfig>): void {
+      this.descriptors.set(desc.id, desc as LevelElementDescriptor<any>);
+    }
+
+    unregister(id: string): void {
+      this.descriptors.delete(id);
+    }
+
+    get<TConfig = any>(id: string): LevelElementDescriptor<TConfig> | undefined {
+      return this.descriptors.get(id) as LevelElementDescriptor<TConfig> | undefined;
+    }
+
+    create<TConfig = any>(elementId: string, options: LevelElementCreateOptions<TConfig>): LevelElement | undefined {
+      const desc = this.descriptors.get(elementId) as LevelElementDescriptor<TConfig> | undefined;
+      if (!desc) return undefined;
+      const cfg = (options.config !== undefined ? options.config : desc.defaults) as TConfig;
+      const instId = options.instanceId || elementId;
+      const factoryOptions: LevelElementFactoryOptions<TConfig> = {
+        id: instId,
+        manager: options.manager,
+        host: options.host,
+        config: cfg
+      };
+      return desc.create(factoryOptions);
+    }
+  }
+}

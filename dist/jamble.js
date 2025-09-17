@@ -34,229 +34,6 @@ var Jamble;
         }
     }
     Jamble.LevelElementRegistry = LevelElementRegistry;
-    class TreeElement {
-        constructor(id, el) {
-            this.type = 'tree';
-            this.collidable = true;
-            this.defaultDisplay = '';
-            this.initialized = false;
-            this.id = id;
-            this.el = el;
-        }
-        rect() { return this.el.getBoundingClientRect(); }
-        setLeftPct(pct) {
-            const n = Math.max(0, Math.min(100, pct));
-            this.el.style.left = n.toFixed(1) + '%';
-        }
-        init() {
-            if (this.initialized)
-                return;
-            this.initialized = true;
-            const current = this.el.style.display;
-            this.defaultDisplay = current && current !== 'none' ? current : '';
-            this.el.style.display = 'none';
-        }
-        activate() {
-            this.el.style.display = this.defaultDisplay;
-        }
-        deactivate() {
-            this.el.style.display = 'none';
-        }
-        dispose() {
-            this.el.style.display = 'none';
-        }
-    }
-    Jamble.TreeElement = TreeElement;
-    class BirdElement {
-        constructor(id, el) {
-            this.type = 'bird';
-            this.collidable = true;
-            this.defaultDisplay = '';
-            this.initialized = false;
-            this.id = id;
-            this.el = el;
-            this.el.classList.add('jamble-bird');
-            this.el.textContent = '🐦';
-        }
-        rect() { return this.el.getBoundingClientRect(); }
-        init() {
-            if (this.initialized)
-                return;
-            this.initialized = true;
-            const current = this.el.style.display;
-            this.defaultDisplay = current && current !== 'none' ? current : '';
-            this.el.style.display = 'none';
-        }
-        activate() {
-            this.el.style.display = this.defaultDisplay || '';
-        }
-        deactivate() {
-            this.el.style.display = 'none';
-        }
-        dispose() {
-            this.el.style.display = 'none';
-        }
-    }
-    Jamble.BirdElement = BirdElement;
-    class LevelElementManager {
-        constructor(registry) {
-            this.elements = new Map();
-            this.activeIds = new Set();
-            this.registry = null;
-            if (registry)
-                this.registry = registry;
-        }
-        attachRegistry(registry) {
-            this.registry = registry;
-        }
-        getRegistry() {
-            return this.registry;
-        }
-        add(element, options) {
-            this.elements.set(element.id, element);
-            const lifecycleCtx = { manager: this };
-            if (element.init)
-                element.init(lifecycleCtx);
-            const active = options && options.active === false ? false : true;
-            if (active) {
-                this.activeIds.add(element.id);
-                if (element.activate)
-                    element.activate(lifecycleCtx);
-            }
-            else {
-                this.activeIds.delete(element.id);
-            }
-        }
-        spawnFromRegistry(id, options = {}) {
-            if (!this.registry)
-                return undefined;
-            const descriptorId = options.instanceId || id;
-            if (this.elements.has(descriptorId))
-                return this.elements.get(descriptorId);
-            const instance = this.registry.create(id, {
-                manager: this,
-                config: options.config,
-                host: options.host,
-                instanceId: descriptorId
-            });
-            if (!instance)
-                return undefined;
-            this.add(instance, { active: options.active });
-            return instance;
-        }
-        remove(id) {
-            const element = this.elements.get(id);
-            if (!element) {
-                this.activeIds.delete(id);
-                return;
-            }
-            const lifecycleCtx = { manager: this };
-            if (this.activeIds.has(id) && element.deactivate)
-                element.deactivate(lifecycleCtx);
-            if (element.dispose)
-                element.dispose(lifecycleCtx);
-            this.elements.delete(id);
-            this.activeIds.delete(id);
-        }
-        setActive(id, active) {
-            const element = this.elements.get(id);
-            if (!element)
-                return;
-            const lifecycleCtx = { manager: this };
-            if (active) {
-                if (!this.activeIds.has(id)) {
-                    this.activeIds.add(id);
-                    if (element.activate)
-                        element.activate(lifecycleCtx);
-                }
-            }
-            else if (this.activeIds.has(id)) {
-                this.activeIds.delete(id);
-                if (element.deactivate)
-                    element.deactivate(lifecycleCtx);
-            }
-        }
-        isActive(id) {
-            return this.activeIds.has(id);
-        }
-        get(id) {
-            return this.elements.get(id);
-        }
-        getPositionable(id) {
-            const el = this.elements.get(id);
-            if (!el || !this.activeIds.has(id))
-                return undefined;
-            if (isPositionableLevelElement(el))
-                return el;
-            return undefined;
-        }
-        getPositionablesByType(type) {
-            const list = [];
-            this.activeIds.forEach(id => {
-                const el = this.elements.get(id);
-                if (!el || el.type !== type)
-                    return;
-                if (isPositionableLevelElement(el))
-                    list.push(el);
-            });
-            return list;
-        }
-        forEach(cb) {
-            this.activeIds.forEach(id => {
-                const el = this.elements.get(id);
-                if (el)
-                    cb(el);
-            });
-        }
-        getByType(type) {
-            const list = [];
-            this.activeIds.forEach(id => {
-                const el = this.elements.get(id);
-                if (el && el.type === type)
-                    list.push(el);
-            });
-            return list;
-        }
-        someCollidable(predicate) {
-            for (const id of this.activeIds) {
-                const el = this.elements.get(id);
-                if (!el || !el.collidable)
-                    continue;
-                const hit = predicate(el);
-                if (hit) {
-                    if (el.onCollision)
-                        el.onCollision({ manager: this });
-                    return true;
-                }
-            }
-            return false;
-        }
-        tick(deltaMs) {
-            if (deltaMs <= 0)
-                return;
-            const ctx = { manager: this, deltaMs };
-            for (const id of this.activeIds) {
-                const el = this.elements.get(id);
-                if (!el || !el.tick)
-                    continue;
-                el.tick(ctx);
-            }
-        }
-        clear() {
-            const ids = Array.from(this.elements.keys());
-            ids.forEach(id => this.remove(id));
-        }
-        all() {
-            const list = [];
-            this.activeIds.forEach(id => {
-                const el = this.elements.get(id);
-                if (el)
-                    list.push(el);
-            });
-            return list;
-        }
-    }
-    Jamble.LevelElementManager = LevelElementManager;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
@@ -727,6 +504,264 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
+    class LevelElementManager {
+        constructor(registry) {
+            this.elements = new Map();
+            this.activeIds = new Set();
+            this.registry = null;
+            if (registry)
+                this.registry = registry;
+        }
+        attachRegistry(registry) {
+            this.registry = registry;
+        }
+        getRegistry() {
+            return this.registry;
+        }
+        add(element, options) {
+            this.elements.set(element.id, element);
+            const lifecycleCtx = { manager: this };
+            if (element.init)
+                element.init(lifecycleCtx);
+            const active = options && options.active === false ? false : true;
+            if (active) {
+                this.activeIds.add(element.id);
+                if (element.activate)
+                    element.activate(lifecycleCtx);
+            }
+            else {
+                this.activeIds.delete(element.id);
+            }
+        }
+        spawnFromRegistry(id, options = {}) {
+            if (!this.registry)
+                return undefined;
+            const descriptorId = options.instanceId || id;
+            if (this.elements.has(descriptorId))
+                return this.elements.get(descriptorId);
+            const instance = this.registry.create(id, {
+                manager: this,
+                config: options.config,
+                host: options.host,
+                instanceId: descriptorId
+            });
+            if (!instance)
+                return undefined;
+            this.add(instance, { active: options.active });
+            return instance;
+        }
+        remove(id) {
+            const element = this.elements.get(id);
+            if (!element) {
+                this.activeIds.delete(id);
+                return;
+            }
+            const lifecycleCtx = { manager: this };
+            if (this.activeIds.has(id) && element.deactivate)
+                element.deactivate(lifecycleCtx);
+            if (element.dispose)
+                element.dispose(lifecycleCtx);
+            this.elements.delete(id);
+            this.activeIds.delete(id);
+        }
+        setActive(id, active) {
+            const element = this.elements.get(id);
+            if (!element)
+                return;
+            const lifecycleCtx = { manager: this };
+            if (active) {
+                if (!this.activeIds.has(id)) {
+                    this.activeIds.add(id);
+                    if (element.activate)
+                        element.activate(lifecycleCtx);
+                }
+            }
+            else if (this.activeIds.has(id)) {
+                this.activeIds.delete(id);
+                if (element.deactivate)
+                    element.deactivate(lifecycleCtx);
+            }
+        }
+        isActive(id) {
+            return this.activeIds.has(id);
+        }
+        get(id) {
+            return this.elements.get(id);
+        }
+        getPositionable(id) {
+            const el = this.elements.get(id);
+            if (!el || !this.activeIds.has(id))
+                return undefined;
+            if (Jamble.isPositionableLevelElement(el))
+                return el;
+            return undefined;
+        }
+        getPositionablesByType(type) {
+            const list = [];
+            this.activeIds.forEach(id => {
+                const el = this.elements.get(id);
+                if (!el || el.type !== type)
+                    return;
+                if (Jamble.isPositionableLevelElement(el))
+                    list.push(el);
+            });
+            return list;
+        }
+        forEach(cb) {
+            this.activeIds.forEach(id => {
+                const el = this.elements.get(id);
+                if (el)
+                    cb(el);
+            });
+        }
+        getByType(type) {
+            const list = [];
+            this.activeIds.forEach(id => {
+                const el = this.elements.get(id);
+                if (el && el.type === type)
+                    list.push(el);
+            });
+            return list;
+        }
+        someCollidable(predicate) {
+            for (const id of this.activeIds) {
+                const el = this.elements.get(id);
+                if (!el || !el.collidable)
+                    continue;
+                const hit = predicate(el);
+                if (hit) {
+                    if (el.onCollision)
+                        el.onCollision({ manager: this });
+                    return true;
+                }
+            }
+            return false;
+        }
+        tick(deltaMs) {
+            if (deltaMs <= 0)
+                return;
+            const ctx = { manager: this, deltaMs };
+            for (const id of this.activeIds) {
+                const el = this.elements.get(id);
+                if (!el || !el.tick)
+                    continue;
+                el.tick(ctx);
+            }
+        }
+        clear() {
+            const ids = Array.from(this.elements.keys());
+            ids.forEach(id => this.remove(id));
+        }
+        all() {
+            const list = [];
+            this.activeIds.forEach(id => {
+                const el = this.elements.get(id);
+                if (el)
+                    list.push(el);
+            });
+            return list;
+        }
+    }
+    Jamble.LevelElementManager = LevelElementManager;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class TreeElement {
+        constructor(id, el) {
+            this.type = 'tree';
+            this.collidable = true;
+            this.defaultDisplay = '';
+            this.initialized = false;
+            this.id = id;
+            this.el = el;
+        }
+        rect() { return this.el.getBoundingClientRect(); }
+        setLeftPct(pct) {
+            const n = Math.max(0, Math.min(100, pct));
+            this.el.style.left = n.toFixed(1) + '%';
+        }
+        init() {
+            if (this.initialized)
+                return;
+            this.initialized = true;
+            const current = this.el.style.display;
+            this.defaultDisplay = current && current !== 'none' ? current : '';
+            this.el.style.display = 'none';
+        }
+        activate() {
+            this.el.style.display = this.defaultDisplay;
+        }
+        deactivate() {
+            this.el.style.display = 'none';
+        }
+        dispose() {
+            this.el.style.display = 'none';
+        }
+    }
+    Jamble.TreeElement = TreeElement;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class BirdElement {
+        constructor(id, el) {
+            this.type = 'bird';
+            this.collidable = true;
+            this.defaultDisplay = '';
+            this.initialized = false;
+            this.id = id;
+            this.el = el;
+            this.el.classList.add('jamble-bird');
+            this.el.textContent = '🐦';
+        }
+        rect() { return this.el.getBoundingClientRect(); }
+        init() {
+            if (this.initialized)
+                return;
+            this.initialized = true;
+            const current = this.el.style.display;
+            this.defaultDisplay = current && current !== 'none' ? current : '';
+            this.el.style.display = 'none';
+        }
+        activate() {
+            this.el.style.display = this.defaultDisplay || '';
+        }
+        deactivate() {
+            this.el.style.display = 'none';
+        }
+        dispose() {
+            this.el.style.display = 'none';
+        }
+    }
+    Jamble.BirdElement = BirdElement;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    function registerCoreElements(registry, hostResolvers) {
+        registry.register({
+            id: 'tree.basic',
+            name: 'Tree',
+            type: 'tree',
+            defaults: {},
+            create: ({ id, host }) => {
+                const el = host || hostResolvers.ensureTreeDom(id.replace(/[^0-9]+/g, '') || id);
+                return new Jamble.TreeElement(id, el);
+            }
+        });
+        registry.register({
+            id: 'bird.basic',
+            name: 'Bird',
+            type: 'bird',
+            defaults: {},
+            create: ({ id, host }) => {
+                const el = host || hostResolvers.ensureBirdDom(id);
+                return new Jamble.BirdElement(id, el);
+            }
+        });
+    }
+    Jamble.registerCoreElements = registerCoreElements;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
     class Wiggle {
         constructor(playerEl) {
             this.interval = null;
@@ -884,35 +919,6 @@ var Jamble;
         setX(x) { this.x = x; this.el.style.left = this.x + 'px'; }
     }
     Jamble.Player = Player;
-})(Jamble || (Jamble = {}));
-var Jamble;
-(function (Jamble) {
-    function registerCoreElements(registry, hostResolvers) {
-        registry.register({
-            id: 'tree.basic',
-            name: 'Tree',
-            type: 'tree',
-            defaults: {},
-            create: ({ id, host }) => {
-                const el = host || hostResolvers.ensureTreeDom(id.replace(/[^0-9]+/g, '') || id);
-                return new Jamble.TreeElement(id, el);
-            }
-        });
-        registry.register({
-            id: 'bird.basic',
-            name: 'Bird',
-            type: 'bird',
-            defaults: {},
-            create: ({ id, host }) => {
-                const el = host || hostResolvers.ensureBirdDom(id);
-                if (!el.classList.contains('jamble-bird'))
-                    el.classList.add('jamble-bird');
-                el.textContent = '🐦';
-                return new Jamble.BirdElement(id, el);
-            }
-        });
-    }
-    Jamble.registerCoreElements = registerCoreElements;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
