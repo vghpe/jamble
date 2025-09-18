@@ -81,7 +81,7 @@ namespace Jamble {
       }
       const index = Math.floor(Math.random() * mutableDeck.length);
       const [card] = mutableDeck.splice(index, 1);
-      hand.push({ slotId, cardId: card.id, active: true });
+      hand.push({ slotId, cardId: card.id, active: false });
     }
 
     return { deck, hand };

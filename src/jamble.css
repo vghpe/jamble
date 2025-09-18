@@ -256,6 +256,12 @@
   cursor: default;
   opacity: 0.5;
 }
+#jamble .jamble-element-card.jamble-locked {
+  opacity: 0.75;
+  border-color: #a5d6a7;
+  background: #edf7ed;
+  color: #6f8f6f;
+}
 #jamble .jamble-element-card.jamble-placeholder {
   border-style: dashed;
   background: #f9fff9;

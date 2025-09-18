@@ -44,6 +44,7 @@ namespace Jamble {
     private watchingResize: boolean = false;
     private handleWindowResize: () => void;
     private elementSlots = new Map<string, SlotDefinition>();
+    private elementEditingEnabled: boolean = false;
     // Skills
     private skills: SkillManager;
     private landCbs: Array<() => void> = [];
@@ -218,6 +219,7 @@ namespace Jamble {
       const slot = this.elementHandSlots.find(s => s.cardId === id);
       if (!slot) return;
       if (!slot.cardId) return;
+      if (!active && slot.active && !this.elementEditingEnabled) return;
       if (slot.active === active) return;
       slot.active = active;
       this.applyElementHand();
@@ -454,6 +456,14 @@ namespace Jamble {
 
     public recomputeSlots(): void {
       this.rebuildSlots();
+    }
+
+    public setElementEditMode(enabled: boolean): void {
+      this.elementEditingEnabled = !!enabled;
+    }
+
+    public canEditElements(): boolean {
+      return this.elementEditingEnabled;
     }
 
     private rebuildSlots(): void {

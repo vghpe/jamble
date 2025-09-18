@@ -141,6 +141,9 @@
           </details>
           <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
             <summary style="font-weight:600;color:#2e7d32">Level Elements</summary>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:13px;color:#2e7d32">
+              <input id="dbg-elementEdit" type="checkbox" style="width:auto"> Allow element removal
+            </label>
             <ul id="dbg-deck" style="list-style:none;padding:0;margin:6px 0 0 0;font-size:13px;color:#2e7d32"></ul>
           </details>
           <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
@@ -217,6 +220,7 @@
         var slotNoiseToggle = document.getElementById('dbg-slotNoiseEnabled');
         var slotNoiseX = document.getElementById('dbg-slotNoiseX');
         var slotNoiseY = document.getElementById('dbg-slotNoiseY');
+        var elementEditToggle = document.getElementById('dbg-elementEdit');
         var slotOverlayEl = null;
 
         function ensureSlotOverlay(){
@@ -299,6 +303,7 @@
           if (slotNoiseToggle) slotNoiseToggle.checked = opts.enabled;
           if (slotNoiseX) slotNoiseX.value = Number(opts.horizontal || 0).toString();
           if (slotNoiseY) slotNoiseY.value = Number(opts.vertical || 0).toString();
+          if (elementEditToggle) elementEditToggle.checked = typeof game.canEditElements === 'function' ? game.canEditElements() : false;
         })();
 
         if (slotOverlayToggle) slotOverlayToggle.addEventListener('change', ensureSlotOverlay);
@@ -311,6 +316,12 @@
         if (slotNoiseToggle) slotNoiseToggle.addEventListener('change', applySlotNoiseSettings);
         if (slotNoiseX) slotNoiseX.addEventListener('change', applySlotNoiseSettings);
         if (slotNoiseY) slotNoiseY.addEventListener('change', applySlotNoiseSettings);
+        if (elementEditToggle){
+          elementEditToggle.addEventListener('change', function(){
+            if (typeof game.setElementEditMode === 'function') game.setElementEditMode(!!this.checked);
+            renderElementHand();
+          });
+        }
 
         window.addEventListener('resize', renderSlotOverlay);
 
@@ -383,6 +394,7 @@
           if (!elementHandEl) return;
           var cards = Array.isArray(hand) ? hand : (game.getElementHand ? game.getElementHand() : []);
           var maxSlots = 5;
+          var canEditElements = typeof game.canEditElements === 'function' ? game.canEditElements() : false;
           elementHandEl.innerHTML = '';
           for (var idx = 0; idx < maxSlots; idx++){
             var card = cards[idx];
@@ -393,15 +405,23 @@
               btn.textContent = iconForCard(card);
               btn.setAttribute('aria-label', card.name || 'Element');
               if (card.active) btn.classList.add('jamble-active');
-              (function(cardId, active){
-                btn.addEventListener('click', function(ev){
-                  ev.preventDefault();
-                  ev.stopPropagation();
-                  if (typeof game.setElementCardActive === 'function'){
-                    game.setElementCardActive(cardId, !active);
-                  }
-                });
-              })(card.id, card.active);
+              var locked = card.active && !canEditElements;
+              if (locked){
+                btn.classList.add('jamble-locked');
+                btn.disabled = true;
+                btn.title = 'Locked. Enable element removal to modify.';
+              } else {
+                btn.disabled = false;
+                (function(cardId, active){
+                  btn.addEventListener('click', function(ev){
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    if (typeof game.setElementCardActive === 'function'){
+                      game.setElementCardActive(cardId, !active);
+                    }
+                  });
+                })(card.id, card.active);
+              }
             } else {
               btn.textContent = '…';
               btn.disabled = true;

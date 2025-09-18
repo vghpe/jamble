@@ -1081,7 +1081,7 @@ var Jamble;
             }
             const index = Math.floor(Math.random() * mutableDeck.length);
             const [card] = mutableDeck.splice(index, 1);
-            hand.push({ slotId, cardId: card.id, active: true });
+            hand.push({ slotId, cardId: card.id, active: false });
         }
         return { deck, hand };
     }
@@ -1270,6 +1270,7 @@ var Jamble;
             this.resizeObserver = null;
             this.watchingResize = false;
             this.elementSlots = new Map();
+            this.elementEditingEnabled = false;
             this.landCbs = [];
             this.wasGrounded = true;
             this.impulses = [];
@@ -1447,6 +1448,8 @@ var Jamble;
             if (!slot)
                 return;
             if (!slot.cardId)
+                return;
+            if (!active && slot.active && !this.elementEditingEnabled)
                 return;
             if (slot.active === active)
                 return;
@@ -1679,6 +1682,12 @@ var Jamble;
         }
         recomputeSlots() {
             this.rebuildSlots();
+        }
+        setElementEditMode(enabled) {
+            this.elementEditingEnabled = !!enabled;
+        }
+        canEditElements() {
+            return this.elementEditingEnabled;
         }
         rebuildSlots() {
             this.slotManager.rebuild();
