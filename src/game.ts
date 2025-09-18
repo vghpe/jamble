@@ -40,6 +40,10 @@ namespace Jamble {
     private showResetTimer: number | null = null;
     private waitGroundForStart: boolean = false;
     private inCountdown: boolean = false;
+    private slotManager: SlotManager;
+    private resizeObserver: ResizeObserver | null = null;
+    private watchingResize: boolean = false;
+    private handleWindowResize: () => void;
     // Skills
     private skills: SkillManager;
     private landCbs: Array<() => void> = [];
@@ -87,6 +91,8 @@ namespace Jamble {
       this.elementHandEl = elementHandEl;
       this.levelEl = levelEl;
       this.wiggle = new Wiggle(this.player.el);
+      this.slotManager = new SlotManager(gameEl);
+      this.handleWindowResize = () => { this.slotManager.rebuild(); };
 
       this.applyElementHand();
 
@@ -131,6 +137,8 @@ namespace Jamble {
     public getSkillManager(): SkillManager { return this.skills; }
 
     start(): void {
+      this.ensureSlotResizeMonitoring();
+      this.slotManager.rebuild();
       this.bind();
       this.reset();
       this.rafId = window.requestAnimationFrame(this.loop);
@@ -140,6 +148,7 @@ namespace Jamble {
       this.unbind();
       if (this.rafId !== null) window.cancelAnimationFrame(this.rafId);
       this.rafId = null;
+      this.teardownSlotResizeMonitoring();
       this.wiggle.stop();
       this.countdown.hide();
       this.impulses.length = 0;
@@ -480,8 +489,8 @@ namespace Jamble {
       // If we reached a side while airborne, wait to grant start until grounded
       if (Jamble.Settings.current.mode === 'idle' && this.waitGroundForStart && this.player.jumpHeight === 0 && !this.player.isJumping){
         this.waitGroundForStart = false;
-        this.awaitingStartTap = true;
-        this.showIdleControls();
+      this.awaitingStartTap = true;
+      this.showIdleControls();
       }
 
       // Collision: wiggle + freeze; show reset button, no auto reset
@@ -503,6 +512,30 @@ namespace Jamble {
       }
 
       this.rafId = window.requestAnimationFrame(this.loop);
+    }
+
+    private ensureSlotResizeMonitoring(): void {
+      if (this.watchingResize) return;
+      if (typeof ResizeObserver !== 'undefined'){
+        this.resizeObserver = new ResizeObserver(() => { this.slotManager.rebuild(); });
+        this.resizeObserver.observe(this.gameEl);
+      }
+      window.addEventListener('resize', this.handleWindowResize);
+      this.watchingResize = true;
+    }
+
+    private teardownSlotResizeMonitoring(): void {
+      if (!this.watchingResize) return;
+      if (this.resizeObserver){
+        this.resizeObserver.disconnect();
+        this.resizeObserver = null;
+      }
+      window.removeEventListener('resize', this.handleWindowResize);
+      this.watchingResize = false;
+    }
+
+    public getSlotManager(): SlotManager {
+      return this.slotManager;
     }
   }
 }

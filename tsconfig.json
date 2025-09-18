@@ -22,6 +22,7 @@
     "src/elements/manager.ts",
     "src/elements/tree.ts",
     "src/elements/bird.ts",
+    "src/elements/slot-manager.ts",
     "src/elements/core-elements.ts",
     "src/elements/deck-config.ts",
     "src/wiggle.ts",
