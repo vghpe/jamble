@@ -443,7 +443,7 @@ namespace Jamble {
     private collisionWith(ob: LevelElement): boolean {
       const pr = this.player.el.getBoundingClientRect();
       const tr = ob.rect();
-      return pr.left < tr.right && pr.right > tr.left && pr.bottom > tr.top;
+      return pr.left < tr.right && pr.right > tr.left && pr.bottom > tr.top && pr.top < tr.bottom;
     }
     private reachedRight(): boolean {
       // Consider a virtual wall offset from the right by playerStartOffset
