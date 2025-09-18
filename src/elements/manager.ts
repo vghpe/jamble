@@ -5,8 +5,10 @@ namespace Jamble {
     private elements = new Map<string, LevelElement>();
     private activeIds = new Set<string>();
     private registry: LevelElementRegistry | null = null;
+    private root: HTMLElement;
 
-    constructor(registry?: LevelElementRegistry){
+    constructor(root: HTMLElement, registry?: LevelElementRegistry){
+      this.root = root;
       if (registry) this.registry = registry;
     }
 
@@ -39,7 +41,8 @@ namespace Jamble {
         manager: this,
         config: options.config,
         host: options.host,
-        instanceId: descriptorId
+        instanceId: descriptorId,
+        root: this.root
       });
       if (!instance) return undefined;
       this.add(instance, { active: options.active });
