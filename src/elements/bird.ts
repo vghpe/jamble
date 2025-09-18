@@ -1,4 +1,5 @@
 /// <reference path="./types.ts" />
+/// <reference path="./slot-manager.ts" />
 
 namespace Jamble {
   export interface BirdElementConfig {
@@ -16,6 +17,7 @@ namespace Jamble {
     private positionPx: number | null = null;
     private direction: 1 | -1;
     private speedPxPerSec: number;
+    private assignedSlot: SlotDefinition | null = null;
 
     constructor(id: string, el: HTMLElement, cfg?: BirdElementConfig){
       this.id = id;
@@ -56,6 +58,15 @@ namespace Jamble {
       this.el.style.left = this.positionPx + 'px';
     }
 
+    private applyVerticalFromSlot(): void {
+      if (!this.assignedSlot) return;
+      const host = this.resolveHost();
+      if (!host) return;
+      const maxBottom = Math.max(0, host.offsetHeight - this.el.offsetHeight);
+      const bottomPx = Math.max(0, Math.min(this.assignedSlot.yPx, maxBottom));
+      this.el.style.bottom = bottomPx + 'px';
+    }
+
     init(): void {
       if (this.initialized) return;
       this.initialized = true;
@@ -67,7 +78,11 @@ namespace Jamble {
 
     activate(): void {
       this.el.style.display = this.defaultDisplay || '';
-      this.ensurePosition();
+      if (this.assignedSlot){
+        this.assignSlot(this.assignedSlot);
+      } else {
+        this.ensurePosition();
+      }
     }
 
     deactivate(): void {
@@ -80,6 +95,10 @@ namespace Jamble {
 
     tick(ctx: LevelElementTickContext): void {
       if (ctx.deltaMs <= 0) return;
+      if (this.assignedSlot){
+        // host size may have changed; keep vertical aligned to slot and clamp horizontal bounds
+        this.applyVerticalFromSlot();
+      }
       this.ensurePosition();
       if (this.positionPx === null) return;
       const host = this.resolveHost();
@@ -102,6 +121,25 @@ namespace Jamble {
       }
 
       this.applyPosition();
+    }
+
+    assignSlot(slot: SlotDefinition): void {
+      this.assignedSlot = slot;
+      const host = this.resolveHost();
+      if (!host){
+        this.positionPx = null;
+        return;
+      }
+      const maxX = Math.max(0, host.offsetWidth - this.el.offsetWidth);
+      let target = Math.max(0, Math.min(slot.xPx, maxX));
+      this.positionPx = target;
+      this.applyPosition();
+      this.applyVerticalFromSlot();
+    }
+
+    clearSlot(): void {
+      this.assignedSlot = null;
+      this.positionPx = null;
     }
   }
 }

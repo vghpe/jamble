@@ -1,6 +1,7 @@
 namespace Jamble {
   export type LevelElementType = 'tree' | 'tree_ceiling' | 'bird' | 'empty';
   export type ElementHostKind = 'tree-ground' | 'tree-ceiling' | 'bird-floating';
+  export type SlotType = 'ground' | 'air_low' | 'air_mid' | 'air_high' | 'ceiling';
 
   export interface LevelElementLifecycleContext {
     manager: LevelElementManager;
@@ -46,6 +47,7 @@ namespace Jamble {
     defaults?: TConfig;
     ensureHost?: (root: HTMLElement, id: string) => HTMLElement;
     create: (options: LevelElementFactoryOptions<TConfig>) => LevelElement;
+    placement?: ElementPlacementOptions;
   }
 
   export interface LevelElementFactoryOptions<TConfig = any> {
@@ -62,6 +64,17 @@ namespace Jamble {
     config?: TConfig;
     host?: HTMLElement;
     instanceId?: string;
+  }
+
+  export interface NeighborBlockRule {
+    types: LevelElementType[];
+    distance: number;
+  }
+
+  export interface ElementPlacementOptions {
+    validSlotTypes: SlotType[];
+    blockedNeighbors?: NeighborBlockRule;
+    allowStartZone?: boolean;
   }
 
   export class LevelElementRegistry {

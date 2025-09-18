@@ -1,4 +1,5 @@
 /// <reference path="./types.ts" />
+/// <reference path="./slot-manager.ts" />
 
 namespace Jamble {
   export class TreeElement implements PositionableLevelElement {
@@ -24,6 +25,21 @@ namespace Jamble {
     setLeftPct(pct: number): void {
       const n = Math.max(0, Math.min(100, pct));
       this.el.style.left = n.toFixed(1) + '%';
+    }
+
+    isCeiling(): boolean { return this.variant === 'ceiling'; }
+
+    applyVerticalFromSlot(slot: SlotDefinition, host: HTMLElement): void {
+      if (!this.isCeiling()){
+        this.el.style.top = 'auto';
+        this.el.style.bottom = '0px';
+        return;
+      }
+      const hostHeight = host.offsetHeight || host.getBoundingClientRect().height || 0;
+      const clamped = Math.max(0, Math.min(hostHeight, slot.yPx));
+      const topPx = Math.max(0, hostHeight - clamped);
+      this.el.style.bottom = 'auto';
+      this.el.style.top = topPx.toFixed(1) + 'px';
     }
 
     init(): void {

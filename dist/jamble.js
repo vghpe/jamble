@@ -529,6 +529,146 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
+    const SLOT_LAYER_TEMPLATES = [
+        { type: 'ground', columns: 8, yPercent: 0, jitterXPct: 0, jitterYPct: 0, invalidColumns: [0, 7] },
+        { type: 'air_low', columns: 8, yPercent: 28, jitterXPct: 0, jitterYPct: 4 },
+        { type: 'air_mid', columns: 8, yPercent: 55, jitterXPct: 0, jitterYPct: 4 },
+        { type: 'air_high', columns: 8, yPercent: 78, jitterXPct: 0, jitterYPct: 4 },
+        { type: 'ceiling', columns: 8, yPercent: 100, jitterXPct: 0, jitterYPct: 0 }
+    ];
+    function clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+    }
+    function jitter(id, salt, range) {
+        if (range <= 0)
+            return 0;
+        let hash = 2166136261 ^ salt;
+        for (let i = 0; i < id.length; i++) {
+            hash ^= id.charCodeAt(i);
+            hash = Math.imul(hash, 16777619);
+        }
+        const normalized = (hash >>> 0) / 0xffffffff;
+        return (normalized * 2 - 1) * range;
+    }
+    class SlotManager {
+        constructor(host) {
+            this.metrics = { width: 0, height: 0 };
+            this.slots = [];
+            this.slotsByType = new Map();
+            this.slotByElementId = new Map();
+            this.host = host;
+            this.rebuild();
+        }
+        rebuild() {
+            const rect = this.host.getBoundingClientRect();
+            const width = rect.width || this.host.offsetWidth || 1;
+            const height = rect.height || this.host.offsetHeight || 1;
+            this.metrics = { width, height };
+            this.slots = [];
+            this.slotsByType.clear();
+            this.slotByElementId.clear();
+            SLOT_LAYER_TEMPLATES.forEach((template, layerIndex) => {
+                const layerSlots = [];
+                const stride = 100 / template.columns;
+                for (let column = 0; column < template.columns; column++) {
+                    const baseXPct = (column + 0.5) * stride;
+                    const id = template.type + '-' + column;
+                    const offsetX = jitter(id, 0x1f123bb5, template.jitterXPct);
+                    const offsetY = jitter(id, 0x9e3779b9, template.jitterYPct);
+                    const xPercent = clamp(baseXPct + offsetX, 0, 100);
+                    const yPercent = clamp(template.yPercent + offsetY, 0, 100);
+                    const slot = {
+                        id,
+                        type: template.type,
+                        column,
+                        layerIndex,
+                        xPercent,
+                        yPercent,
+                        xPx: (xPercent / 100) * this.metrics.width,
+                        yPx: (yPercent / 100) * this.metrics.height,
+                        invalid: template.invalidColumns ? template.invalidColumns.indexOf(column) !== -1 : false,
+                        occupied: false,
+                        elementId: null,
+                        elementType: null
+                    };
+                    layerSlots.push(slot);
+                    this.slots.push(slot);
+                }
+                this.slotsByType.set(template.type, layerSlots);
+            });
+        }
+        getAllSlots() {
+            return this.slots;
+        }
+        getSlotsByType(type) {
+            return this.slotsByType.get(type) || [];
+        }
+        getMetrics() {
+            return this.metrics;
+        }
+        getSlotForElement(elementId) {
+            return this.slotByElementId.get(elementId);
+        }
+        releaseSlot(elementId) {
+            const slot = this.slotByElementId.get(elementId);
+            if (!slot)
+                return;
+            slot.occupied = false;
+            slot.elementId = null;
+            slot.elementType = null;
+            this.slotByElementId.delete(elementId);
+        }
+        acquireSlot(elementId, elementType, placement) {
+            const candidates = this.filterCandidates(elementType, placement);
+            if (candidates.length === 0)
+                return null;
+            const selected = candidates[Math.floor(Math.random() * candidates.length)];
+            selected.occupied = true;
+            selected.elementId = elementId;
+            selected.elementType = elementType;
+            this.slotByElementId.set(elementId, selected);
+            return selected;
+        }
+        filterCandidates(elementType, placement) {
+            const allowStartZone = (placement === null || placement === void 0 ? void 0 : placement.allowStartZone) === true;
+            const validTypes = placement === null || placement === void 0 ? void 0 : placement.validSlotTypes;
+            const blocked = placement === null || placement === void 0 ? void 0 : placement.blockedNeighbors;
+            const candidates = [];
+            for (const slot of this.slots) {
+                if (slot.occupied)
+                    continue;
+                if (!allowStartZone && slot.invalid)
+                    continue;
+                if (validTypes && validTypes.length > 0 && validTypes.indexOf(slot.type) === -1)
+                    continue;
+                if (blocked && this.violatesNeighborRule(slot, blocked))
+                    continue;
+                candidates.push(slot);
+            }
+            return candidates;
+        }
+        violatesNeighborRule(candidate, rule) {
+            const distance = Math.max(0, Math.floor(rule.distance));
+            if (distance <= 0 || !rule.types || rule.types.length === 0)
+                return false;
+            for (const slot of this.slots) {
+                if (!slot.occupied)
+                    continue;
+                if (!slot.elementType || rule.types.indexOf(slot.elementType) === -1)
+                    continue;
+                const dx = Math.abs(slot.column - candidate.column);
+                const dy = Math.abs(slot.layerIndex - candidate.layerIndex);
+                const chebyshev = Math.max(dx, dy);
+                if (chebyshev <= distance)
+                    return true;
+            }
+            return false;
+        }
+    }
+    Jamble.SlotManager = SlotManager;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
     class TreeElement {
         constructor(id, el, variant = 'ground') {
             this.collidable = true;
@@ -546,6 +686,19 @@ var Jamble;
         setLeftPct(pct) {
             const n = Math.max(0, Math.min(100, pct));
             this.el.style.left = n.toFixed(1) + '%';
+        }
+        isCeiling() { return this.variant === 'ceiling'; }
+        applyVerticalFromSlot(slot, host) {
+            if (!this.isCeiling()) {
+                this.el.style.top = 'auto';
+                this.el.style.bottom = '0px';
+                return;
+            }
+            const hostHeight = host.offsetHeight || host.getBoundingClientRect().height || 0;
+            const clamped = Math.max(0, Math.min(hostHeight, slot.yPx));
+            const topPx = Math.max(0, hostHeight - clamped);
+            this.el.style.bottom = 'auto';
+            this.el.style.top = topPx.toFixed(1) + 'px';
         }
         init() {
             if (this.initialized)
@@ -577,6 +730,7 @@ var Jamble;
             this.defaultDisplay = '';
             this.initialized = false;
             this.positionPx = null;
+            this.assignedSlot = null;
             this.id = id;
             this.el = el;
             this.el.classList.add('jamble-bird');
@@ -617,6 +771,16 @@ var Jamble;
                 return;
             this.el.style.left = this.positionPx + 'px';
         }
+        applyVerticalFromSlot() {
+            if (!this.assignedSlot)
+                return;
+            const host = this.resolveHost();
+            if (!host)
+                return;
+            const maxBottom = Math.max(0, host.offsetHeight - this.el.offsetHeight);
+            const bottomPx = Math.max(0, Math.min(this.assignedSlot.yPx, maxBottom));
+            this.el.style.bottom = bottomPx + 'px';
+        }
         init() {
             if (this.initialized)
                 return;
@@ -628,7 +792,12 @@ var Jamble;
         }
         activate() {
             this.el.style.display = this.defaultDisplay || '';
-            this.ensurePosition();
+            if (this.assignedSlot) {
+                this.assignSlot(this.assignedSlot);
+            }
+            else {
+                this.ensurePosition();
+            }
         }
         deactivate() {
             this.el.style.display = 'none';
@@ -639,6 +808,9 @@ var Jamble;
         tick(ctx) {
             if (ctx.deltaMs <= 0)
                 return;
+            if (this.assignedSlot) {
+                this.applyVerticalFromSlot();
+            }
             this.ensurePosition();
             if (this.positionPx === null)
                 return;
@@ -662,6 +834,23 @@ var Jamble;
                 this.positionPx = next;
             }
             this.applyPosition();
+        }
+        assignSlot(slot) {
+            this.assignedSlot = slot;
+            const host = this.resolveHost();
+            if (!host) {
+                this.positionPx = null;
+                return;
+            }
+            const maxX = Math.max(0, host.offsetWidth - this.el.offsetWidth);
+            let target = Math.max(0, Math.min(slot.xPx, maxX));
+            this.positionPx = target;
+            this.applyPosition();
+            this.applyVerticalFromSlot();
+        }
+        clearSlot() {
+            this.assignedSlot = null;
+            this.positionPx = null;
         }
     }
     Jamble.BirdElement = BirdElement;
@@ -719,6 +908,7 @@ var Jamble;
             type: 'tree',
             hostKind: 'tree-ground',
             defaults: {},
+            placement: { validSlotTypes: ['ground'], blockedNeighbors: { types: ['tree'], distance: 1 }, allowStartZone: false },
             ensureHost: (root, id) => hostFactories['tree-ground'](root, id),
             create: ({ id, host, root }) => {
                 const el = host || hostFactories['tree-ground'](root, id);
@@ -732,6 +922,7 @@ var Jamble;
             type: 'tree_ceiling',
             hostKind: 'tree-ceiling',
             defaults: {},
+            placement: { validSlotTypes: ['ceiling'], blockedNeighbors: { types: ['tree_ceiling'], distance: 1 }, allowStartZone: true },
             ensureHost: (root, id) => hostFactories['tree-ceiling'](root, id),
             create: ({ id, host, root }) => {
                 const el = host || hostFactories['tree-ceiling'](root, id);
@@ -745,6 +936,7 @@ var Jamble;
             type: 'bird',
             hostKind: 'bird-floating',
             defaults: { speed: 40, direction: 1 },
+            placement: { validSlotTypes: ['air_low', 'air_mid'], blockedNeighbors: { types: ['bird'], distance: 1 }, allowStartZone: true },
             ensureHost: (root, id) => hostFactories['bird-floating'](root, id),
             create: ({ id, host, root, config }) => {
                 const el = host || hostFactories['bird-floating'](root, id);
@@ -1000,11 +1192,12 @@ var Jamble;
             this.showResetTimer = null;
             this.waitGroundForStart = false;
             this.inCountdown = false;
+            this.resizeObserver = null;
+            this.watchingResize = false;
+            this.elementSlots = new Map();
             this.landCbs = [];
             this.wasGrounded = true;
             this.impulses = [];
-            this.idleShuffleRemaining = 0;
-            this.shuffleAllowanceInitialized = false;
             this.root = root;
             const gameEl = root.querySelector('.jamble-game');
             const playerEl = root.querySelector('.jamble-player');
@@ -1012,11 +1205,10 @@ var Jamble;
             const resetBtn = root.querySelector('.jamble-reset');
             const levelEl = root.querySelector('.jamble-level');
             const startBtn = root.querySelector('.jamble-start');
-            const shuffleBtn = root.querySelector('.jamble-shuffle');
             const skillSlotsEl = root.querySelector('#skill-slots');
             const skillMenuEl = root.querySelector('#skill-menu');
             const elementHandEl = root.querySelector('#element-hand');
-            if (!gameEl || !playerEl || !cdEl || !resetBtn || !startBtn || !shuffleBtn) {
+            if (!gameEl || !playerEl || !cdEl || !resetBtn || !startBtn) {
                 throw new Error('Jamble: missing required elements');
             }
             this.gameEl = gameEl;
@@ -1035,16 +1227,16 @@ var Jamble;
             this.countdown = new Jamble.Countdown(cdEl);
             this.resetBtn = resetBtn;
             this.startBtn = startBtn;
-            this.shuffleBtn = shuffleBtn;
             this.skillSlotsEl = skillSlotsEl;
             this.skillMenuEl = skillMenuEl;
             this.elementHandEl = elementHandEl;
             this.levelEl = levelEl;
             this.wiggle = new Jamble.Wiggle(this.player.el);
+            this.slotManager = new Jamble.SlotManager(gameEl);
+            this.handleWindowResize = () => { this.rebuildSlots(); };
             this.applyElementHand();
             this.onPointerDown = this.onPointerDown.bind(this);
             this.onStartClick = this.onStartClick.bind(this);
-            this.onShuffleClick = this.onShuffleClick.bind(this);
             this.reset = this.reset.bind(this);
             this.loop = this.loop.bind(this);
             const caps = {
@@ -1083,6 +1275,8 @@ var Jamble;
         }
         getSkillManager() { return this.skills; }
         start() {
+            this.ensureSlotResizeMonitoring();
+            this.rebuildSlots();
             this.bind();
             this.reset();
             this.rafId = window.requestAnimationFrame(this.loop);
@@ -1092,12 +1286,10 @@ var Jamble;
             if (this.rafId !== null)
                 window.cancelAnimationFrame(this.rafId);
             this.rafId = null;
+            this.teardownSlotResizeMonitoring();
             this.wiggle.stop();
             this.countdown.hide();
             this.impulses.length = 0;
-            this.idleShuffleRemaining = 0;
-            this.shuffleAllowanceInitialized = false;
-            this.updateShuffleButtonState();
         }
         reset() {
             this.wiggle.stop();
@@ -1121,28 +1313,37 @@ var Jamble;
             this.awaitingStartTap = true;
             this.waitGroundForStart = false;
             this.inCountdown = false;
-            this.shuffleAllowanceInitialized = false;
-            this.idleShuffleRemaining = 0;
             this.showIdleControls();
             this.direction = 1;
             this.level = 0;
             this.updateLevel();
         }
-        applyElementHand(triggerShuffle = true) {
-            let activeCount = 0;
+        applyElementHand() {
             this.elementHandSlots.forEach(slot => {
                 const cardId = slot.cardId;
                 if (!cardId)
                     return;
                 if (!this.levelElements.get(cardId))
                     return;
-                this.levelElements.setActive(cardId, slot.active);
-                if (slot.active && this.levelElements.isActive(cardId))
-                    activeCount++;
+                const currentlyActive = this.levelElements.isActive(cardId);
+                if (slot.active) {
+                    const placed = this.ensurePlacementForElement(cardId);
+                    if (!placed) {
+                        slot.active = false;
+                        if (currentlyActive)
+                            this.levelElements.setActive(cardId, false);
+                        this.releaseElementSlot(cardId);
+                        return;
+                    }
+                    if (!currentlyActive)
+                        this.levelElements.setActive(cardId, true);
+                }
+                else {
+                    if (currentlyActive)
+                        this.levelElements.setActive(cardId, false);
+                    this.releaseElementSlot(cardId);
+                }
             });
-            if (triggerShuffle && activeCount > 0)
-                this.shuffleElements();
-            this.updateShuffleButtonState();
             this.emitElementHandChanged();
         }
         emitElementHandChanged() {
@@ -1193,111 +1394,15 @@ var Jamble;
                 this.startCountdownTimer = null;
             }, Jamble.Settings.current.startFreezeTime);
         }
-        onShuffleClick() {
-            if (!this.awaitingStartTap || this.waitGroundForStart)
-                return;
-            if (!Jamble.Settings.current.shuffleEnabled)
-                return;
-            if (!this.shuffleAllowanceInitialized)
-                this.startIdleShuffleSession();
-            if (this.idleShuffleRemaining <= 0)
-                return;
-            this.shuffleElements();
-            this.idleShuffleRemaining = Math.max(0, this.idleShuffleRemaining - 1);
-            this.updateShuffleButtonState();
-        }
-        shuffleElements() {
-            const trees = this.levelElements.getPositionablesByType('tree');
-            if (trees.length === 0)
-                return;
-            const min = Jamble.Settings.current.treeEdgeMarginPct;
-            const max = 100 - Jamble.Settings.current.treeEdgeMarginPct;
-            const gap = Math.max(0, Jamble.Settings.current.treeMinGapPct);
-            const usable = Math.max(0, max - min);
-            const totalGap = gap * Math.max(0, trees.length - 1);
-            const free = Math.max(0, usable - totalGap);
-            const order = trees.slice();
-            for (let i = order.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                const tmp = order[i];
-                order[i] = order[j];
-                order[j] = tmp;
-            }
-            const weights = order.map(() => Math.random());
-            const weightTotal = weights.reduce((acc, w) => acc + w, 0);
-            let cursor = min;
-            for (let i = 0; i < order.length; i++) {
-                const share = weightTotal > 0 ? (weights[i] / weightTotal) * free : (order.length > 0 ? free / order.length : 0);
-                cursor += share;
-                order[i].setLeftPct(cursor);
-                if (i < order.length - 1)
-                    cursor += gap;
-            }
-        }
-        startIdleShuffleSession() {
-            this.shuffleAllowanceInitialized = true;
-            if (!Jamble.Settings.current.shuffleEnabled) {
-                this.idleShuffleRemaining = 0;
-            }
-            else {
-                this.idleShuffleRemaining = Math.max(0, Math.round(Jamble.Settings.current.shuffleLimit));
-            }
-            this.updateShuffleButtonState();
-        }
-        updateShuffleButtonState() {
-            if (!this.shuffleBtn)
-                return;
-            const enabledSetting = Jamble.Settings.current.shuffleEnabled;
-            const idleVisible = this.awaitingStartTap && !this.waitGroundForStart && this.player.frozenStart;
-            const activeTrees = this.levelElements.getByType('tree').length;
-            if (!enabledSetting || !idleVisible) {
-                this.shuffleBtn.style.display = 'none';
-                this.shuffleBtn.disabled = true;
-                this.shuffleBtn.title = enabledSetting ? 'Shuffle available during idle' : 'Shuffle disabled';
-                return;
-            }
-            this.shuffleBtn.style.display = 'block';
-            const remaining = this.idleShuffleRemaining;
-            const usable = remaining > 0 && activeTrees > 0;
-            this.shuffleBtn.disabled = !usable;
-            if (!usable) {
-                if (activeTrees === 0)
-                    this.shuffleBtn.title = 'No elements to shuffle';
-                else
-                    this.shuffleBtn.title = 'No shuffles left';
-            }
-            else {
-                this.shuffleBtn.title = 'Shuffle (' + remaining + ' left)';
-            }
-        }
-        refreshShuffleSettings() {
-            if (!Jamble.Settings.current.shuffleEnabled) {
-                this.idleShuffleRemaining = 0;
-                this.shuffleAllowanceInitialized = false;
-            }
-            else if (this.player.frozenStart && this.awaitingStartTap && !this.waitGroundForStart) {
-                const limit = Math.max(0, Math.round(Jamble.Settings.current.shuffleLimit));
-                if (!this.shuffleAllowanceInitialized) {
-                    this.idleShuffleRemaining = limit;
-                    this.shuffleAllowanceInitialized = true;
-                }
-                else {
-                    this.idleShuffleRemaining = Math.min(this.idleShuffleRemaining, limit);
-                }
-            }
-            this.updateShuffleButtonState();
-        }
         bind() {
             document.addEventListener('pointerdown', this.onPointerDown);
             this.resetBtn.addEventListener('click', this.reset);
             this.startBtn.addEventListener('click', this.onStartClick);
-            this.shuffleBtn.addEventListener('click', this.onShuffleClick);
         }
         unbind() {
             document.removeEventListener('pointerdown', this.onPointerDown);
             this.resetBtn.removeEventListener('click', this.reset);
             this.startBtn.removeEventListener('click', this.onStartClick);
-            this.shuffleBtn.removeEventListener('click', this.onShuffleClick);
         }
         showIdleControls() {
             this.startBtn.style.display = 'block';
@@ -1307,15 +1412,10 @@ var Jamble;
                 this.skillMenuEl.style.display = 'flex';
             if (this.elementHandEl)
                 this.elementHandEl.style.display = 'flex';
-            this.startIdleShuffleSession();
             this.emitElementHandChanged();
         }
         hideIdleControls() {
             this.startBtn.style.display = 'none';
-            this.shuffleBtn.style.display = 'none';
-            this.shuffleBtn.disabled = true;
-            this.shuffleBtn.title = 'Shuffle unavailable';
-            this.shuffleAllowanceInitialized = false;
             if (this.skillSlotsEl)
                 this.skillSlotsEl.style.display = 'flex';
             if (this.skillMenuEl)
@@ -1324,7 +1424,7 @@ var Jamble;
                 this.elementHandEl.style.display = 'none';
         }
         onPointerDown(e) {
-            if (e.target === this.resetBtn || e.target === this.startBtn || e.target === this.shuffleBtn)
+            if (e.target === this.resetBtn || e.target === this.startBtn)
                 return;
             if (this.player.frozenDeath)
                 return;
@@ -1371,8 +1471,6 @@ var Jamble;
                     this.player.velocity = -0.1;
                 this.waitGroundForStart = true;
                 this.awaitingStartTap = false;
-                this.shuffleAllowanceInitialized = false;
-                this.updateShuffleButtonState();
             }
             else {
                 if (this.player.velocity > 0)
@@ -1474,6 +1572,107 @@ var Jamble;
                 }, Jamble.Settings.current.showResetDelayMs);
             }
             this.rafId = window.requestAnimationFrame(this.loop);
+        }
+        ensureSlotResizeMonitoring() {
+            if (this.watchingResize)
+                return;
+            if (typeof ResizeObserver !== 'undefined') {
+                this.resizeObserver = new ResizeObserver(() => { this.rebuildSlots(); });
+                this.resizeObserver.observe(this.gameEl);
+            }
+            window.addEventListener('resize', this.handleWindowResize);
+            this.watchingResize = true;
+        }
+        teardownSlotResizeMonitoring() {
+            if (!this.watchingResize)
+                return;
+            if (this.resizeObserver) {
+                this.resizeObserver.disconnect();
+                this.resizeObserver = null;
+            }
+            window.removeEventListener('resize', this.handleWindowResize);
+            this.watchingResize = false;
+        }
+        getSlotManager() {
+            return this.slotManager;
+        }
+        getElementSlot(cardId) {
+            return this.elementSlots.get(cardId);
+        }
+        debugActiveSlots() {
+            return Array.from(this.elementSlots.values()).map(slot => ({ id: slot.id, type: slot.type, elementId: slot.elementId, elementType: slot.elementType }));
+        }
+        rebuildSlots() {
+            this.slotManager.rebuild();
+            this.refreshActiveElementPlacements();
+        }
+        refreshActiveElementPlacements() {
+            this.elementSlots.clear();
+            this.elementHandSlots.forEach(slot => {
+                const cardId = slot.cardId;
+                if (!cardId)
+                    return;
+                this.slotManager.releaseSlot(cardId);
+            });
+            this.elementHandSlots.forEach(slot => {
+                const cardId = slot.cardId;
+                if (!cardId)
+                    return;
+                if (!slot.active)
+                    return;
+                if (!this.levelElements.isActive(cardId))
+                    return;
+                this.ensurePlacementForElement(cardId);
+            });
+        }
+        releaseElementSlot(cardId) {
+            const element = this.levelElements.get(cardId);
+            if (element && element instanceof Jamble.BirdElement) {
+                element.clearSlot();
+            }
+            this.slotManager.releaseSlot(cardId);
+            this.elementSlots.delete(cardId);
+        }
+        ensurePlacementForElement(cardId) {
+            const meta = this.elementInstances.get(cardId);
+            if (!meta)
+                return false;
+            const descriptor = this.elementRegistry.get(meta.definitionId);
+            if (!descriptor)
+                return false;
+            const element = this.levelElements.get(cardId);
+            if (!element)
+                return false;
+            const placement = descriptor.placement;
+            if (!placement) {
+                return true;
+            }
+            const existing = this.slotManager.getSlotForElement(cardId);
+            let slot = existing || null;
+            if (!slot) {
+                slot = this.slotManager.acquireSlot(cardId, meta.type, placement);
+            }
+            if (!slot)
+                return false;
+            this.elementSlots.set(cardId, slot);
+            this.applySlotToElement(element, slot);
+            return true;
+        }
+        applySlotToElement(element, slot) {
+            if (element instanceof Jamble.BirdElement) {
+                element.assignSlot(slot);
+                return;
+            }
+            if (element instanceof Jamble.TreeElement) {
+                element.setLeftPct(slot.xPercent);
+                const host = element.el.parentElement;
+                if (host)
+                    element.applyVerticalFromSlot(slot, host);
+                return;
+            }
+            if (Jamble.isPositionableLevelElement(element)) {
+                element.setLeftPct(slot.xPercent);
+            }
         }
     }
     Jamble.Game = Game;

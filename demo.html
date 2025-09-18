@@ -143,6 +143,13 @@
             <summary style="font-weight:600;color:#2e7d32">Level Elements</summary>
             <ul id="dbg-deck" style="list-style:none;padding:0;margin:6px 0 0 0;font-size:13px;color:#2e7d32"></ul>
           </details>
+          <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
+            <summary style="font-weight:600;color:#2e7d32">Slot Debug</summary>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:13px;color:#2e7d32">
+              <input id="dbg-slotOverlay" type="checkbox" style="width:auto"> Show slot overlay
+            </label>
+            <button id="dbg-printSlots" style="margin-top:8px;padding:4px 8px;font-size:12px;border:1px solid #81c784;border-radius:4px;background:#f9fff9;color:#2e7d32;cursor:pointer">Log active slots</button>
+          </details>
         </div>
       </details>
     </div>
@@ -196,6 +203,84 @@
         var skillMenu = document.getElementById('skill-menu');
         var slotEls = skillSlots ? Array.from(skillSlots.querySelectorAll('.jamble-skill-slot')) : [];
         var LETTER = { move: 'M', jump: 'J', dash: 'D' };
+        var slotOverlayToggle = document.getElementById('dbg-slotOverlay');
+        var slotPrintBtn = document.getElementById('dbg-printSlots');
+        var slotOverlayEl = null;
+
+        function ensureSlotOverlay(){
+          if (!slotOverlayToggle || !slotOverlayToggle.checked){
+            if (slotOverlayEl && slotOverlayEl.parentNode) slotOverlayEl.parentNode.removeChild(slotOverlayEl);
+            slotOverlayEl = null;
+            return;
+          }
+          if (!slotOverlayEl){
+            slotOverlayEl = document.createElement('div');
+            slotOverlayEl.id = 'jamble-slot-overlay';
+            slotOverlayEl.style.position = 'absolute';
+            slotOverlayEl.style.left = '0';
+            slotOverlayEl.style.top = '0';
+            slotOverlayEl.style.width = '100%';
+            slotOverlayEl.style.height = '100%';
+            slotOverlayEl.style.pointerEvents = 'none';
+            slotOverlayEl.style.zIndex = '10';
+            slotOverlayEl.style.display = 'flex';
+            slotOverlayEl.style.flexDirection = 'column';
+            slotOverlayEl.style.justifyContent = 'flex-start';
+            slotOverlayEl.style.alignItems = 'stretch';
+            slotOverlayEl.style.fontSize = '10px';
+            slotOverlayEl.style.fontFamily = 'system-ui, sans-serif';
+            slotOverlayEl.style.color = 'rgba(46,125,50,0.8)';
+            slotOverlayEl.style.textShadow = '0 0 2px rgba(255,255,255,0.9)';
+            slotOverlayEl.style.mixBlendMode = 'normal';
+            slotOverlayEl.style.border = 'none';
+            slotOverlayEl.style.boxSizing = 'border-box';
+            slotOverlayEl.style.padding = '4px';
+            slotOverlayEl.style.gap = '2px';
+            slotOverlayEl.style.pointerEvents = 'none';
+            var gameWrap = root.querySelector('.jamble-game');
+            if (gameWrap) gameWrap.appendChild(slotOverlayEl);
+          }
+          renderSlotOverlay();
+        }
+
+        function renderSlotOverlay(){
+          if (!slotOverlayEl){
+            ensureSlotOverlay();
+            return;
+          }
+          var slots = game.getSlotManager().getAllSlots();
+          var fragment = document.createDocumentFragment();
+          slotOverlayEl.innerHTML = '';
+          slots.forEach(function(slot){
+            var marker = document.createElement('div');
+            marker.style.position = 'absolute';
+            marker.style.left = slot.xPercent + '%';
+            marker.style.bottom = slot.yPercent + '%';
+            marker.style.transform = 'translate(-50%, 50%)';
+            marker.style.width = '6px';
+            marker.style.height = '6px';
+            marker.style.borderRadius = '50%';
+            marker.style.background = slot.invalid && slot.type === 'ground'
+              ? '#9e2a2a'
+              : (slot.occupied ? '#4caf50' : '#8d8d8d');
+            marker.title = slot.type + ' • column ' + slot.column + (slot.occupied ? ' (occupied)' : '');
+            fragment.appendChild(marker);
+          });
+          slotOverlayEl.appendChild(fragment);
+        }
+
+        if (slotOverlayToggle){
+          slotOverlayToggle.addEventListener('change', ensureSlotOverlay);
+        }
+
+        if (slotPrintBtn){
+          slotPrintBtn.addEventListener('click', function(){
+            if (!window.__game) return;
+            console.log('Active slots:', window.__game.debugActiveSlots());
+          });
+        }
+
+        window.addEventListener('resize', renderSlotOverlay);
 
         function toNumber(value, fallback){
           var n = Number(value);

@@ -53,6 +53,7 @@ namespace Jamble {
       type: 'tree',
       hostKind: 'tree-ground',
       defaults: {},
+      placement: { validSlotTypes: ['ground'], blockedNeighbors: { types: ['tree'], distance: 1 }, allowStartZone: false },
       ensureHost: (root, id) => hostFactories['tree-ground'](root, id),
       create: ({ id, host, root }) => {
         const el = host || hostFactories['tree-ground'](root, id);
@@ -66,6 +67,7 @@ namespace Jamble {
       type: 'tree_ceiling',
       hostKind: 'tree-ceiling',
       defaults: {},
+      placement: { validSlotTypes: ['ceiling'], blockedNeighbors: { types: ['tree_ceiling'], distance: 1 }, allowStartZone: true },
       ensureHost: (root, id) => hostFactories['tree-ceiling'](root, id),
       create: ({ id, host, root }) => {
         const el = host || hostFactories['tree-ceiling'](root, id);
@@ -79,6 +81,7 @@ namespace Jamble {
       type: 'bird',
       hostKind: 'bird-floating',
       defaults: { speed: 40, direction: 1 } as BirdElementConfig,
+      placement: { validSlotTypes: ['air_low', 'air_mid'], blockedNeighbors: { types: ['bird'], distance: 1 }, allowStartZone: true },
       ensureHost: (root, id) => hostFactories['bird-floating'](root, id),
       create: ({ id, host, root, config }) => {
         const el = host || hostFactories['bird-floating'](root, id);
