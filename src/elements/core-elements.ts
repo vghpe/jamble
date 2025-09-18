@@ -78,11 +78,11 @@ namespace Jamble {
       emoji: '🐦',
       type: 'bird',
       hostKind: 'bird-floating',
-      defaults: {},
+      defaults: { speed: 40, direction: 1 } as BirdElementConfig,
       ensureHost: (root, id) => hostFactories['bird-floating'](root, id),
-      create: ({ id, host, root }) => {
+      create: ({ id, host, root, config }) => {
         const el = host || hostFactories['bird-floating'](root, id);
-        return new BirdElement(id, el);
+        return new BirdElement(id, el, config as BirdElementConfig | undefined);
       }
     }
   ];

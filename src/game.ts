@@ -409,6 +409,7 @@ namespace Jamble {
     private loop(ts: number): void {
       if (this.lastTime === null) this.lastTime = ts;
       const deltaSec = Math.min((ts - this.lastTime) / 1000, 0.05);
+      const deltaMs = deltaSec * 1000;
       const dt60 = deltaSec * 60;
       this.lastTime = ts;
 
@@ -441,8 +442,7 @@ namespace Jamble {
           const dxImp = sum * deltaSec * this.direction;
           if (dxImp !== 0) this.player.moveX(dxImp);
           // decrement remaining and cull finished
-          const dtMs = deltaSec * 1000;
-          for (const imp of this.impulses) imp.remainingMs -= dtMs;
+          for (const imp of this.impulses) imp.remainingMs -= deltaMs;
           this.impulses = this.impulses.filter(i => i.remainingMs > 0);
         }
 
@@ -451,11 +451,13 @@ namespace Jamble {
         } else if (this.direction === -1 && this.reachedLeft()){
           this.handleEdgeArrival(1, () => this.player.setX(Jamble.Settings.current.playerStartOffset));
         }
+
+        this.levelElements.tick(deltaMs);
       }
 
       // Vertical physics and dash timer
       this.player.update(dt60);
-      this.player.updateDash(deltaSec * 1000);
+      this.player.updateDash(deltaMs);
 
       // Skills tick + land detection
       const grounded = this.player.jumpHeight === 0 && !this.player.isJumping;

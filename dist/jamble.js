@@ -570,17 +570,53 @@ var Jamble;
 var Jamble;
 (function (Jamble) {
     class BirdElement {
-        constructor(id, el) {
+        constructor(id, el, cfg) {
+            var _a;
             this.type = 'bird';
             this.collidable = true;
             this.defaultDisplay = '';
             this.initialized = false;
+            this.positionPx = null;
             this.id = id;
             this.el = el;
             this.el.classList.add('jamble-bird');
             this.el.textContent = '🐦';
+            this.speedPxPerSec = Math.max(5, Math.min(400, (_a = cfg === null || cfg === void 0 ? void 0 : cfg.speed) !== null && _a !== void 0 ? _a : 40));
+            this.direction = (cfg === null || cfg === void 0 ? void 0 : cfg.direction) === -1 ? -1 : 1;
         }
         rect() { return this.el.getBoundingClientRect(); }
+        resolveHost() {
+            return this.el.offsetParent || this.el.parentElement;
+        }
+        ensurePosition() {
+            if (this.positionPx !== null)
+                return;
+            const host = this.resolveHost();
+            if (!host)
+                return;
+            const leftStyle = this.el.style.left || '50%';
+            let pos = 0;
+            if (leftStyle.indexOf('%') !== -1) {
+                const pct = parseFloat(leftStyle);
+                if (!Number.isNaN(pct))
+                    pos = (pct / 100) * host.offsetWidth;
+            }
+            else {
+                const raw = parseFloat(leftStyle);
+                if (!Number.isNaN(raw))
+                    pos = raw;
+            }
+            if (!Number.isFinite(pos))
+                pos = host.offsetWidth / 2;
+            pos = Math.max(0, Math.min(pos, Math.max(0, host.offsetWidth - this.el.offsetWidth)));
+            this.positionPx = pos;
+            this.applyPosition();
+        }
+        applyPosition() {
+            if (this.positionPx === null)
+                return;
+            this.el.style.left = this.positionPx + 'px';
+        }
         init() {
             if (this.initialized)
                 return;
@@ -588,15 +624,44 @@ var Jamble;
             const current = this.el.style.display;
             this.defaultDisplay = current && current !== 'none' ? current : '';
             this.el.style.display = 'none';
+            this.ensurePosition();
         }
         activate() {
             this.el.style.display = this.defaultDisplay || '';
+            this.ensurePosition();
         }
         deactivate() {
             this.el.style.display = 'none';
         }
         dispose() {
             this.el.style.display = 'none';
+        }
+        tick(ctx) {
+            if (ctx.deltaMs <= 0)
+                return;
+            this.ensurePosition();
+            if (this.positionPx === null)
+                return;
+            const host = this.resolveHost();
+            if (!host)
+                return;
+            const maxX = Math.max(0, host.offsetWidth - this.el.offsetWidth);
+            if (maxX <= 0)
+                return;
+            const deltaSec = ctx.deltaMs / 1000;
+            const next = this.positionPx + this.direction * this.speedPxPerSec * deltaSec;
+            if (next <= 0) {
+                this.positionPx = 0;
+                this.direction = 1;
+            }
+            else if (next >= maxX) {
+                this.positionPx = maxX;
+                this.direction = -1;
+            }
+            else {
+                this.positionPx = next;
+            }
+            this.applyPosition();
         }
     }
     Jamble.BirdElement = BirdElement;
@@ -608,12 +673,9 @@ var Jamble;
             let el = root.querySelector('.jamble-tree[data-element-id="' + id + '"]');
             if (el)
                 return el;
-            el = root.querySelector('.jamble-tree:not([data-element-id])');
-            if (!el) {
-                el = document.createElement('div');
-                el.className = 'jamble-tree';
-                root.appendChild(el);
-            }
+            el = document.createElement('div');
+            el.className = 'jamble-tree';
+            root.appendChild(el);
             el.setAttribute('data-element-id', id);
             if (!el.style.left)
                 el.style.left = '50%';
@@ -624,12 +686,9 @@ var Jamble;
             let el = root.querySelector('.jamble-tree.jamble-tree-ceiling[data-element-id="' + id + '"]');
             if (el)
                 return el;
-            el = root.querySelector('.jamble-tree.jamble-tree-ceiling:not([data-element-id])');
-            if (!el) {
-                el = document.createElement('div');
-                el.className = 'jamble-tree jamble-tree-ceiling';
-                root.appendChild(el);
-            }
+            el = document.createElement('div');
+            el.className = 'jamble-tree jamble-tree-ceiling';
+            root.appendChild(el);
             el.classList.add('jamble-tree', 'jamble-tree-ceiling');
             el.setAttribute('data-element-id', id);
             if (!el.style.left)
@@ -641,25 +700,16 @@ var Jamble;
             let el = root.querySelector('.jamble-bird[data-element-id="' + id + '"]');
             if (el)
                 return el;
-            el = root.querySelector('.jamble-bird:not([data-element-id])');
-            if (!el) {
-                el = document.createElement('div');
-                el.className = 'jamble-bird';
-                root.appendChild(el);
-            }
+            el = document.createElement('div');
+            el.className = 'jamble-bird';
+            el.textContent = '🐦';
+            root.appendChild(el);
             el.setAttribute('data-element-id', id);
             if (!el.style.left)
                 el.style.left = '50%';
             el.style.display = 'none';
             return el;
         }
-    };
-    const elementHostStyles = {
-        'tree-ground': `#jamble .jamble-tree { position: absolute; bottom: 0; width: 10px; height: 30px; background: #8d6e63; border-radius: 2px; }
-#jamble .jamble-tree::after { content: ""; position: absolute; bottom: 20px; left: -5px; width: 20px; height: 20px; background: #66bb6a; border-radius: 50%; }`,
-        'tree-ceiling': `#jamble .jamble-tree.jamble-tree-ceiling { top: 0; bottom: auto; }
-#jamble .jamble-tree.jamble-tree-ceiling::after { bottom: auto; top: 20px; }`,
-        'bird-floating': `#jamble .jamble-bird { position: absolute; bottom: 60px; width: 24px; height: 24px; background: none; font-size: 24px; line-height: 24px; text-align: center; }`
     };
     const CORE_ELEMENTS = [
         {
@@ -694,11 +744,11 @@ var Jamble;
             emoji: '🐦',
             type: 'bird',
             hostKind: 'bird-floating',
-            defaults: {},
+            defaults: { speed: 40, direction: 1 },
             ensureHost: (root, id) => hostFactories['bird-floating'](root, id),
-            create: ({ id, host, root }) => {
+            create: ({ id, host, root, config }) => {
                 const el = host || hostFactories['bird-floating'](root, id);
-                return new Jamble.BirdElement(id, el);
+                return new Jamble.BirdElement(id, el, config);
             }
         }
     ];
@@ -714,12 +764,6 @@ var Jamble;
         return CORE_ELEMENTS;
     }
     Jamble.getCoreElementDefinitions = getCoreElementDefinitions;
-    function getElementStyles() {
-        const uniqueKinds = new Set();
-        CORE_ELEMENTS.forEach(def => uniqueKinds.add(def.hostKind));
-        return Array.from(uniqueKinds).map(kind => elementHostStyles[kind]).join('\n');
-    }
-    Jamble.getElementStyles = getElementStyles;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
@@ -1310,7 +1354,7 @@ var Jamble;
         collisionWith(ob) {
             const pr = this.player.el.getBoundingClientRect();
             const tr = ob.rect();
-            return pr.left < tr.right && pr.right > tr.left && pr.bottom > tr.top;
+            return pr.left < tr.right && pr.right > tr.left && pr.bottom > tr.top && pr.top < tr.bottom;
         }
         reachedRight() {
             const rightLimit = this.gameEl.offsetWidth - Jamble.Settings.current.playerStartOffset;
@@ -1343,6 +1387,7 @@ var Jamble;
             if (this.lastTime === null)
                 this.lastTime = ts;
             const deltaSec = Math.min((ts - this.lastTime) / 1000, 0.05);
+            const deltaMs = deltaSec * 1000;
             const dt60 = deltaSec * 60;
             this.lastTime = ts;
             const cx = this.player.x + this.player.el.offsetWidth / 2;
@@ -1367,9 +1412,8 @@ var Jamble;
                     const dxImp = sum * deltaSec * this.direction;
                     if (dxImp !== 0)
                         this.player.moveX(dxImp);
-                    const dtMs = deltaSec * 1000;
                     for (const imp of this.impulses)
-                        imp.remainingMs -= dtMs;
+                        imp.remainingMs -= deltaMs;
                     this.impulses = this.impulses.filter(i => i.remainingMs > 0);
                 }
                 if (this.direction === 1 && this.reachedRight()) {
@@ -1378,9 +1422,10 @@ var Jamble;
                 else if (this.direction === -1 && this.reachedLeft()) {
                     this.handleEdgeArrival(1, () => this.player.setX(Jamble.Settings.current.playerStartOffset));
                 }
+                this.levelElements.tick(deltaMs);
             }
             this.player.update(dt60);
-            this.player.updateDash(deltaSec * 1000);
+            this.player.updateDash(deltaMs);
             const grounded = this.player.jumpHeight === 0 && !this.player.isJumping;
             const sctx = {
                 nowMs: performance.now(),
