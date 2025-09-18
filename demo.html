@@ -148,6 +148,15 @@
             <label style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:13px;color:#2e7d32">
               <input id="dbg-slotOverlay" type="checkbox" style="width:auto"> Show slot overlay
             </label>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:13px;color:#2e7d32">
+              <input id="dbg-slotNoiseEnabled" type="checkbox" style="width:auto"> Enable noise
+            </label>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:6px;margin-top:6px;font-size:12px;color:#2e7d32">
+              <label for="dbg-slotNoiseX">Noise X scale</label>
+              <input id="dbg-slotNoiseX" type="number" step="0.1" min="0" max="5" style="width:80px">
+              <label for="dbg-slotNoiseY">Noise Y scale</label>
+              <input id="dbg-slotNoiseY" type="number" step="0.1" min="0" max="5" style="width:80px">
+            </div>
             <button id="dbg-printSlots" style="margin-top:8px;padding:4px 8px;font-size:12px;border:1px solid #81c784;border-radius:4px;background:#f9fff9;color:#2e7d32;cursor:pointer">Log active slots</button>
           </details>
         </div>
@@ -205,6 +214,9 @@
         var LETTER = { move: 'M', jump: 'J', dash: 'D' };
         var slotOverlayToggle = document.getElementById('dbg-slotOverlay');
         var slotPrintBtn = document.getElementById('dbg-printSlots');
+        var slotNoiseToggle = document.getElementById('dbg-slotNoiseEnabled');
+        var slotNoiseX = document.getElementById('dbg-slotNoiseX');
+        var slotNoiseY = document.getElementById('dbg-slotNoiseY');
         var slotOverlayEl = null;
 
         function ensureSlotOverlay(){
@@ -269,16 +281,36 @@
           slotOverlayEl.appendChild(fragment);
         }
 
-        if (slotOverlayToggle){
-          slotOverlayToggle.addEventListener('change', ensureSlotOverlay);
+        function applySlotNoiseSettings(){
+          if (!slotNoiseToggle || !slotNoiseX || !slotNoiseY) return;
+          var opts = {
+            enabled: !!slotNoiseToggle.checked,
+            horizontal: Math.max(0, parseFloat(slotNoiseX.value) || 0),
+            vertical: Math.max(0, parseFloat(slotNoiseY.value) || 0)
+          };
+          var mgr = game.getSlotManager();
+          mgr.setNoiseOptions(opts);
+          if (game.recomputeSlots) game.recomputeSlots();
+          renderSlotOverlay();
         }
 
+        (function initSlotDebugControls(){
+          var opts = game.getSlotManager().getNoiseOptions();
+          if (slotNoiseToggle) slotNoiseToggle.checked = opts.enabled;
+          if (slotNoiseX) slotNoiseX.value = Number(opts.horizontal || 0).toString();
+          if (slotNoiseY) slotNoiseY.value = Number(opts.vertical || 0).toString();
+        })();
+
+        if (slotOverlayToggle) slotOverlayToggle.addEventListener('change', ensureSlotOverlay);
         if (slotPrintBtn){
           slotPrintBtn.addEventListener('click', function(){
             if (!window.__game) return;
             console.log('Active slots:', window.__game.debugActiveSlots());
           });
         }
+        if (slotNoiseToggle) slotNoiseToggle.addEventListener('change', applySlotNoiseSettings);
+        if (slotNoiseX) slotNoiseX.addEventListener('change', applySlotNoiseSettings);
+        if (slotNoiseY) slotNoiseY.addEventListener('change', applySlotNoiseSettings);
 
         window.addEventListener('resize', renderSlotOverlay);
 

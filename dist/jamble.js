@@ -530,25 +530,78 @@ var Jamble;
 var Jamble;
 (function (Jamble) {
     const SLOT_LAYER_TEMPLATES = [
-        { type: 'ground', columns: 8, yPercent: 0, jitterXPct: 0, jitterYPct: 0, invalidColumns: [0, 7] },
-        { type: 'air_low', columns: 8, yPercent: 28, jitterXPct: 0, jitterYPct: 4 },
-        { type: 'air_mid', columns: 8, yPercent: 55, jitterXPct: 0, jitterYPct: 4 },
-        { type: 'air_high', columns: 8, yPercent: 78, jitterXPct: 0, jitterYPct: 4 },
-        { type: 'ceiling', columns: 8, yPercent: 100, jitterXPct: 0, jitterYPct: 0 }
+        { type: 'ground', columns: 8, yPercent: 0, noiseX: 1.5, noiseY: 0, invalidColumns: [0, 7] },
+        { type: 'air_low', columns: 8, yPercent: 28, noiseX: 2.5, noiseY: 4 },
+        { type: 'air_mid', columns: 8, yPercent: 55, noiseX: 2.5, noiseY: 4 },
+        { type: 'air_high', columns: 8, yPercent: 78, noiseX: 2.5, noiseY: 4 },
+        { type: 'ceiling', columns: 8, yPercent: 100, noiseX: 1.5, noiseY: 0 }
     ];
     function clamp(value, min, max) {
         return Math.min(max, Math.max(min, value));
     }
-    function jitter(id, salt, range) {
-        if (range <= 0)
-            return 0;
-        let hash = 2166136261 ^ salt;
-        for (let i = 0; i < id.length; i++) {
-            hash ^= id.charCodeAt(i);
-            hash = Math.imul(hash, 16777619);
+    const NOISE_SEED = 142857;
+    const PERM_SIZE = 256;
+    const PERM_MASK = PERM_SIZE - 1;
+    const gradients = [
+        [1, 0], [-1, 0], [0, 1], [0, -1],
+        [Math.SQRT1_2, Math.SQRT1_2], [-Math.SQRT1_2, Math.SQRT1_2],
+        [Math.SQRT1_2, -Math.SQRT1_2], [-Math.SQRT1_2, -Math.SQRT1_2]
+    ];
+    const NOISE_SCALE_PRIMARY_X = 2.1;
+    const NOISE_SCALE_PRIMARY_Y = 1.7;
+    const NOISE_SCALE_SECONDARY_X = 1.9;
+    const NOISE_SCALE_SECONDARY_Y = 2.4;
+    function mulberry32(seed) {
+        return function () {
+            seed |= 0;
+            seed = seed + 0x6D2B79F5 | 0;
+            let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+            t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+            return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        };
+    }
+    const perm = (() => {
+        const p = new Uint8Array(PERM_SIZE * 2);
+        const source = new Uint8Array(PERM_SIZE);
+        for (let i = 0; i < PERM_SIZE; i++)
+            source[i] = i;
+        const rnd = mulberry32(NOISE_SEED);
+        for (let i = PERM_SIZE - 1; i >= 0; i--) {
+            const j = Math.floor(rnd() * (i + 1));
+            const tmp = source[i];
+            source[i] = source[j];
+            source[j] = tmp;
         }
-        const normalized = (hash >>> 0) / 0xffffffff;
-        return (normalized * 2 - 1) * range;
+        for (let i = 0; i < PERM_SIZE * 2; i++) {
+            p[i] = source[i & PERM_MASK];
+        }
+        return p;
+    })();
+    function fade(t) {
+        return t * t * t * (t * (t * 6 - 15) + 10);
+    }
+    function grad(hash, x, y) {
+        const g = gradients[hash % gradients.length];
+        return g[0] * x + g[1] * y;
+    }
+    function perlin2D(x, y) {
+        const xi = Math.floor(x) & PERM_MASK;
+        const yi = Math.floor(y) & PERM_MASK;
+        const xf = x - Math.floor(x);
+        const yf = y - Math.floor(y);
+        const u = fade(xf);
+        const v = fade(yf);
+        const aa = perm[xi + perm[yi]];
+        const ab = perm[xi + perm[yi + 1]];
+        const ba = perm[xi + 1 + perm[yi]];
+        const bb = perm[xi + 1 + perm[yi + 1]];
+        const x1 = grad(aa, xf, yf);
+        const x2 = grad(ba, xf - 1, yf);
+        const y1 = x1 + u * (x2 - x1);
+        const x3 = grad(ab, xf, yf - 1);
+        const x4 = grad(bb, xf - 1, yf - 1);
+        const y2 = x3 + u * (x4 - x3);
+        return y1 + v * (y2 - y1);
     }
     class SlotManager {
         constructor(host) {
@@ -556,6 +609,7 @@ var Jamble;
             this.slots = [];
             this.slotsByType = new Map();
             this.slotByElementId = new Map();
+            this.noiseOptions = { enabled: true, horizontal: 1, vertical: 1 };
             this.host = host;
             this.rebuild();
         }
@@ -572,13 +626,20 @@ var Jamble;
                 const stride = 100 / template.columns;
                 for (let column = 0; column < template.columns; column++) {
                     const baseXPct = (column + 0.5) * stride;
-                    const id = template.type + '-' + column;
-                    const offsetX = jitter(id, 0x1f123bb5, template.jitterXPct);
-                    const offsetY = jitter(id, 0x9e3779b9, template.jitterYPct);
+                    const slotId = template.type + '-' + column;
+                    const nx = template.columns > 1 ? column / (template.columns - 1) : 0;
+                    const ny = SLOT_LAYER_TEMPLATES.length > 1 ? layerIndex / (SLOT_LAYER_TEMPLATES.length - 1) : 0;
+                    const noiseEnabled = this.noiseOptions.enabled;
+                    const amplitudeX = noiseEnabled ? template.noiseX * Math.max(0, this.noiseOptions.horizontal) : 0;
+                    const amplitudeY = noiseEnabled ? template.noiseY * Math.max(0, this.noiseOptions.vertical) : 0;
+                    const noiseX = amplitudeX !== 0 ? perlin2D(nx * NOISE_SCALE_PRIMARY_X + 0.31, ny * NOISE_SCALE_PRIMARY_Y + 3.73) : 0;
+                    const noiseY = amplitudeY !== 0 ? perlin2D(nx * NOISE_SCALE_SECONDARY_X + 4.11, ny * NOISE_SCALE_SECONDARY_Y + 1.19 + 7.0) : 0;
+                    const offsetX = noiseX * amplitudeX;
+                    const offsetY = noiseY * amplitudeY;
                     const xPercent = clamp(baseXPct + offsetX, 0, 100);
                     const yPercent = clamp(template.yPercent + offsetY, 0, 100);
                     const slot = {
-                        id,
+                        id: slotId,
                         type: template.type,
                         column,
                         layerIndex,
@@ -605,6 +666,20 @@ var Jamble;
         }
         getMetrics() {
             return this.metrics;
+        }
+        getNoiseOptions() {
+            return { ...this.noiseOptions };
+        }
+        setNoiseOptions(options) {
+            this.noiseOptions = {
+                ...this.noiseOptions,
+                ...options
+            };
+            if (this.noiseOptions.horizontal < 0)
+                this.noiseOptions.horizontal = 0;
+            if (this.noiseOptions.vertical < 0)
+                this.noiseOptions.vertical = 0;
+            this.noiseOptions.enabled = options.enabled !== undefined ? options.enabled : this.noiseOptions.enabled;
         }
         getSlotForElement(elementId) {
             return this.slotByElementId.get(elementId);
@@ -1601,6 +1676,9 @@ var Jamble;
         }
         debugActiveSlots() {
             return Array.from(this.elementSlots.values()).map(slot => ({ id: slot.id, type: slot.type, elementId: slot.elementId, elementType: slot.elementType }));
+        }
+        recomputeSlots() {
+            this.rebuildSlots();
         }
         rebuildSlots() {
             this.slotManager.rebuild();

@@ -452,6 +452,10 @@ namespace Jamble {
       return Array.from(this.elementSlots.values()).map(slot => ({ id: slot.id, type: slot.type, elementId: slot.elementId, elementType: slot.elementType }));
     }
 
+    public recomputeSlots(): void {
+      this.rebuildSlots();
+    }
+
     private rebuildSlots(): void {
       this.slotManager.rebuild();
       this.refreshActiveElementPlacements();
