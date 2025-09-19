@@ -449,25 +449,44 @@
             btn.type = 'button';
             btn.className = 'jamble-element-card';
             if (card && card.available){
-              btn.textContent = iconForCard(card);
-              btn.setAttribute('aria-label', card.name || 'Element');
-              if (card.active) btn.classList.add('jamble-active');
-              var locked = card.active && !canEditElements;
-              if (locked){
-                btn.classList.add('jamble-locked');
-                btn.disabled = true;
-                btn.title = 'Locked. Enable element removal to modify.';
+              var isLaps = card.definitionId === 'laps.basic';
+              if (isLaps){
+                var lapsState = typeof game.getLapsState === 'function' ? game.getLapsState() : null;
+                var lapsValue = lapsState ? lapsState.value : 1;
+                btn.classList.add('jamble-laps-card');
+                btn.textContent = iconForCard(card) + String(lapsValue);
+                btn.setAttribute('aria-label', (card.name || 'Laps') + ' ' + lapsValue);
+                var canAdjust = typeof game.isIdle === 'function' ? game.isIdle() : false;
+                btn.disabled = !canAdjust;
+                btn.title = canAdjust ? 'Tap to raise the lap count (max 9).' : 'Available between runs.';
+                btn.addEventListener('click', function(ev){
+                  ev.preventDefault();
+                  ev.stopPropagation();
+                  if (typeof game.incrementLaps !== 'function' || typeof game.isIdle !== 'function') return;
+                  if (!game.isIdle()) return;
+                  game.incrementLaps();
+                });
               } else {
-                btn.disabled = false;
-                (function(cardId, active){
-                  btn.addEventListener('click', function(ev){
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    if (typeof game.setElementCardActive === 'function'){
-                      game.setElementCardActive(cardId, !active);
-                    }
-                  });
-                })(card.id, card.active);
+                btn.textContent = iconForCard(card);
+                btn.setAttribute('aria-label', card.name || 'Element');
+                if (card.active) btn.classList.add('jamble-active');
+                var locked = card.active && !canEditElements;
+                if (locked){
+                  btn.classList.add('jamble-locked');
+                  btn.disabled = true;
+                  btn.title = 'Locked. Enable element removal to modify.';
+                } else {
+                  btn.disabled = false;
+                  (function(cardId, active){
+                    btn.addEventListener('click', function(ev){
+                      ev.preventDefault();
+                      ev.stopPropagation();
+                      if (typeof game.setElementCardActive === 'function'){
+                        game.setElementCardActive(cardId, !active);
+                      }
+                    });
+                  })(card.id, card.active);
+                }
               }
             } else {
               btn.textContent = '…';
