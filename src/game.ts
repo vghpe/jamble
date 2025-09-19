@@ -45,6 +45,7 @@ namespace Jamble {
     private handleWindowResize: () => void;
     private elementSlots = new Map<string, SlotDefinition>();
     private elementEditingEnabled: boolean = false;
+    private elementOriginOverrides = new Map<string, ElementOrigin>();
     // Skills
     private skills: SkillManager;
     private landCbs: Array<() => void> = [];
@@ -450,6 +451,19 @@ namespace Jamble {
       return this.elementSlots.get(cardId);
     }
 
+    public setElementOriginOverride(elementId: string, origin: ElementOrigin | null | undefined): void {
+      if (!origin){
+        this.elementOriginOverrides.delete(elementId);
+      } else {
+        this.elementOriginOverrides.set(elementId, origin);
+      }
+      const element = this.levelElements.get(elementId);
+      const slot = element ? this.elementSlots.get(elementId) : undefined;
+      if (element && slot){
+        this.applySlotToElement(element, slot);
+      }
+    }
+
     public debugActiveSlots(): Array<{ id: string; type: SlotType; elementId: string | null; elementType: LevelElementType | null }> {
       return Array.from(this.elementSlots.values()).map(slot => ({ id: slot.id, type: slot.type, elementId: slot.elementId, elementType: slot.elementType }));
     }
@@ -520,6 +534,7 @@ namespace Jamble {
     }
 
     private applySlotToElement(element: LevelElement, slot: SlotDefinition): void {
+      if (this.applyOriginToElement(element, slot)) return;
       if (element instanceof BirdElement){
         element.assignSlot(slot);
         return;
@@ -533,6 +548,62 @@ namespace Jamble {
       if (isPositionableLevelElement(element)){
         element.setLeftPct(slot.xPercent);
       }
+    }
+
+    private applyOriginToElement(element: LevelElement, slot: SlotDefinition): boolean {
+      const origin = this.getEffectiveOrigin(element);
+      if (!origin) return false;
+      const host = (element.el.offsetParent as HTMLElement | null) || element.el.parentElement;
+      if (!host) return false;
+      const hostRect = host.getBoundingClientRect();
+      const hostWidth = host.offsetWidth || hostRect.width;
+      const hostHeight = host.offsetHeight || hostRect.height;
+      if (hostWidth <= 0 || hostHeight <= 0) return false;
+
+      const elRect = element.el.getBoundingClientRect();
+      const elWidth = element.el.offsetWidth || elRect.width;
+      const elHeight = element.el.offsetHeight || elRect.height;
+      const computedWidth = elWidth || 1;
+      const computedHeight = elHeight || 1;
+
+      const originX = origin.xUnit === 'px'
+        ? origin.x
+        : this.clamp(origin.x, 0, 1) * computedWidth;
+      const originY = origin.yUnit === 'px'
+        ? origin.y
+        : this.clamp(origin.y, 0, 1) * computedHeight;
+
+      const maxLeft = Math.max(0, hostWidth - computedWidth);
+      const maxBottom = Math.max(0, hostHeight - computedHeight);
+      const leftPx = this.clamp(slot.xPx - originX, 0, maxLeft);
+      const bottomPx = this.clamp(slot.yPx - originY, 0, maxBottom);
+
+      element.el.style.left = leftPx.toFixed(1) + 'px';
+      element.el.style.bottom = bottomPx.toFixed(1) + 'px';
+      return true;
+    }
+
+    private getEffectiveOrigin(element: LevelElement): ElementOrigin | null {
+      const override = this.elementOriginOverrides.get(element.id);
+      if (override) return this.normalizeOrigin(override);
+      if (typeof element.getOrigin === 'function'){
+        const fromElement = element.getOrigin();
+        if (fromElement) return this.normalizeOrigin(fromElement);
+      }
+      return null;
+    }
+
+    private normalizeOrigin(origin: ElementOrigin): ElementOrigin {
+      return {
+        x: Number.isFinite(origin.x) ? origin.x : 0.5,
+        y: Number.isFinite(origin.y) ? origin.y : 0,
+        xUnit: origin.xUnit === 'px' ? 'px' : 'fraction',
+        yUnit: origin.yUnit === 'px' ? 'px' : 'fraction'
+      };
+    }
+
+    private clamp(value: number, min: number, max: number): number {
+      return Math.min(max, Math.max(min, value));
     }
   }
 }

@@ -16,6 +16,15 @@ namespace Jamble {
     manager: LevelElementManager;
   }
 
+  export type ElementOriginUnit = 'fraction' | 'px';
+
+  export interface ElementOrigin {
+    x: number;
+    y: number;
+    xUnit?: ElementOriginUnit;
+    yUnit?: ElementOriginUnit;
+  }
+
   export interface LevelElement {
     readonly id: string;
     readonly type: LevelElementType;
@@ -28,6 +37,7 @@ namespace Jamble {
     tick?(ctx: LevelElementTickContext): void;
     onCollision?(ctx: LevelElementCollisionContext): void;
     dispose?(ctx: LevelElementLifecycleContext): void;
+    getOrigin?(): ElementOrigin | null;
   }
 
   export interface PositionableLevelElement extends LevelElement {
