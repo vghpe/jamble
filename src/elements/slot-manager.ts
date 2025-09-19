@@ -38,6 +38,22 @@ namespace Jamble {
     elementType: LevelElementType | null;
   }
 
+  interface NormalizedOrigin {
+    x: number;
+    y: number;
+    xUnit: ElementOriginUnit;
+    yUnit: ElementOriginUnit;
+  }
+
+  export interface SlotApplicationOptions {
+    origin?: ElementOrigin | null;
+  }
+
+  export interface SlotApplicationResult {
+    originApplied: boolean;
+    needsRetry: boolean;
+  }
+
   function clamp(value: number, min: number, max: number): number {
     return Math.min(max, Math.max(min, value));
   }
@@ -256,6 +272,24 @@ namespace Jamble {
       return selected;
     }
 
+    applySlotToElement(element: LevelElement, slot: SlotDefinition, options: SlotApplicationOptions = {}): SlotApplicationResult {
+      const result: SlotApplicationResult = { originApplied: false, needsRetry: false };
+      const origin = options.origin ? this.normalizeOrigin(options.origin) : null;
+      if (origin){
+        const leftPx = this.applySlotWithOrigin(element, slot, origin);
+        if (leftPx !== null){
+          this.applyPostOriginAdjustments(element, slot, leftPx);
+          result.originApplied = true;
+        } else {
+          result.needsRetry = true;
+        }
+      }
+      if (!result.originApplied){
+        this.applySlotFallback(element, slot);
+      }
+      return result;
+    }
+
     private filterCandidates(elementType: LevelElementType, placement?: ElementPlacementOptions): SlotDefinition[] {
       const allowStartZone = placement?.allowStartZone === true;
       const validTypes = placement?.validSlotTypes;
@@ -270,6 +304,68 @@ namespace Jamble {
         candidates.push(slot);
       }
       return candidates;
+    }
+
+    private normalizeOrigin(origin: ElementOrigin): NormalizedOrigin {
+      const normalizedX = Number.isFinite(origin.x) ? origin.x : 0.5;
+      const normalizedY = Number.isFinite(origin.y) ? origin.y : 0;
+      const xUnit: ElementOriginUnit = origin.xUnit === 'px' ? 'px' : 'fraction';
+      const yUnit: ElementOriginUnit = origin.yUnit === 'px' ? 'px' : 'fraction';
+      return { x: normalizedX, y: normalizedY, xUnit, yUnit };
+    }
+
+    private applySlotWithOrigin(element: LevelElement, slot: SlotDefinition, origin: NormalizedOrigin): number | null {
+      const host = (element.el.offsetParent as HTMLElement | null) || element.el.parentElement;
+      if (!host) return null;
+      const hostRect = host.getBoundingClientRect();
+      const hostWidth = host.offsetWidth || hostRect.width;
+      const hostHeight = host.offsetHeight || hostRect.height;
+      if (hostWidth <= 0 || hostHeight <= 0) return null;
+
+      const elRect = element.el.getBoundingClientRect();
+      const elWidth = element.el.offsetWidth || elRect.width || 1;
+      const elHeight = element.el.offsetHeight || elRect.height || 1;
+
+      const originX = origin.xUnit === 'px'
+        ? origin.x
+        : clamp(origin.x, 0, 1) * elWidth;
+      const originY = origin.yUnit === 'px'
+        ? origin.y
+        : clamp(origin.y, 0, 1) * elHeight;
+
+      const maxLeft = Math.max(0, hostWidth - elWidth);
+      const maxBottom = Math.max(0, hostHeight - elHeight);
+      const leftPx = clamp(slot.xPx - originX, 0, maxLeft);
+      const bottomPx = clamp(slot.yPx - originY, 0, maxBottom);
+
+      element.el.style.left = leftPx.toFixed(1) + 'px';
+      element.el.style.bottom = bottomPx.toFixed(1) + 'px';
+
+      return leftPx;
+    }
+
+    private applyPostOriginAdjustments(element: LevelElement, slot: SlotDefinition, leftPx: number): void {
+      if (element.type === 'bird' && typeof (element as any).assignSlot === 'function'){
+        (element as any).assignSlot(slot, leftPx);
+      }
+    }
+
+    private applySlotFallback(element: LevelElement, slot: SlotDefinition): void {
+      if (element.type === 'bird' && typeof (element as any).assignSlot === 'function'){
+        (element as any).assignSlot(slot);
+        return;
+      }
+      if ((element.type === 'tree' || element.type === 'tree_ceiling') && typeof (element as any).setLeftPct === 'function'){
+        (element as any).setLeftPct(slot.xPercent);
+        const host = element.el.parentElement as HTMLElement | null;
+        if (host && typeof (element as any).applyVerticalFromSlot === 'function'){
+          (element as any).applyVerticalFromSlot(slot, host);
+        }
+        return;
+      }
+      if (typeof (element as any).setLeftPct === 'function'){
+        (element as any).setLeftPct(slot.xPercent);
+      }
     }
 
     private violatesNeighborRule(candidate: SlotDefinition, rule: NeighborBlockRule): boolean {

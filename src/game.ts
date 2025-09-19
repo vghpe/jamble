@@ -482,7 +482,11 @@ namespace Jamble {
       }
       const element = this.levelElements.get(elementId);
       const slot = element ? this.elementSlots.get(elementId) : undefined;
-      if (element && slot) this.applySlotToElement(element, slot);
+      if (element && slot){
+        const origin = this.getEffectiveOrigin(element);
+        const result = this.slotManager.applySlotToElement(element, slot, { origin });
+        if (result.needsRetry) this.enqueueOriginRetry(element.id);
+      }
     }
 
     public debugActiveSlots(): Array<{ id: string; type: SlotType; elementId: string | null; elementType: LevelElementType | null }> {
@@ -552,7 +556,9 @@ namespace Jamble {
       }
       if (!slot) return false;
       this.elementSlots.set(cardId, slot);
-      this.applySlotToElement(element, slot);
+      const origin = this.getEffectiveOrigin(element);
+      const result = this.slotManager.applySlotToElement(element, slot, { origin });
+      if (result.needsRetry) this.enqueueOriginRetry(element.id);
       return true;
     }
 
@@ -599,83 +605,14 @@ namespace Jamble {
       this.updateRunDisplay();
     }
 
-    private applySlotToElement(element: LevelElement, slot: SlotDefinition): void {
-      const origin = this.getEffectiveOrigin(element);
-      if (origin){
-        const applied = this.applyOriginToElement(element, slot, origin);
-        if (applied) return;
-        this.enqueueOriginRetry(element.id);
-      }
-      if (element instanceof BirdElement){
-        element.assignSlot(slot);
-        return;
-      }
-      if (element instanceof TreeElement){
-        element.setLeftPct(slot.xPercent);
-        const host = element.el.parentElement as HTMLElement | null;
-        if (host) element.applyVerticalFromSlot(slot, host);
-        return;
-      }
-      if (isPositionableLevelElement(element)){
-        element.setLeftPct(slot.xPercent);
-      }
-    }
-
-    private applyOriginToElement(element: LevelElement, slot: SlotDefinition, origin: ElementOrigin): boolean {
-      const host = (element.el.offsetParent as HTMLElement | null) || element.el.parentElement;
-      if (!host) return false;
-      const hostRect = host.getBoundingClientRect();
-      const hostWidth = host.offsetWidth || hostRect.width;
-      const hostHeight = host.offsetHeight || hostRect.height;
-      if (hostWidth <= 0 || hostHeight <= 0) return false;
-
-      const elRect = element.el.getBoundingClientRect();
-      const elWidth = element.el.offsetWidth || elRect.width;
-      const elHeight = element.el.offsetHeight || elRect.height;
-      const computedWidth = elWidth || 1;
-      const computedHeight = elHeight || 1;
-
-      const originX = origin.xUnit === 'px'
-        ? origin.x
-        : this.clamp(origin.x, 0, 1) * computedWidth;
-      const originY = origin.yUnit === 'px'
-        ? origin.y
-        : this.clamp(origin.y, 0, 1) * computedHeight;
-
-      const maxLeft = Math.max(0, hostWidth - computedWidth);
-      const maxBottom = Math.max(0, hostHeight - computedHeight);
-      const leftPx = this.clamp(slot.xPx - originX, 0, maxLeft);
-      const bottomPx = this.clamp(slot.yPx - originY, 0, maxBottom);
-
-      element.el.style.left = leftPx.toFixed(1) + 'px';
-      element.el.style.bottom = bottomPx.toFixed(1) + 'px';
-      if (element instanceof BirdElement){
-        element.assignSlot(slot, leftPx);
-      }
-      return true;
-    }
-
     private getEffectiveOrigin(element: LevelElement): ElementOrigin | null {
       const override = this.elementOriginOverrides.get(element.id);
-      if (override) return this.normalizeOrigin(override);
+      if (override) return override;
       if (typeof element.getOrigin === 'function'){
         const fromElement = element.getOrigin();
-        if (fromElement) return this.normalizeOrigin(fromElement);
+        if (fromElement) return fromElement;
       }
       return null;
-    }
-
-    private normalizeOrigin(origin: ElementOrigin): ElementOrigin {
-      return {
-        x: Number.isFinite(origin.x) ? origin.x : 0.5,
-        y: Number.isFinite(origin.y) ? origin.y : 0,
-        xUnit: origin.xUnit === 'px' ? 'px' : 'fraction',
-        yUnit: origin.yUnit === 'px' ? 'px' : 'fraction'
-      };
-    }
-
-    private clamp(value: number, min: number, max: number): number {
-      return Math.min(max, Math.max(min, value));
     }
 
     private enqueueOriginRetry(elementId: string): void {
@@ -697,9 +634,8 @@ namespace Jamble {
           const slot = this.elementSlots.get(id);
           if (!slot) continue;
           const origin = this.getEffectiveOrigin(element);
-          if (!origin) continue;
-          const applied = this.applyOriginToElement(element, slot, origin);
-          if (!applied){
+          const result = this.slotManager.applySlotToElement(element, slot, { origin });
+          if (!result.originApplied && result.needsRetry){
             this.pendingOriginElementIds.add(id);
             needsAnotherPass = true;
           }
