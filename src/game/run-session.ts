@@ -1,4 +1,4 @@
-/// <reference path="./settings.ts" />
+/// <reference path="../core/settings.ts" />
 
 namespace Jamble {
   export type RunState = 'idle' | 'countdown' | 'running' | 'finished';
@@ -10,7 +10,7 @@ namespace Jamble {
     runsCompleted: number;
   }
 
-  export class RunController {
+  export class RunSession {
     private state: RunState = 'idle';
     private lapsTarget = 1;
     private lapsRemaining = 1;

@@ -1,5 +1,5 @@
 /// <reference path="./types.ts" />
-/// <reference path="./slot-manager.ts" />
+/// <reference path="../slots/slot-layout-manager.ts" />
 
 namespace Jamble {
   export class TreeElement implements PositionableLevelElement {

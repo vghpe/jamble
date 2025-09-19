@@ -1,7 +1,7 @@
 /// <reference path="./player.ts" />
-/// <reference path="./game-ui.ts" />
-/// <reference path="./skills/types.ts" />
-/// <reference path="./skills/manager.ts" />
+/// <reference path="./ui/game-ui.ts" />
+/// <reference path="../skills/types.ts" />
+/// <reference path="../skills/manager.ts" />
 
 namespace Jamble {
   interface InputControllerOptions {
@@ -86,4 +86,3 @@ namespace Jamble {
     }
   }
 }
-

@@ -1,4 +1,4 @@
-/// <reference path="./types.ts" />
+/// <reference path="../elements/types.ts" />
 
 namespace Jamble {
   export interface ElementDeckEntry {

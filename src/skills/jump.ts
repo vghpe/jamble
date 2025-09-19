@@ -1,5 +1,5 @@
 /// <reference path="./types.ts" />
-/// <reference path="../settings.ts" />
+/// <reference path="../core/settings.ts" />
 namespace Jamble {
   export class JumpSkill implements Skill {
     readonly id: string; readonly name: string = 'Jump'; readonly slot: SkillSlot = 'movement'; readonly priority: number;

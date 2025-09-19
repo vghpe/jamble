@@ -1,21 +1,21 @@
 /// <reference path="./player.ts" />
-/// <reference path="./elements/types.ts" />
-/// <reference path="./elements/manager.ts" />
-/// <reference path="./elements/tree.ts" />
-/// <reference path="./elements/bird.ts" />
-/// <reference path="./elements/laps.ts" />
-/// <reference path="./hand-controller.ts" />
-/// <reference path="./run-controller.ts" />
-/// <reference path="./game-ui.ts" />
+/// <reference path="../level/elements/types.ts" />
+/// <reference path="../level/elements/level-element-manager.ts" />
+/// <reference path="../level/elements/tree.ts" />
+/// <reference path="../level/elements/bird.ts" />
+/// <reference path="../level/elements/laps.ts" />
+/// <reference path="./hand-manager.ts" />
+/// <reference path="./run-session.ts" />
+/// <reference path="./ui/game-ui.ts" />
 /// <reference path="./input-controller.ts" />
 /// <reference path="./countdown.ts" />
-/// <reference path="./wiggle.ts" />
-/// <reference path="./settings.ts" />
-/// <reference path="./elements/core-elements.ts" />
-/// <reference path="./skills/types.ts" />
-/// <reference path="./skills/manager.ts" />
-/// <reference path="./skills/jump.ts" />
-/// <reference path="./skills/dash.ts" />
+/// <reference path="./animations/wiggle.ts" />
+/// <reference path="../core/settings.ts" />
+/// <reference path="../level/registry/core-elements.ts" />
+/// <reference path="../skills/types.ts" />
+/// <reference path="../skills/manager.ts" />
+/// <reference path="../skills/jump.ts" />
+/// <reference path="../skills/dash.ts" />
 namespace Jamble {
   export class Game {
     private root: HTMLElement;
@@ -23,8 +23,8 @@ namespace Jamble {
     private player: Player;
     private levelElements: LevelElementManager;
     private elementRegistry: LevelElementRegistry;
-    private hand: HandController;
-    private run: RunController;
+    private hand: HandManager;
+    private run: RunSession;
     private countdown: Countdown;
     private ui: GameUi;
     private input: InputController;
@@ -39,7 +39,7 @@ namespace Jamble {
     private showResetTimer: number | null = null;
     private waitGroundForStart: boolean = false;
     private inCountdown: boolean = false;
-    private slotManager: SlotManager;
+    private slotManager: SlotLayoutManager;
     private resizeObserver: ResizeObserver | null = null;
     private watchingResize: boolean = false;
     private handleWindowResize: () => void;
@@ -76,10 +76,10 @@ namespace Jamble {
       this.levelElements = new LevelElementManager(gameEl, this.elementRegistry);
       Jamble.registerCoreElements(this.elementRegistry);
 
-      this.slotManager = new SlotManager(gameEl);
+      this.slotManager = new SlotLayoutManager(gameEl);
       const canonicalElements = Jamble.deriveElementsSettings(Jamble.CoreDeckConfig);
-      this.hand = new HandController(this.levelElements, canonicalElements);
-      this.run = new RunController();
+      this.hand = new HandManager(this.levelElements, canonicalElements);
+      this.run = new RunSession();
       this.run.setInitialLaps(this.hand.getLapsValue());
       this.countdown = new Countdown(cdEl);
       this.ui = new GameUi({
@@ -451,7 +451,7 @@ namespace Jamble {
       this.watchingResize = false;
     }
 
-    public getSlotManager(): SlotManager {
+    public getSlotManager(): SlotLayoutManager {
       return this.slotManager;
     }
 

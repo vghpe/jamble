@@ -1,6 +1,6 @@
-/// <reference path="./types.ts" />
-/// <reference path="./tree.ts" />
-/// <reference path="./bird.ts" />
+/// <reference path="../elements/types.ts" />
+/// <reference path="../elements/tree.ts" />
+/// <reference path="../elements/bird.ts" />
 
 namespace Jamble {
   type CoreElementDescriptor<TCfg = any> = LevelElementDescriptor<TCfg> & {

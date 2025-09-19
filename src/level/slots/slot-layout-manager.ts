@@ -1,4 +1,4 @@
-/// <reference path="./types.ts" />
+/// <reference path="../elements/types.ts" />
 
 namespace Jamble {
   interface SlotLayerTemplate {
@@ -142,7 +142,7 @@ namespace Jamble {
     return y1 + v * (y2 - y1);
   }
 
-  export class SlotManager {
+  export class SlotLayoutManager {
     private host: HTMLElement;
     private metrics: SlotMetrics = { width: 0, height: 0 };
     private slots: SlotDefinition[] = [];

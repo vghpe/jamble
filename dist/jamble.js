@@ -603,7 +603,7 @@ var Jamble;
         const y2 = x3 + u * (x4 - x3);
         return y1 + v * (y2 - y1);
     }
-    class SlotManager {
+    class SlotLayoutManager {
         constructor(host) {
             this.metrics = { width: 0, height: 0 };
             this.slots = [];
@@ -724,6 +724,24 @@ var Jamble;
             this.slotByElementId.set(elementId, selected);
             return selected;
         }
+        applySlotToElement(element, slot, options = {}) {
+            const result = { originApplied: false, needsRetry: false };
+            const origin = options.origin ? this.normalizeOrigin(options.origin) : null;
+            if (origin) {
+                const leftPx = this.applySlotWithOrigin(element, slot, origin);
+                if (leftPx !== null) {
+                    this.applyPostOriginAdjustments(element, slot, leftPx);
+                    result.originApplied = true;
+                }
+                else {
+                    result.needsRetry = true;
+                }
+            }
+            if (!result.originApplied) {
+                this.applySlotFallback(element, slot);
+            }
+            return result;
+        }
         filterCandidates(elementType, placement) {
             const allowStartZone = (placement === null || placement === void 0 ? void 0 : placement.allowStartZone) === true;
             const validTypes = placement === null || placement === void 0 ? void 0 : placement.validSlotTypes;
@@ -741,6 +759,61 @@ var Jamble;
                 candidates.push(slot);
             }
             return candidates;
+        }
+        normalizeOrigin(origin) {
+            const normalizedX = Number.isFinite(origin.x) ? origin.x : 0.5;
+            const normalizedY = Number.isFinite(origin.y) ? origin.y : 0;
+            const xUnit = origin.xUnit === 'px' ? 'px' : 'fraction';
+            const yUnit = origin.yUnit === 'px' ? 'px' : 'fraction';
+            return { x: normalizedX, y: normalizedY, xUnit, yUnit };
+        }
+        applySlotWithOrigin(element, slot, origin) {
+            const host = element.el.offsetParent || element.el.parentElement;
+            if (!host)
+                return null;
+            const hostRect = host.getBoundingClientRect();
+            const hostWidth = host.offsetWidth || hostRect.width;
+            const hostHeight = host.offsetHeight || hostRect.height;
+            if (hostWidth <= 0 || hostHeight <= 0)
+                return null;
+            const elRect = element.el.getBoundingClientRect();
+            const elWidth = element.el.offsetWidth || elRect.width || 1;
+            const elHeight = element.el.offsetHeight || elRect.height || 1;
+            const originX = origin.xUnit === 'px'
+                ? origin.x
+                : clamp(origin.x, 0, 1) * elWidth;
+            const originY = origin.yUnit === 'px'
+                ? origin.y
+                : clamp(origin.y, 0, 1) * elHeight;
+            const maxLeft = Math.max(0, hostWidth - elWidth);
+            const maxBottom = Math.max(0, hostHeight - elHeight);
+            const leftPx = clamp(slot.xPx - originX, 0, maxLeft);
+            const bottomPx = clamp(slot.yPx - originY, 0, maxBottom);
+            element.el.style.left = leftPx.toFixed(1) + 'px';
+            element.el.style.bottom = bottomPx.toFixed(1) + 'px';
+            return leftPx;
+        }
+        applyPostOriginAdjustments(element, slot, leftPx) {
+            if (element.type === 'bird' && typeof element.assignSlot === 'function') {
+                element.assignSlot(slot, leftPx);
+            }
+        }
+        applySlotFallback(element, slot) {
+            if (element.type === 'bird' && typeof element.assignSlot === 'function') {
+                element.assignSlot(slot);
+                return;
+            }
+            if ((element.type === 'tree' || element.type === 'tree_ceiling') && typeof element.setLeftPct === 'function') {
+                element.setLeftPct(slot.xPercent);
+                const host = element.el.parentElement;
+                if (host && typeof element.applyVerticalFromSlot === 'function') {
+                    element.applyVerticalFromSlot(slot, host);
+                }
+                return;
+            }
+            if (typeof element.setLeftPct === 'function') {
+                element.setLeftPct(slot.xPercent);
+            }
         }
         violatesNeighborRule(candidate, rule) {
             const distance = Math.max(0, Math.floor(rule.distance));
@@ -807,7 +880,7 @@ var Jamble;
             });
         }
     }
-    Jamble.SlotManager = SlotManager;
+    Jamble.SlotLayoutManager = SlotLayoutManager;
     function inverseErf(x) {
         if (x <= -1 || x >= 1) {
             if (x === -1)
@@ -1030,6 +1103,40 @@ var Jamble;
         }
     }
     Jamble.BirdElement = BirdElement;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class LapsElement {
+        constructor(id, el, config) {
+            this.type = 'laps';
+            this.collidable = false;
+            this.id = id;
+            this.el = el;
+            this.el.classList.add('jamble-laps');
+            this.el.setAttribute('aria-hidden', 'true');
+            this.el.style.display = 'none';
+            this.value = clampLaps(config === null || config === void 0 ? void 0 : config.value);
+        }
+        rect() {
+            return this.el.getBoundingClientRect();
+        }
+        getValue() {
+            return this.value;
+        }
+        setValue(next) {
+            this.value = clampLaps(next);
+        }
+        increment() {
+            this.value = clampLaps(this.value + 1);
+            return this.value;
+        }
+    }
+    Jamble.LapsElement = LapsElement;
+    function clampLaps(value) {
+        if (!Number.isFinite(value))
+            return 1;
+        return Math.max(1, Math.min(9, Math.floor(value)));
+    }
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
@@ -1375,41 +1482,7 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
-    class LapsElement {
-        constructor(id, el, config) {
-            this.type = 'laps';
-            this.collidable = false;
-            this.id = id;
-            this.el = el;
-            this.el.classList.add('jamble-laps');
-            this.el.setAttribute('aria-hidden', 'true');
-            this.el.style.display = 'none';
-            this.value = clampLaps(config === null || config === void 0 ? void 0 : config.value);
-        }
-        rect() {
-            return this.el.getBoundingClientRect();
-        }
-        getValue() {
-            return this.value;
-        }
-        setValue(next) {
-            this.value = clampLaps(next);
-        }
-        increment() {
-            this.value = clampLaps(this.value + 1);
-            return this.value;
-        }
-    }
-    Jamble.LapsElement = LapsElement;
-    function clampLaps(value) {
-        if (!Number.isFinite(value))
-            return 1;
-        return Math.max(1, Math.min(9, Math.floor(value)));
-    }
-})(Jamble || (Jamble = {}));
-var Jamble;
-(function (Jamble) {
-    class HandController {
+    class HandManager {
         constructor(levelElements, settings) {
             this.levelElements = levelElements;
             this.instances = new Map();
@@ -1585,11 +1658,11 @@ var Jamble;
             return Math.max(1, Math.min(9, Math.floor(value)));
         }
     }
-    Jamble.HandController = HandController;
+    Jamble.HandManager = HandManager;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
-    class RunController {
+    class RunSession {
         constructor() {
             this.state = 'idle';
             this.lapsTarget = 1;
@@ -1673,7 +1746,7 @@ var Jamble;
             return Math.max(1, Math.min(9, Math.floor(value)));
         }
     }
-    Jamble.RunController = RunController;
+    Jamble.RunSession = RunSession;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
@@ -1728,6 +1801,79 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
+    class InputController {
+        constructor(options) {
+            this.bound = false;
+            this.player = options.player;
+            this.skills = options.skills;
+            this.ui = options.ui;
+            this.gameEl = options.gameEl;
+            this.getWaitGroundForStart = options.getWaitGroundForStart;
+            this.onPointerDown = this.onPointerDown.bind(this);
+            this.onKeyDown = this.onKeyDown.bind(this);
+        }
+        bind() {
+            if (this.bound)
+                return;
+            document.addEventListener('pointerdown', this.onPointerDown);
+            window.addEventListener('keydown', this.onKeyDown);
+            this.bound = true;
+        }
+        unbind() {
+            if (!this.bound)
+                return;
+            document.removeEventListener('pointerdown', this.onPointerDown);
+            window.removeEventListener('keydown', this.onKeyDown);
+            this.bound = false;
+        }
+        onPointerDown(e) {
+            if (this.ui.isControlElement(e.target))
+                return;
+            if (this.player.frozenDeath)
+                return;
+            const rect = this.gameEl.getBoundingClientRect();
+            const withinX = e.clientX >= rect.left && e.clientX <= rect.right;
+            const withinY = e.clientY >= rect.top && e.clientY <= rect.bottom + rect.height * 2;
+            if (!withinX || !withinY)
+                return;
+            this.dispatchPrimaryInput();
+        }
+        onKeyDown(e) {
+            if (e.code !== 'Space' && e.key !== ' ' && e.key !== 'Spacebar')
+                return;
+            if (e.repeat)
+                return;
+            e.preventDefault();
+            this.dispatchPrimaryInput();
+        }
+        dispatchPrimaryInput() {
+            if (this.player.frozenDeath)
+                return;
+            if (this.player.frozenStart && this.getWaitGroundForStart())
+                return;
+            const grounded = this.isGrounded();
+            const intent = grounded ? Jamble.InputIntent.Tap : Jamble.InputIntent.AirTap;
+            const ctx = this.createSkillContext(grounded);
+            this.skills.handleInput(intent, ctx);
+        }
+        isGrounded() {
+            return this.player.jumpHeight === 0 && !this.player.isJumping;
+        }
+        createSkillContext(grounded) {
+            return {
+                nowMs: performance.now(),
+                grounded,
+                velocityY: this.player.velocity,
+                isDashing: this.player.isDashing,
+                jumpHeight: this.player.jumpHeight,
+                dashAvailable: !this.player.isDashing
+            };
+        }
+    }
+    Jamble.InputController = InputController;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
     class Game {
         constructor(root) {
             var _a, _b, _c, _d, _f, _g, _h, _j;
@@ -1769,10 +1915,10 @@ var Jamble;
             this.elementRegistry = new Jamble.LevelElementRegistry();
             this.levelElements = new Jamble.LevelElementManager(gameEl, this.elementRegistry);
             Jamble.registerCoreElements(this.elementRegistry);
-            this.slotManager = new Jamble.SlotManager(gameEl);
+            this.slotManager = new Jamble.SlotLayoutManager(gameEl);
             const canonicalElements = Jamble.deriveElementsSettings(Jamble.CoreDeckConfig);
-            this.hand = new Jamble.HandController(this.levelElements, canonicalElements);
-            this.run = new Jamble.RunController();
+            this.hand = new Jamble.HandManager(this.levelElements, canonicalElements);
+            this.run = new Jamble.RunSession();
             this.run.setInitialLaps(this.hand.getLapsValue());
             this.countdown = new Jamble.Countdown(cdEl);
             this.ui = new Jamble.GameUi({
@@ -1786,7 +1932,6 @@ var Jamble;
             this.wiggle = new Jamble.Wiggle(this.player.el);
             this.handleWindowResize = () => { this.rebuildSlots(); };
             this.applyElementHand();
-            this.onPointerDown = this.onPointerDown.bind(this);
             this.onStartClick = this.onStartClick.bind(this);
             this.reset = this.reset.bind(this);
             this.loop = this.loop.bind(this);
@@ -1823,6 +1968,13 @@ var Jamble;
                 this.skills.equip(id);
             }
             catch (_e) { } });
+            this.input = new Jamble.InputController({
+                player: this.player,
+                skills: this.skills,
+                ui: this.ui,
+                gameEl: this.gameEl,
+                getWaitGroundForStart: () => this.waitGroundForStart
+            });
         }
         getSkillManager() { return this.skills; }
         start() {
@@ -1968,12 +2120,12 @@ var Jamble;
             }, Jamble.Settings.current.startFreezeTime);
         }
         bind() {
-            document.addEventListener('pointerdown', this.onPointerDown);
+            this.input.bind();
             this.ui.getResetButton().addEventListener('click', this.reset);
             this.ui.getStartButton().addEventListener('click', this.onStartClick);
         }
         unbind() {
-            document.removeEventListener('pointerdown', this.onPointerDown);
+            this.input.unbind();
             this.ui.getResetButton().removeEventListener('click', this.reset);
             this.ui.getStartButton().removeEventListener('click', this.onStartClick);
         }
@@ -1983,30 +2135,6 @@ var Jamble;
         }
         hideIdleControls() {
             this.ui.hideIdleControls();
-        }
-        onPointerDown(e) {
-            if (this.ui.isControlElement(e.target))
-                return;
-            if (this.player.frozenDeath)
-                return;
-            const rect = this.gameEl.getBoundingClientRect();
-            const withinX = e.clientX >= rect.left && e.clientX <= rect.right;
-            const withinY = e.clientY >= rect.top && e.clientY <= rect.bottom + rect.height * 2;
-            if (withinX && withinY) {
-                const grounded = this.player.jumpHeight === 0 && !this.player.isJumping;
-                if (this.player.frozenStart && this.waitGroundForStart)
-                    return;
-                const intent = grounded ? Jamble.InputIntent.Tap : Jamble.InputIntent.AirTap;
-                const ctx = {
-                    nowMs: performance.now(),
-                    grounded,
-                    velocityY: this.player.velocity,
-                    isDashing: this.player.isDashing,
-                    jumpHeight: this.player.jumpHeight,
-                    dashAvailable: !this.player.isDashing
-                };
-                this.skills.handleInput(intent, ctx);
-            }
         }
         updateLevel() {
             this.updateRunDisplay();
@@ -2174,8 +2302,12 @@ var Jamble;
             }
             const element = this.levelElements.get(elementId);
             const slot = element ? this.elementSlots.get(elementId) : undefined;
-            if (element && slot)
-                this.applySlotToElement(element, slot);
+            if (element && slot) {
+                const origin = this.getEffectiveOrigin(element);
+                const result = this.slotManager.applySlotToElement(element, slot, { origin });
+                if (result.needsRetry)
+                    this.enqueueOriginRetry(element.id);
+            }
         }
         debugActiveSlots() {
             return Array.from(this.elementSlots.values()).map(slot => ({ id: slot.id, type: slot.type, elementId: slot.elementId, elementType: slot.elementType }));
@@ -2244,7 +2376,10 @@ var Jamble;
             if (!slot)
                 return false;
             this.elementSlots.set(cardId, slot);
-            this.applySlotToElement(element, slot);
+            const origin = this.getEffectiveOrigin(element);
+            const result = this.slotManager.applySlotToElement(element, slot, { origin });
+            if (result.needsRetry)
+                this.enqueueOriginRetry(element.id);
             return true;
         }
         isIdleState() {
@@ -2287,81 +2422,16 @@ var Jamble;
             this.resetHandForIdle();
             this.updateRunDisplay();
         }
-        applySlotToElement(element, slot) {
-            const origin = this.getEffectiveOrigin(element);
-            if (origin) {
-                const applied = this.applyOriginToElement(element, slot, origin);
-                if (applied)
-                    return;
-                this.enqueueOriginRetry(element.id);
-            }
-            if (element instanceof Jamble.BirdElement) {
-                element.assignSlot(slot);
-                return;
-            }
-            if (element instanceof Jamble.TreeElement) {
-                element.setLeftPct(slot.xPercent);
-                const host = element.el.parentElement;
-                if (host)
-                    element.applyVerticalFromSlot(slot, host);
-                return;
-            }
-            if (Jamble.isPositionableLevelElement(element)) {
-                element.setLeftPct(slot.xPercent);
-            }
-        }
-        applyOriginToElement(element, slot, origin) {
-            const host = element.el.offsetParent || element.el.parentElement;
-            if (!host)
-                return false;
-            const hostRect = host.getBoundingClientRect();
-            const hostWidth = host.offsetWidth || hostRect.width;
-            const hostHeight = host.offsetHeight || hostRect.height;
-            if (hostWidth <= 0 || hostHeight <= 0)
-                return false;
-            const elRect = element.el.getBoundingClientRect();
-            const elWidth = element.el.offsetWidth || elRect.width;
-            const elHeight = element.el.offsetHeight || elRect.height;
-            const computedWidth = elWidth || 1;
-            const computedHeight = elHeight || 1;
-            const originX = origin.xUnit === 'px'
-                ? origin.x
-                : this.clamp(origin.x, 0, 1) * computedWidth;
-            const originY = origin.yUnit === 'px'
-                ? origin.y
-                : this.clamp(origin.y, 0, 1) * computedHeight;
-            const maxLeft = Math.max(0, hostWidth - computedWidth);
-            const maxBottom = Math.max(0, hostHeight - computedHeight);
-            const leftPx = this.clamp(slot.xPx - originX, 0, maxLeft);
-            const bottomPx = this.clamp(slot.yPx - originY, 0, maxBottom);
-            element.el.style.left = leftPx.toFixed(1) + 'px';
-            element.el.style.bottom = bottomPx.toFixed(1) + 'px';
-            if (element instanceof Jamble.BirdElement) {
-                element.assignSlot(slot, leftPx);
-            }
-            return true;
-        }
         getEffectiveOrigin(element) {
             const override = this.elementOriginOverrides.get(element.id);
             if (override)
-                return this.normalizeOrigin(override);
+                return override;
             if (typeof element.getOrigin === 'function') {
                 const fromElement = element.getOrigin();
                 if (fromElement)
-                    return this.normalizeOrigin(fromElement);
+                    return fromElement;
             }
             return null;
-        }
-        normalizeOrigin(origin) {
-            return {
-                x: Number.isFinite(origin.x) ? origin.x : 0.5,
-                y: Number.isFinite(origin.y) ? origin.y : 0,
-                xUnit: origin.xUnit === 'px' ? 'px' : 'fraction',
-                yUnit: origin.yUnit === 'px' ? 'px' : 'fraction'
-            };
-        }
-        clamp(value, min, max) {
-            return Math.min(max, Math.max(min, value));
         }
         enqueueOriginRetry(elementId) {
             this.pendingOriginElementIds.add(elementId);
@@ -2385,10 +2455,8 @@ var Jamble;
                     if (!slot)
                         continue;
                     const origin = this.getEffectiveOrigin(element);
-                    if (!origin)
-                        continue;
-                    const applied = this.applyOriginToElement(element, slot, origin);
-                    if (!applied) {
+                    const result = this.slotManager.applySlotToElement(element, slot, { origin });
+                    if (!result.originApplied && result.needsRetry) {
                         this.pendingOriginElementIds.add(id);
                         needsAnotherPass = true;
                     }

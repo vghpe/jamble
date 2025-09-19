@@ -1,5 +1,7 @@
-/// <reference path="./elements/types.ts" />
-/// <reference path="./elements/laps.ts" />
+/// <reference path="../level/elements/types.ts" />
+/// <reference path="../level/elements/level-element-manager.ts" />
+/// <reference path="../level/elements/laps.ts" />
+/// <reference path="../level/registry/deck-config.ts" />
 
 namespace Jamble {
   interface HandSlotState {
@@ -19,7 +21,7 @@ namespace Jamble {
     available: boolean;
   }
 
-  export class HandController {
+  export class HandManager {
     private deck: ElementDeckEntry[];
     private handSlots: Array<{ slotId: string; cardId: string | null; active: boolean }>;
     private instances = new Map<string, ElementDeckEntry>();

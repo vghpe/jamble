@@ -5,7 +5,7 @@
   "main": "jamble.js",
   "scripts": {
     "test": "tsc -p tsconfig.json --pretty false",
-    "build:jamble": "mkdir -p dist dist/profiles dist/skill-presets && tsc -p tsconfig.json && cp src/jamble.css dist/jamble.css && cp src/profiles/*.json dist/profiles/ && (cp -R src/skill-presets/* dist/skill-presets/ 2>/dev/null || true)",
+    "build:jamble": "mkdir -p dist dist/profiles && tsc -p tsconfig.json && cp src/jamble.css dist/jamble.css && cp src/core/profiles/*.json dist/profiles/",
     "watch": "tsc -w -p tsconfig.json",
     "serve": "python3 devserver.py 8080"
   },
