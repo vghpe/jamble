@@ -18,7 +18,6 @@ namespace Jamble {
     private direction: 1 | -1;
     private speedPxPerSec: number;
     private assignedSlot: SlotDefinition | null = null;
-    private debugFlashTimer: number | null = null;
 
     constructor(id: string, el: HTMLElement, cfg?: BirdElementConfig){
       this.id = id;
@@ -41,25 +40,18 @@ namespace Jamble {
       if (!host) return;
       const leftStyle = this.el.style.left || '50%';
       let pos = 0;
-      let color = '#ff9800';
-      let tag = 'ensure%';
       if (leftStyle.indexOf('%') !== -1){
         const pct = parseFloat(leftStyle);
         if (!Number.isNaN(pct)) pos = (pct / 100) * host.offsetWidth;
       } else {
         const raw = parseFloat(leftStyle);
-        if (!Number.isNaN(raw)){
-          pos = raw;
-          color = '#2196f3';
-          tag = 'ensurepx';
-        }
+        if (!Number.isNaN(raw)) pos = raw;
       }
       if (!Number.isFinite(pos)) pos = host.offsetWidth / 2;
       const max = Math.max(0, host.offsetWidth - this.el.offsetWidth);
       pos = Math.max(0, Math.min(pos, max));
       this.positionPx = pos;
       this.applyPosition();
-      this.debugFlash(tag + ':' + pos.toFixed(1), color);
     }
 
     private applyPosition(): void {
@@ -142,10 +134,9 @@ namespace Jamble {
     assignSlot(slot: SlotDefinition, leftPx?: number): void {
       this.assignedSlot = slot;
       if (typeof leftPx === 'number'){
-        this.setHorizontalPositionPx(leftPx, 'slot');
+        this.setHorizontalPositionPx(leftPx);
       }
       this.applyVerticalFromSlot();
-      this.debugFlash('slot:' + slot.id, '#4caf50');
     }
 
     clearSlot(): void {
@@ -153,7 +144,7 @@ namespace Jamble {
       this.positionPx = null;
     }
 
-    private setHorizontalPositionPx(px: number, tag: string): void {
+    private setHorizontalPositionPx(px: number): void {
       const host = this.resolveHost();
       let clamped = px;
       if (host){
@@ -162,32 +153,6 @@ namespace Jamble {
       }
       this.positionPx = clamped;
       this.applyPosition();
-      this.debugFlash(tag + ':' + clamped.toFixed(1), '#8bc34a');
-    }
-
-    private debugFlash(tag: string, color: string): void {
-      if (!BirdElement.debugFlashesEnabled()) return;
-      const el = this.el;
-      el.dataset.jambleDebug = tag;
-      const prevOutline = el.style.outline;
-      const prevOffset = el.style.outlineOffset;
-      el.style.outline = '2px solid ' + color;
-      el.style.outlineOffset = '2px';
-      if (this.debugFlashTimer !== null) window.clearTimeout(this.debugFlashTimer);
-      this.debugFlashTimer = window.setTimeout(() => {
-        el.style.outline = prevOutline;
-        el.style.outlineOffset = prevOffset;
-        if (el.dataset.jambleDebug === tag) delete el.dataset.jambleDebug;
-        this.debugFlashTimer = null;
-      }, 200);
-    }
-
-    private static debugFlashesEnabled(): boolean {
-      if (typeof window === 'undefined') return false;
-      const flags = (window as any).JambleDebug;
-      if (!flags) return false;
-      if (typeof flags === 'boolean') return flags;
-      return !!(flags.birdFlashes || flags.elementFlashes);
     }
   }
 }
