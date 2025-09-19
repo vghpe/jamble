@@ -16,8 +16,10 @@
 /// <reference path="../skills/manager.ts" />
 /// <reference path="../skills/jump.ts" />
 /// <reference path="../skills/dash.ts" />
+/// <reference path="./movement-system.ts" />
 namespace Jamble {
   export class Game {
+    private movementSystem: MovementSystem;
     private root: HTMLElement;
     private gameEl: HTMLDivElement;
     private player: Player;
@@ -52,7 +54,6 @@ namespace Jamble {
     private skills: SkillManager;
     private landCbs: Array<() => void> = [];
     private wasGrounded: boolean = true;
-    private impulses: Array<{ speed: number; remainingMs: number }> = [];
 
     constructor(root: HTMLElement){
       this.root = root;
@@ -99,6 +100,9 @@ namespace Jamble {
       this.reset = this.reset.bind(this);
       this.loop = this.loop.bind(this);
 
+      // Movement system
+      this.movementSystem = new MovementSystem(this.gameEl);
+
       // Capabilities facade for skills
       const caps: PlayerCapabilities = {
         requestJump: (strength?: number) => {
@@ -112,7 +116,7 @@ namespace Jamble {
           return this.player.startDash(durationMs);
         },
         addHorizontalImpulse: (speed: number, durationMs: number) => {
-          this.impulses.push({ speed, remainingMs: Math.max(0, durationMs) });
+          this.movementSystem.addImpulse(speed, durationMs);
         },
         setVerticalVelocity: (vy: number) => { this.player.velocity = vy; },
         onLand: (cb: () => void) => { this.landCbs.push(cb); }
@@ -156,7 +160,7 @@ namespace Jamble {
       this.teardownSlotResizeMonitoring();
       this.wiggle.stop();
       this.countdown.hide();
-      this.impulses.length = 0;
+      this.movementSystem.clearImpulses();
     }
 
     reset(): void {
@@ -165,7 +169,7 @@ namespace Jamble {
       if (this.startCountdownTimer !== null) { window.clearTimeout(this.startCountdownTimer); this.startCountdownTimer = null; }
       if (this.deathWiggleTimer !== null) { window.clearTimeout(this.deathWiggleTimer); this.deathWiggleTimer = null; }
       if (this.showResetTimer !== null) { window.clearTimeout(this.showResetTimer); this.showResetTimer = null; }
-      this.impulses.length = 0;
+  this.movementSystem.clearImpulses();
       this.player.reset();
       this.ui.setResetVisible(false);
       this.player.setFrozenStart();
@@ -304,13 +308,6 @@ namespace Jamble {
       const tr = ob.rect();
       return pr.left < tr.right && pr.right > tr.left && pr.bottom > tr.top && pr.top < tr.bottom;
     }
-    private reachedRight(): boolean {
-      // Consider a virtual wall offset from the right by playerStartOffset
-      const rightLimit = this.gameEl.offsetWidth - Jamble.Settings.current.playerStartOffset;
-      return this.player.getRight(this.gameEl.offsetWidth) >= rightLimit;
-    }
-    private reachedLeft(): boolean { return this.player.x <= Jamble.Settings.current.playerStartOffset; }
-
     private handleEdgeArrival(nextDirection: 1 | -1, align: () => void): void {
       align();
       this.level += 1;
@@ -356,30 +353,11 @@ namespace Jamble {
         this.player.clearFrozenStart();
       }
 
-      // Horizontal movement when not frozen/dead
-      // Base auto-run applies only if Move is equipped; Dash contributes via accumulated impulses
+      // Horizontal movement when not frozen/dead is delegated to MovementSystem (applies base move + impulses)
       if (!this.player.frozenStart && !this.player.frozenDeath){
-        if (this.skills.isEquipped('move')){
-          const base = Jamble.Settings.current.playerSpeed;
-          const dx = base * deltaSec * this.direction;
-          this.player.moveX(dx);
-        }
-
-        // Apply horizontal impulses (e.g., from Dash). Sum all active speeds.
-        if (this.impulses.length > 0){
-          let sum = 0;
-          for (const imp of this.impulses) sum += Math.max(0, imp.speed);
-          const dxImp = sum * deltaSec * this.direction;
-          if (dxImp !== 0) this.player.moveX(dxImp);
-          // decrement remaining and cull finished
-          for (const imp of this.impulses) imp.remainingMs -= deltaMs;
-          this.impulses = this.impulses.filter(i => i.remainingMs > 0);
-        }
-
-        if (this.direction === 1 && this.reachedRight()){
-          this.handleEdgeArrival(-1, () => this.player.snapRight(this.gameEl.offsetWidth));
-        } else if (this.direction === -1 && this.reachedLeft()){
-          this.handleEdgeArrival(1, () => this.player.setX(Jamble.Settings.current.playerStartOffset));
+        const boundary = this.movementSystem.tick(deltaMs, deltaSec, this.player, this.direction, this.skills);
+        if (boundary.hit && typeof boundary.newDirection === 'number' && boundary.alignmentFn){
+          this.handleEdgeArrival(boundary.newDirection, boundary.alignmentFn);
         }
 
         this.levelElements.tick(deltaMs);
@@ -589,7 +567,7 @@ namespace Jamble {
       this.inCountdown = false;
       this.direction = nextDirection;
       this.showIdleControls();
-      this.impulses.length = 0;
+      this.movementSystem.clearImpulses();
       this.resetHandForIdle();
       this.updateRunDisplay();
     }
