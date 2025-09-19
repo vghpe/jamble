@@ -167,7 +167,8 @@ namespace Jamble {
       this.direction = 1;
       this.level = 0;
       this.run.setRunsCompleted(0);
-      this.run.setInitialLaps(this.hand.getLapsValue());
+      const defaultLaps = this.hand.resetLapsValue();
+      this.run.setInitialLaps(defaultLaps);
       this.resetHandForIdle();
       this.updateLevel();
     }
@@ -584,7 +585,8 @@ namespace Jamble {
 
     private finishRun(nextDirection: 1 | -1): void {
       this.run.finishRun();
-      this.run.resetToIdle(this.hand.getLapsValue());
+      const defaultLaps = this.hand.resetLapsValue();
+      this.run.resetToIdle(defaultLaps);
       this.player.setFrozenStart();
       this.player.velocity = 0;
       this.awaitingStartTap = true;

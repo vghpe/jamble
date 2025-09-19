@@ -114,6 +114,19 @@ namespace Jamble {
       return this.lapsValue;
     }
 
+    setLapsValue(value: number): number {
+      const clamped = this.clampLaps(value);
+      const lapsElement = this.getLapsElement();
+      if (lapsElement) lapsElement.setValue(clamped);
+      this.lapsValue = clamped;
+      this.updateLapsConfig(clamped);
+      return this.lapsValue;
+    }
+
+    resetLapsValue(): number {
+      return this.setLapsValue(1);
+    }
+
     getLapsCardId(): string | null {
       return this.lapsCardId;
     }
@@ -190,6 +203,11 @@ namespace Jamble {
           deckEntry.config = { ...(deckEntry.config || {}), value };
         }
       }
+    }
+
+    private clampLaps(value: number): number {
+      if (!Number.isFinite(value)) return 1;
+      return Math.max(1, Math.min(9, Math.floor(value)));
     }
   }
 }
