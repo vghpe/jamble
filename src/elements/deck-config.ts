@@ -34,6 +34,7 @@ namespace Jamble {
 
   export const CoreDeckConfig: DeckConfig = {
     pool: [
+      { definitionId: 'laps.basic', quantity: 1, config: { value: 1 } },
       { definitionId: 'tree.basic', quantity: 3 },
       { definitionId: 'tree.ceiling', quantity: 3 },
       { definitionId: 'bird.basic', quantity: 3 }

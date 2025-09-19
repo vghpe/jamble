@@ -42,10 +42,33 @@ namespace Jamble {
       if (!el.style.left) el.style.left = '50%';
       el.style.display = 'none';
       return el;
+    },
+    'laps-control': (root, id) => {
+      let el = root.querySelector('.jamble-laps[data-element-id="' + id + '"]') as HTMLElement | null;
+      if (el) return el;
+      el = document.createElement('div');
+      el.className = 'jamble-laps';
+      el.setAttribute('data-element-id', id);
+      el.style.display = 'none';
+      root.appendChild(el);
+      return el;
     }
   };
 
   const CORE_ELEMENTS: CoreElementDescriptor[] = [
+    {
+      id: 'laps.basic',
+      name: 'Laps',
+      emoji: '🔁',
+      type: 'laps',
+      hostKind: 'laps-control',
+      defaults: { value: 1 } as LapsElementConfig,
+      ensureHost: (root, id) => hostFactories['laps-control'](root, id),
+      create: ({ id, host, root, config }) => {
+        const el = host || hostFactories['laps-control'](root, id);
+        return new LapsElement(id, el, config as LapsElementConfig | undefined);
+      }
+    },
     {
       id: 'tree.basic',
       name: 'Tree',

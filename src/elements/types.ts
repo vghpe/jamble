@@ -1,6 +1,6 @@
 namespace Jamble {
-  export type LevelElementType = 'tree' | 'tree_ceiling' | 'bird' | 'empty';
-  export type ElementHostKind = 'tree-ground' | 'tree-ceiling' | 'bird-floating';
+  export type LevelElementType = 'tree' | 'tree_ceiling' | 'bird' | 'laps' | 'empty';
+  export type ElementHostKind = 'tree-ground' | 'tree-ceiling' | 'bird-floating' | 'laps-control';
   export type SlotType = 'ground' | 'air_low' | 'air_mid' | 'air_high' | 'ceiling';
 
   export interface LevelElementLifecycleContext {

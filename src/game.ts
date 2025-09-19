@@ -3,6 +3,7 @@
 /// <reference path="./elements/manager.ts" />
 /// <reference path="./elements/tree.ts" />
 /// <reference path="./elements/bird.ts" />
+/// <reference path="./elements/laps.ts" />
 /// <reference path="./countdown.ts" />
 /// <reference path="./wiggle.ts" />
 /// <reference path="./settings.ts" />
