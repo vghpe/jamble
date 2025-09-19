@@ -649,6 +649,9 @@ namespace Jamble {
 
       element.el.style.left = leftPx.toFixed(1) + 'px';
       element.el.style.bottom = bottomPx.toFixed(1) + 'px';
+      if (element instanceof BirdElement){
+        element.assignSlot(slot, leftPx);
+      }
       return true;
     }
 
