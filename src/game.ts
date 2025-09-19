@@ -327,7 +327,7 @@ namespace Jamble {
       if (Jamble.Settings.current.mode === 'idle'){
         const finished = this.run.handleEdgeArrival();
         if (finished){
-          this.finishRun();
+          this.finishRun(nextDirection);
           this.updateLevel();
           return;
         }
@@ -582,7 +582,7 @@ namespace Jamble {
       this.applyElementHand();
     }
 
-    private finishRun(): void {
+    private finishRun(nextDirection: 1 | -1): void {
       this.run.finishRun();
       this.run.resetToIdle(this.hand.getLapsValue());
       this.player.setFrozenStart();
@@ -590,7 +590,7 @@ namespace Jamble {
       this.awaitingStartTap = true;
       this.waitGroundForStart = false;
       this.inCountdown = false;
-      this.direction = 1;
+      this.direction = nextDirection;
       this.showIdleControls();
       this.impulses.length = 0;
       this.resetHandForIdle();
