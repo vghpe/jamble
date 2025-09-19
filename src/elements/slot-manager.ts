@@ -61,6 +61,11 @@ namespace Jamble {
     vertical: number;
   }
 
+  export interface SlotNormalDistributionOptions {
+    enabled: boolean;
+    intensity: number;
+  }
+
   function mulberry32(seed: number): () => number {
     return function(){
       seed |= 0;
@@ -127,7 +132,8 @@ namespace Jamble {
     private slots: SlotDefinition[] = [];
     private slotsByType = new Map<SlotType, SlotDefinition[]>();
     private slotByElementId = new Map<string, SlotDefinition>();
-    private noiseOptions: SlotNoiseOptions = { enabled: true, horizontal: 1, vertical: 1 };
+    private noiseOptions: SlotNoiseOptions = { enabled: false, horizontal: 1, vertical: 1 };
+    private normalDistribution: SlotNormalDistributionOptions = { enabled: false, intensity: 0.6 };
 
     constructor(host: HTMLElement){
       this.host = host;
@@ -146,8 +152,13 @@ namespace Jamble {
       SLOT_LAYER_TEMPLATES.forEach((template, layerIndex) => {
         const layerSlots: SlotDefinition[] = [];
         const stride = 100 / template.columns;
+        const distributionXPcts = this.normalDistribution.enabled
+          ? this.computeNormalColumnPercents(template.columns)
+          : null;
         for (let column = 0; column < template.columns; column++){
-          const baseXPct = (column + 0.5) * stride;
+          const baseXPct = distributionXPcts
+            ? distributionXPcts[column]
+            : (column + 0.5) * stride;
           const slotId = template.type + '-' + column;
           const nx = template.columns > 1 ? column / (template.columns - 1) : 0;
           const ny = SLOT_LAYER_TEMPLATES.length > 1 ? layerIndex / (SLOT_LAYER_TEMPLATES.length - 1) : 0;
@@ -185,27 +196,41 @@ namespace Jamble {
       return this.slots;
     }
 
-  getSlotsByType(type: SlotType): ReadonlyArray<SlotDefinition> {
-    return this.slotsByType.get(type) || [];
-  }
+    getSlotsByType(type: SlotType): ReadonlyArray<SlotDefinition> {
+      return this.slotsByType.get(type) || [];
+    }
 
-  getMetrics(): SlotMetrics {
-    return this.metrics;
-  }
+    getMetrics(): SlotMetrics {
+      return this.metrics;
+    }
 
-  getNoiseOptions(): SlotNoiseOptions {
-    return { ...this.noiseOptions };
-  }
+    getNoiseOptions(): SlotNoiseOptions {
+      return { ...this.noiseOptions };
+    }
 
-  setNoiseOptions(options: Partial<SlotNoiseOptions>): void {
-    this.noiseOptions = {
-      ...this.noiseOptions,
-      ...options
-    };
-    if (this.noiseOptions.horizontal < 0) this.noiseOptions.horizontal = 0;
-    if (this.noiseOptions.vertical < 0) this.noiseOptions.vertical = 0;
-    this.noiseOptions.enabled = options.enabled !== undefined ? options.enabled : this.noiseOptions.enabled;
-  }
+    setNoiseOptions(options: Partial<SlotNoiseOptions>): void {
+      this.noiseOptions = {
+        ...this.noiseOptions,
+        ...options
+      };
+      if (this.noiseOptions.horizontal < 0) this.noiseOptions.horizontal = 0;
+      if (this.noiseOptions.vertical < 0) this.noiseOptions.vertical = 0;
+      this.noiseOptions.enabled = options.enabled !== undefined ? options.enabled : this.noiseOptions.enabled;
+    }
+
+    getNormalDistributionOptions(): SlotNormalDistributionOptions {
+      return { ...this.normalDistribution };
+    }
+
+    setNormalDistributionOptions(options: Partial<SlotNormalDistributionOptions>): void {
+      this.normalDistribution = {
+        ...this.normalDistribution,
+        ...options
+      };
+      if (this.normalDistribution.intensity < 0) this.normalDistribution.intensity = 0;
+      if (this.normalDistribution.intensity > 1) this.normalDistribution.intensity = 1;
+      this.normalDistribution.enabled = options.enabled !== undefined ? options.enabled : this.normalDistribution.enabled;
+    }
 
     getSlotForElement(elementId: string): SlotDefinition | undefined {
       return this.slotByElementId.get(elementId);
@@ -260,5 +285,73 @@ namespace Jamble {
       }
       return false;
     }
+
+    private computeNormalColumnPercents(columns: number): number[] {
+      if (columns <= 0) return [];
+      const intensity = clamp(this.normalDistribution.intensity, 0, 1);
+      const stride = 100 / columns;
+
+      const basePercents: number[] = new Array(columns);
+      for (let column = 0; column < columns; column++){
+        basePercents[column] = (column + 0.5) * stride;
+      }
+
+      if (intensity <= 0) return basePercents;
+
+      const spreadMin = 0.18;
+      const spreadMax = 0.36;
+      const spread = spreadMin + intensity * (spreadMax - spreadMin);
+
+      const gaussianPercents: number[] = new Array(columns);
+      const minErfInput = -1 + Number.EPSILON;
+      const maxErfInput = 1 - Number.EPSILON;
+      for (let column = 0; column < columns; column++){
+        const normalized = (column + 0.5) / columns;
+        const centered = 2 * normalized - 1;
+        const safeCentered = clamp(centered, minErfInput, maxErfInput);
+        const z = Math.SQRT2 * inverseErf(safeCentered);
+        const rawValue = clamp(0.5 + z * spread, 0, 1);
+        gaussianPercents[column] = rawValue * 100;
+      }
+
+      let min = gaussianPercents[0];
+      let max = gaussianPercents[0];
+      for (let i = 1; i < gaussianPercents.length; i++){
+        const value = gaussianPercents[i];
+        if (value < min) min = value;
+        if (value > max) max = value;
+      }
+
+      if (max - min <= 1e-6) return basePercents;
+
+      const firstBase = basePercents[0];
+      const lastBase = basePercents[columns - 1];
+
+      const scaledGaussian = gaussianPercents.map(value => {
+        const normalized = (value - min) / (max - min);
+        return firstBase + normalized * (lastBase - firstBase);
+      });
+
+      return scaledGaussian.map((value, idx) => {
+        const base = basePercents[idx];
+        return base + (value - base) * intensity;
+      });
+    }
+  }
+
+  function inverseErf(x: number): number {
+    if (x <= -1 || x >= 1){
+      if (x === -1) return Number.NEGATIVE_INFINITY;
+      if (x === 1) return Number.POSITIVE_INFINITY;
+      return Number.NaN;
+    }
+    const a = 0.147;
+    const ln = Math.log(1 - x * x);
+    const part1 = 2 / (Math.PI * a) + ln / 2;
+    const part2 = ln / a;
+    const sign = x < 0 ? -1 : 1;
+    const inside = part1 * part1 - part2;
+    if (inside <= 0) return 0;
+    return sign * Math.sqrt(Math.sqrt(inside) - part1);
   }
 }
