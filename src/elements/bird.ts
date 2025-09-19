@@ -93,6 +93,10 @@ namespace Jamble {
       this.el.style.display = 'none';
     }
 
+    getOrigin(): ElementOrigin {
+      return { x: 0.5, y: 0.5, xUnit: 'fraction', yUnit: 'fraction' };
+    }
+
     tick(ctx: LevelElementTickContext): void {
       if (ctx.deltaMs <= 0) return;
       if (this.assignedSlot){
@@ -125,15 +129,6 @@ namespace Jamble {
 
     assignSlot(slot: SlotDefinition): void {
       this.assignedSlot = slot;
-      const host = this.resolveHost();
-      if (!host){
-        this.positionPx = null;
-        return;
-      }
-      const maxX = Math.max(0, host.offsetWidth - this.el.offsetWidth);
-      let target = Math.max(0, Math.min(slot.xPx, maxX));
-      this.positionPx = target;
-      this.applyPosition();
       this.applyVerticalFromSlot();
     }
 

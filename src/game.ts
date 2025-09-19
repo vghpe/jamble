@@ -46,6 +46,8 @@ namespace Jamble {
     private elementSlots = new Map<string, SlotDefinition>();
     private elementEditingEnabled: boolean = false;
     private elementOriginOverrides = new Map<string, ElementOrigin>();
+    private pendingOriginElementIds = new Set<string>();
+    private pendingOriginFrame: number | null = null;
     // Skills
     private skills: SkillManager;
     private landCbs: Array<() => void> = [];
@@ -177,14 +179,14 @@ namespace Jamble {
         if (!this.levelElements.get(cardId)) return;
         const currentlyActive = this.levelElements.isActive(cardId);
         if (slot.active){
+          if (!currentlyActive) this.levelElements.setActive(cardId, true);
           const placed = this.ensurePlacementForElement(cardId);
           if (!placed){
             slot.active = false;
-            if (currentlyActive) this.levelElements.setActive(cardId, false);
+            this.levelElements.setActive(cardId, false);
             this.releaseElementSlot(cardId);
             return;
           }
-          if (!currentlyActive) this.levelElements.setActive(cardId, true);
         } else {
           if (currentlyActive) this.levelElements.setActive(cardId, false);
           this.releaseElementSlot(cardId);
@@ -459,9 +461,7 @@ namespace Jamble {
       }
       const element = this.levelElements.get(elementId);
       const slot = element ? this.elementSlots.get(elementId) : undefined;
-      if (element && slot){
-        this.applySlotToElement(element, slot);
-      }
+      if (element && slot) this.applySlotToElement(element, slot);
     }
 
     public debugActiveSlots(): Array<{ id: string; type: SlotType; elementId: string | null; elementType: LevelElementType | null }> {
@@ -508,6 +508,8 @@ namespace Jamble {
       }
       this.slotManager.releaseSlot(cardId);
       this.elementSlots.delete(cardId);
+      this.elementOriginOverrides.delete(cardId);
+      this.pendingOriginElementIds.delete(cardId);
     }
 
     private ensurePlacementForElement(cardId: string): boolean {
@@ -534,7 +536,12 @@ namespace Jamble {
     }
 
     private applySlotToElement(element: LevelElement, slot: SlotDefinition): void {
-      if (this.applyOriginToElement(element, slot)) return;
+      const origin = this.getEffectiveOrigin(element);
+      if (origin){
+        const applied = this.applyOriginToElement(element, slot, origin);
+        if (applied) return;
+        this.enqueueOriginRetry(element.id);
+      }
       if (element instanceof BirdElement){
         element.assignSlot(slot);
         return;
@@ -550,9 +557,7 @@ namespace Jamble {
       }
     }
 
-    private applyOriginToElement(element: LevelElement, slot: SlotDefinition): boolean {
-      const origin = this.getEffectiveOrigin(element);
-      if (!origin) return false;
+    private applyOriginToElement(element: LevelElement, slot: SlotDefinition, origin: ElementOrigin): boolean {
       const host = (element.el.offsetParent as HTMLElement | null) || element.el.parentElement;
       if (!host) return false;
       const hostRect = host.getBoundingClientRect();
@@ -604,6 +609,36 @@ namespace Jamble {
 
     private clamp(value: number, min: number, max: number): number {
       return Math.min(max, Math.max(min, value));
+    }
+
+    private enqueueOriginRetry(elementId: string): void {
+      this.pendingOriginElementIds.add(elementId);
+      this.schedulePendingOriginPass();
+    }
+
+    private schedulePendingOriginPass(): void {
+      if (this.pendingOriginFrame !== null) return;
+      this.pendingOriginFrame = window.requestAnimationFrame(() => {
+        this.pendingOriginFrame = null;
+        if (this.pendingOriginElementIds.size === 0) return;
+        const pending = Array.from(this.pendingOriginElementIds);
+        this.pendingOriginElementIds.clear();
+        let needsAnotherPass = false;
+        for (const id of pending){
+          const element = this.levelElements.get(id);
+          if (!element) continue;
+          const slot = this.elementSlots.get(id);
+          if (!slot) continue;
+          const origin = this.getEffectiveOrigin(element);
+          if (!origin) continue;
+          const applied = this.applyOriginToElement(element, slot, origin);
+          if (!applied){
+            this.pendingOriginElementIds.add(id);
+            needsAnotherPass = true;
+          }
+        }
+        if (needsAnotherPass) this.schedulePendingOriginPass();
+      });
     }
   }
 }

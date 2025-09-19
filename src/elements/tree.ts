@@ -61,5 +61,11 @@ namespace Jamble {
     dispose(): void {
       this.el.style.display = 'none';
     }
+
+    getOrigin(): ElementOrigin {
+      return this.isCeiling()
+        ? { x: 0.65, y: 0, xUnit: 'fraction', yUnit: 'fraction' }
+        : { x: 0.65, y: 0, xUnit: 'fraction', yUnit: 'fraction' };
+    }
   }
 }
