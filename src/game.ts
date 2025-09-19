@@ -4,6 +4,9 @@
 /// <reference path="./elements/tree.ts" />
 /// <reference path="./elements/bird.ts" />
 /// <reference path="./elements/laps.ts" />
+/// <reference path="./hand-controller.ts" />
+/// <reference path="./run-controller.ts" />
+/// <reference path="./game-ui.ts" />
 /// <reference path="./countdown.ts" />
 /// <reference path="./wiggle.ts" />
 /// <reference path="./settings.ts" />
@@ -19,20 +22,10 @@ namespace Jamble {
     private player: Player;
     private levelElements: LevelElementManager;
     private elementRegistry: LevelElementRegistry;
-    private elementDeckPool: Array<{ id: string; definitionId: string; name: string; type: LevelElementType; emoji: string; config?: any }>;
-    private elementHandSlots: Array<{ slotId: string; cardId: string | null; active: boolean }>;
-    private elementInstances = new Map<string, { definitionId: string; name: string; type: LevelElementType; emoji: string; config?: any }>();
-    private lapsCardId: string | null = null;
-    private lapsValue = 1;
-    private lapsTarget = 1;
-    private lapsRemaining = 1;
-    private runsCompleted = 0;
+    private hand: HandController;
+    private run: RunController;
     private countdown: Countdown;
-    private resetBtn: HTMLButtonElement;
-    private startBtn: HTMLButtonElement;
-    private skillSlotsEl: HTMLElement | null = null;
-    private skillMenuEl: HTMLElement | null = null;
-    private elementHandEl: HTMLElement | null = null;
+    private ui: GameUi;
     private wiggle: Wiggle;
     private lastTime: number | null = null;
     private rafId: number | null = null;
@@ -40,7 +33,6 @@ namespace Jamble {
     private startCountdownTimer: number | null = null;
     private direction: 1 | -1 = 1;
     private level: number = 0;
-    private levelEl: HTMLElement | null = null;
     private deathWiggleTimer: number | null = null;
     private showResetTimer: number | null = null;
     private waitGroundForStart: boolean = false;
@@ -82,28 +74,21 @@ namespace Jamble {
       this.levelElements = new LevelElementManager(gameEl, this.elementRegistry);
       Jamble.registerCoreElements(this.elementRegistry);
 
-      const canonicalElements = Jamble.deriveElementsSettings(Jamble.CoreDeckConfig);
-      this.elementDeckPool = canonicalElements.deck.map(card => ({ ...card }));
-      this.elementDeckPool.forEach(card => {
-        const instance = this.levelElements.spawnFromRegistry(card.definitionId, { instanceId: card.id, config: card.config, active: false });
-        if (instance){
-          this.elementInstances.set(card.id, { definitionId: card.definitionId, name: card.name, type: card.type, emoji: card.emoji, config: card.config });
-          if (instance instanceof LapsElement){
-            this.lapsCardId = card.id;
-            this.lapsValue = instance.getValue();
-          }
-        }
-      });
-      this.elementHandSlots = canonicalElements.hand.map(slot => ({ ...slot }));
-      this.countdown = new Countdown(cdEl);
-      this.resetBtn = resetBtn;
-      this.startBtn = startBtn;
-      this.skillSlotsEl = skillSlotsEl;
-      this.skillMenuEl = skillMenuEl;
-      this.elementHandEl = elementHandEl;
-      this.levelEl = levelEl;
-      this.wiggle = new Wiggle(this.player.el);
       this.slotManager = new SlotManager(gameEl);
+      const canonicalElements = Jamble.deriveElementsSettings(Jamble.CoreDeckConfig);
+      this.hand = new HandController(this.levelElements, canonicalElements);
+      this.run = new RunController();
+      this.run.setInitialLaps(this.hand.getLapsValue());
+      this.countdown = new Countdown(cdEl);
+      this.ui = new GameUi({
+        startButton: startBtn,
+        resetButton: resetBtn,
+        skillSlots: skillSlotsEl,
+        skillMenu: skillMenuEl,
+        elementHand: elementHandEl,
+        levelLabel: levelEl
+      });
+      this.wiggle = new Wiggle(this.player.el);
       this.handleWindowResize = () => { this.rebuildSlots(); };
 
       this.applyElementHand();
@@ -173,7 +158,7 @@ namespace Jamble {
       if (this.showResetTimer !== null) { window.clearTimeout(this.showResetTimer); this.showResetTimer = null; }
       this.impulses.length = 0;
       this.player.reset();
-      this.resetBtn.style.display = 'none';
+      this.ui.setResetVisible(false);
       this.player.setFrozenStart();
       this.awaitingStartTap = true;
       this.waitGroundForStart = false;
@@ -181,33 +166,37 @@ namespace Jamble {
       this.showIdleControls();
       this.direction = 1;
       this.level = 0;
-      this.runsCompleted = 0;
+      this.run.setRunsCompleted(0);
+      this.run.setInitialLaps(this.hand.getLapsValue());
       this.resetHandForIdle();
       this.updateLevel();
     }
 
     private applyElementHand(): void {
-      this.elementHandSlots.forEach(slot => {
+      this.hand.forEachSlot(slot => {
         const cardId = slot.cardId;
         if (!cardId) return;
-        if (!this.levelElements.get(cardId)) return;
+        const element = this.levelElements.get(cardId);
+        if (!element) return;
         const currentlyActive = this.levelElements.isActive(cardId);
-        if (slot.active){
+        if (slot.isActive()){
           if (!currentlyActive) this.levelElements.setActive(cardId, true);
           const placed = this.ensurePlacementForElement(cardId);
           if (!placed){
-            slot.active = false;
+            slot.setActive(false);
             this.levelElements.setActive(cardId, false);
             this.releaseElementSlot(cardId);
-            return;
           }
         } else {
           if (currentlyActive) this.levelElements.setActive(cardId, false);
           this.releaseElementSlot(cardId);
         }
       });
+      if (this.isIdleState()){
+        this.run.applyLapValue(this.hand.getLapsValue());
+      }
       this.emitElementHandChanged();
-      this.syncLapsFromHand();
+      this.updateRunDisplay();
     }
 
     private emitElementHandChanged(): void {
@@ -216,76 +205,27 @@ namespace Jamble {
       } catch(_e){}
     }
 
-    private syncLapsFromHand(): void {
-      const lapsElement = this.getLapsElement();
-      if (lapsElement){
-        this.lapsCardId = lapsElement.id;
-        const next = lapsElement.getValue();
-        this.lapsValue = next;
-        if (this.isIdleState()){
-          this.lapsTarget = next;
-          this.lapsRemaining = next;
-        }
-      } else {
-        this.lapsValue = Math.max(1, this.lapsValue);
-        if (this.isIdleState()){
-          this.lapsTarget = this.lapsValue;
-          this.lapsRemaining = this.lapsValue;
-        }
-      }
-      this.updateRunDisplay();
-    }
-
-    private updateLapsConfig(value: number): void {
-      if (!this.lapsCardId) return;
-      const meta = this.elementInstances.get(this.lapsCardId);
-      if (meta){
-        meta.config = { ...(meta.config || {}), value };
-      }
-      const deckEntry = this.elementDeckPool.find(card => card.id === this.lapsCardId);
-      if (deckEntry){
-        deckEntry.config = { ...(deckEntry.config || {}), value };
-      }
-    }
-
     public getElementHand(): ReadonlyArray<{ id: string; definitionId: string; name: string; type: LevelElementType; emoji: string; active: boolean; available: boolean }> {
-      return this.elementHandSlots.map((slot, index) => {
-        if (!slot.cardId){
-          return { id: 'placeholder-' + index, definitionId: 'placeholder', name: 'Empty', type: 'empty', emoji: '…', active: false, available: false };
-        }
-        const meta = this.elementInstances.get(slot.cardId) || this.elementDeckPool.find(card => card.id === slot.cardId);
-        if (!meta){
-          return { id: slot.cardId, definitionId: 'unknown', name: 'Unknown', type: 'empty', emoji: '❔', active: false, available: false };
-        }
-        return { id: slot.cardId, definitionId: meta.definitionId, name: meta.name, type: meta.type, emoji: meta.emoji || '❔', active: slot.active, available: true };
-      });
+      return this.hand.getHandView();
     }
 
     public getElementDeck(): ReadonlyArray<{ id: string; definitionId: string; name: string; type: LevelElementType; emoji: string }> {
-      return this.elementDeckPool.slice();
+      return this.hand.getDeckEntries();
     }
 
     public setElementCardActive(id: string, active: boolean): void {
-      const slot = this.elementHandSlots.find(s => s.cardId === id);
-      if (!slot) return;
-      if (!slot.cardId) return;
-      const meta = this.elementInstances.get(slot.cardId);
-      if (meta?.type === 'laps') return;
-      if (!active && slot.active && !this.elementEditingEnabled) return;
-      if (slot.active === active) return;
-      slot.active = active;
+      if (this.hand.isLapsCard(id)) return;
+      const wasActive = this.hand.isCardActive(id);
+      if (!active && wasActive && !this.elementEditingEnabled) return;
+      const changed = this.hand.setCardActive(id, active);
+      if (!changed) return;
       this.applyElementHand();
     }
 
     public incrementLaps(): number {
-      if (!this.isIdleState()) return this.lapsValue;
-      const laps = this.getLapsElement();
-      if (!laps) return this.lapsValue;
-      const next = laps.increment();
-      this.lapsValue = next;
-      this.lapsTarget = next;
-      this.lapsRemaining = next;
-      this.updateLapsConfig(next);
+      if (!this.isIdleState()) return this.hand.getLapsValue();
+      const next = this.hand.incrementLaps();
+      this.run.applyLapValue(next);
       this.updateRunDisplay();
       this.emitElementHandChanged();
       return next;
@@ -293,11 +233,11 @@ namespace Jamble {
 
     public getLapsState(): { value: number; target: number; remaining: number; max: number; runs: number } {
       return {
-        value: this.lapsValue,
-        target: this.lapsTarget,
-        remaining: this.lapsRemaining,
+        value: this.hand.getLapsValue(),
+        target: this.run.getLapsTarget(),
+        remaining: this.run.getLapsRemaining(),
         max: 9,
-        runs: this.runsCompleted
+        runs: this.run.getRunsCompleted()
       };
     }
 
@@ -311,13 +251,13 @@ namespace Jamble {
       this.awaitingStartTap = false;
       this.player.setPrestart();
       this.hideIdleControls();
-      this.lapsTarget = Math.max(1, this.lapsValue);
-      this.lapsRemaining = this.lapsTarget;
+      this.run.startCountdown(this.hand.getLapsValue());
       this.updateRunDisplay();
       this.countdown.start(Jamble.Settings.current.startFreezeTime);
       this.inCountdown = true;
       this.startCountdownTimer = window.setTimeout(() => {
         this.player.clearFrozenStart();
+        this.run.startRun();
         this.inCountdown = false;
         this.startCountdownTimer = null;
       }, Jamble.Settings.current.startFreezeTime);
@@ -325,32 +265,25 @@ namespace Jamble {
 
     private bind(): void {
       document.addEventListener('pointerdown', this.onPointerDown);
-      this.resetBtn.addEventListener('click', this.reset);
-      this.startBtn.addEventListener('click', this.onStartClick);
+      this.ui.getResetButton().addEventListener('click', this.reset);
+      this.ui.getStartButton().addEventListener('click', this.onStartClick);
     }
     private unbind(): void {
       document.removeEventListener('pointerdown', this.onPointerDown);
-      this.resetBtn.removeEventListener('click', this.reset);
-      this.startBtn.removeEventListener('click', this.onStartClick);
+      this.ui.getResetButton().removeEventListener('click', this.reset);
+      this.ui.getStartButton().removeEventListener('click', this.onStartClick);
     }
 
     private showIdleControls(): void {
-      this.startBtn.style.display = 'block';
-      if (this.skillSlotsEl) this.skillSlotsEl.style.display = 'flex';
-      if (this.skillMenuEl) this.skillMenuEl.style.display = 'flex';
-      if (this.elementHandEl) this.elementHandEl.style.display = 'flex';
+      this.ui.showIdleControls();
       this.emitElementHandChanged();
     }
     private hideIdleControls(): void {
-      this.startBtn.style.display = 'none';
-      // Keep skill slots visible during runs; hide only the menu
-      if (this.skillSlotsEl) this.skillSlotsEl.style.display = 'flex';
-      if (this.skillMenuEl) this.skillMenuEl.style.display = 'none';
-      if (this.elementHandEl) this.elementHandEl.style.display = 'none';
+      this.ui.hideIdleControls();
     }
 
     private onPointerDown(e: PointerEvent): void {
-      if (e.target === this.resetBtn || e.target === this.startBtn) return;
+      if (this.ui.isControlElement(e.target)) return;
       if (this.player.frozenDeath) return;
       const rect = this.gameEl.getBoundingClientRect();
       const withinX = e.clientX >= rect.left && e.clientX <= rect.right;
@@ -392,8 +325,8 @@ namespace Jamble {
       align();
       this.level += 1;
       if (Jamble.Settings.current.mode === 'idle'){
-        if (this.lapsRemaining > 0) this.lapsRemaining -= 1;
-        if (this.lapsRemaining <= 0){
+        const finished = this.run.handleEdgeArrival();
+        if (finished){
           this.finishRun();
           this.updateLevel();
           return;
@@ -504,7 +437,7 @@ namespace Jamble {
           this.deathWiggleTimer = null;
         }, Jamble.Settings.current.deathFreezeTime);
         this.showResetTimer = window.setTimeout(() => {
-          this.resetBtn.style.display = 'block';
+        this.ui.setResetVisible(true);
           this.showResetTimer = null;
         }, Jamble.Settings.current.showResetDelayMs);
       }
@@ -574,15 +507,15 @@ namespace Jamble {
 
     private refreshActiveElementPlacements(): void {
       this.elementSlots.clear();
-      this.elementHandSlots.forEach(slot => {
+      this.hand.forEachSlot(slot => {
         const cardId = slot.cardId;
         if (!cardId) return;
         this.slotManager.releaseSlot(cardId);
       });
-      this.elementHandSlots.forEach(slot => {
+      this.hand.forEachSlot(slot => {
         const cardId = slot.cardId;
         if (!cardId) return;
-        if (!slot.active) return;
+        if (!slot.isActive()) return;
         if (!this.levelElements.isActive(cardId)) return;
         this.ensurePlacementForElement(cardId);
       });
@@ -600,7 +533,7 @@ namespace Jamble {
     }
 
     private ensurePlacementForElement(cardId: string): boolean {
-      const meta = this.elementInstances.get(cardId);
+      const meta = this.hand.getCardMeta(cardId);
       if (!meta) return false;
       const descriptor = this.elementRegistry.get(meta.definitionId);
       if (!descriptor) return false;
@@ -622,78 +555,36 @@ namespace Jamble {
       return true;
     }
 
-    private getLapsElement(): LapsElement | null {
-      if (this.lapsCardId){
-        const existing = this.levelElements.get(this.lapsCardId);
-        if (existing instanceof LapsElement) return existing;
-      }
-      for (const card of this.elementDeckPool){
-        if (card.definitionId === 'laps.basic'){
-          this.lapsCardId = card.id;
-          const el = this.levelElements.get(card.id);
-          if (el instanceof LapsElement) return el;
-        }
-      }
-      return null;
-    }
-
     private isIdleState(): boolean {
       return this.awaitingStartTap && this.player.frozenStart && !this.inCountdown;
     }
 
     private updateRunDisplay(): void {
-      if (!this.levelEl) return;
-      const inRun = !this.isIdleState();
-      const value = inRun ? Math.max(this.lapsRemaining, 0) : Math.max(this.lapsValue, 1);
+      const inRun = this.run.getState() === 'running';
+      const value = inRun ? Math.max(this.run.getLapsRemaining(), 0) : Math.max(this.hand.getLapsValue(), 1);
       const text = String(value);
-      if (this.levelEl.textContent !== text) this.levelEl.textContent = text;
+      this.ui.setRunDisplay(text);
     }
 
     private clearHandPlacements(): void {
-      this.elementHandSlots.forEach(slot => {
+      this.hand.forEachSlot(slot => {
         const cardId = slot.cardId;
         if (!cardId) return;
         if (this.levelElements.isActive(cardId)) this.levelElements.setActive(cardId, false);
         this.releaseElementSlot(cardId);
-        slot.active = false;
+        slot.setActive(false);
       });
-    }
-
-    private dealNewHand(): void {
-      const lapsId = this.lapsCardId;
-      const pool = this.elementDeckPool.filter(card => card.id !== lapsId);
-      const available = pool.slice();
-      this.elementHandSlots.forEach(slot => {
-        if (lapsId && slot.cardId === lapsId){
-          slot.cardId = lapsId;
-          slot.active = false;
-          return;
-        }
-        if (available.length === 0){
-          slot.cardId = null;
-          slot.active = false;
-          return;
-        }
-        const index = Math.floor(Math.random() * available.length);
-        const [card] = available.splice(index, 1);
-        slot.cardId = card.id;
-        slot.active = false;
-      });
-      if (lapsId && !this.elementHandSlots.some(slot => slot.cardId === lapsId)){
-        const target = this.elementHandSlots[0];
-        target.cardId = lapsId;
-        target.active = false;
-      }
     }
 
     private resetHandForIdle(): void {
       this.clearHandPlacements();
-      this.dealNewHand();
+      this.hand.resetForIdle();
       this.applyElementHand();
     }
 
     private finishRun(): void {
-      this.runsCompleted += 1;
+      this.run.finishRun();
+      this.run.resetToIdle(this.hand.getLapsValue());
       this.player.setFrozenStart();
       this.player.velocity = 0;
       this.awaitingStartTap = true;
