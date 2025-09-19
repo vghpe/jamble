@@ -609,7 +609,8 @@ var Jamble;
             this.slots = [];
             this.slotsByType = new Map();
             this.slotByElementId = new Map();
-            this.noiseOptions = { enabled: true, horizontal: 1, vertical: 1 };
+            this.noiseOptions = { enabled: false, horizontal: 1, vertical: 1 };
+            this.normalDistribution = { enabled: false, intensity: 0.6 };
             this.host = host;
             this.rebuild();
         }
@@ -624,8 +625,13 @@ var Jamble;
             SLOT_LAYER_TEMPLATES.forEach((template, layerIndex) => {
                 const layerSlots = [];
                 const stride = 100 / template.columns;
+                const distributionXPcts = this.normalDistribution.enabled
+                    ? this.computeNormalColumnPercents(template.columns)
+                    : null;
                 for (let column = 0; column < template.columns; column++) {
-                    const baseXPct = (column + 0.5) * stride;
+                    const baseXPct = distributionXPcts
+                        ? distributionXPcts[column]
+                        : (column + 0.5) * stride;
                     const slotId = template.type + '-' + column;
                     const nx = template.columns > 1 ? column / (template.columns - 1) : 0;
                     const ny = SLOT_LAYER_TEMPLATES.length > 1 ? layerIndex / (SLOT_LAYER_TEMPLATES.length - 1) : 0;
@@ -680,6 +686,20 @@ var Jamble;
             if (this.noiseOptions.vertical < 0)
                 this.noiseOptions.vertical = 0;
             this.noiseOptions.enabled = options.enabled !== undefined ? options.enabled : this.noiseOptions.enabled;
+        }
+        getNormalDistributionOptions() {
+            return { ...this.normalDistribution };
+        }
+        setNormalDistributionOptions(options) {
+            this.normalDistribution = {
+                ...this.normalDistribution,
+                ...options
+            };
+            if (this.normalDistribution.intensity < 0)
+                this.normalDistribution.intensity = 0;
+            if (this.normalDistribution.intensity > 1)
+                this.normalDistribution.intensity = 1;
+            this.normalDistribution.enabled = options.enabled !== undefined ? options.enabled : this.normalDistribution.enabled;
         }
         getSlotForElement(elementId) {
             return this.slotByElementId.get(elementId);
@@ -739,8 +759,73 @@ var Jamble;
             }
             return false;
         }
+        computeNormalColumnPercents(columns) {
+            if (columns <= 0)
+                return [];
+            const intensity = clamp(this.normalDistribution.intensity, 0, 1);
+            const stride = 100 / columns;
+            const basePercents = new Array(columns);
+            for (let column = 0; column < columns; column++) {
+                basePercents[column] = (column + 0.5) * stride;
+            }
+            if (intensity <= 0)
+                return basePercents;
+            const spreadMin = 0.18;
+            const spreadMax = 0.36;
+            const spread = spreadMin + intensity * (spreadMax - spreadMin);
+            const gaussianPercents = new Array(columns);
+            const minErfInput = -1 + Number.EPSILON;
+            const maxErfInput = 1 - Number.EPSILON;
+            for (let column = 0; column < columns; column++) {
+                const normalized = (column + 0.5) / columns;
+                const centered = 2 * normalized - 1;
+                const safeCentered = clamp(centered, minErfInput, maxErfInput);
+                const z = Math.SQRT2 * inverseErf(safeCentered);
+                const rawValue = clamp(0.5 + z * spread, 0, 1);
+                gaussianPercents[column] = rawValue * 100;
+            }
+            let min = gaussianPercents[0];
+            let max = gaussianPercents[0];
+            for (let i = 1; i < gaussianPercents.length; i++) {
+                const value = gaussianPercents[i];
+                if (value < min)
+                    min = value;
+                if (value > max)
+                    max = value;
+            }
+            if (max - min <= 1e-6)
+                return basePercents;
+            const firstBase = basePercents[0];
+            const lastBase = basePercents[columns - 1];
+            const scaledGaussian = gaussianPercents.map(value => {
+                const normalized = (value - min) / (max - min);
+                return firstBase + normalized * (lastBase - firstBase);
+            });
+            return scaledGaussian.map((value, idx) => {
+                const base = basePercents[idx];
+                return base + (value - base) * intensity;
+            });
+        }
     }
     Jamble.SlotManager = SlotManager;
+    function inverseErf(x) {
+        if (x <= -1 || x >= 1) {
+            if (x === -1)
+                return Number.NEGATIVE_INFINITY;
+            if (x === 1)
+                return Number.POSITIVE_INFINITY;
+            return Number.NaN;
+        }
+        const a = 0.147;
+        const ln = Math.log(1 - x * x);
+        const part1 = 2 / (Math.PI * a) + ln / 2;
+        const part2 = ln / a;
+        const sign = x < 0 ? -1 : 1;
+        const inside = part1 * part1 - part2;
+        if (inside <= 0)
+            return 0;
+        return sign * Math.sqrt(Math.sqrt(inside) - part1);
+    }
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
@@ -792,6 +877,11 @@ var Jamble;
         dispose() {
             this.el.style.display = 'none';
         }
+        getOrigin() {
+            return this.isCeiling()
+                ? { x: 0.65, y: 0, xUnit: 'fraction', yUnit: 'fraction' }
+                : { x: 0.65, y: 0, xUnit: 'fraction', yUnit: 'fraction' };
+        }
     }
     Jamble.TreeElement = TreeElement;
 })(Jamble || (Jamble = {}));
@@ -837,7 +927,8 @@ var Jamble;
             }
             if (!Number.isFinite(pos))
                 pos = host.offsetWidth / 2;
-            pos = Math.max(0, Math.min(pos, Math.max(0, host.offsetWidth - this.el.offsetWidth)));
+            const max = Math.max(0, host.offsetWidth - this.el.offsetWidth);
+            pos = Math.max(0, Math.min(pos, max));
             this.positionPx = pos;
             this.applyPosition();
         }
@@ -852,8 +943,11 @@ var Jamble;
             const host = this.resolveHost();
             if (!host)
                 return;
-            const maxBottom = Math.max(0, host.offsetHeight - this.el.offsetHeight);
-            const bottomPx = Math.max(0, Math.min(this.assignedSlot.yPx, maxBottom));
+            const hostHeight = host.offsetHeight || host.getBoundingClientRect().height || 0;
+            const maxBottom = Math.max(0, hostHeight - this.el.offsetHeight);
+            const originY = this.el.offsetHeight * 0.5;
+            const target = this.assignedSlot.yPx - originY;
+            const bottomPx = Math.max(0, Math.min(target, maxBottom));
             this.el.style.bottom = bottomPx + 'px';
         }
         init() {
@@ -879,6 +973,9 @@ var Jamble;
         }
         dispose() {
             this.el.style.display = 'none';
+        }
+        getOrigin() {
+            return { x: 0.5, y: 0.5, xUnit: 'fraction', yUnit: 'fraction' };
         }
         tick(ctx) {
             if (ctx.deltaMs <= 0)
@@ -910,22 +1007,26 @@ var Jamble;
             }
             this.applyPosition();
         }
-        assignSlot(slot) {
+        assignSlot(slot, leftPx) {
             this.assignedSlot = slot;
-            const host = this.resolveHost();
-            if (!host) {
-                this.positionPx = null;
-                return;
+            if (typeof leftPx === 'number') {
+                this.setHorizontalPositionPx(leftPx);
             }
-            const maxX = Math.max(0, host.offsetWidth - this.el.offsetWidth);
-            let target = Math.max(0, Math.min(slot.xPx, maxX));
-            this.positionPx = target;
-            this.applyPosition();
             this.applyVerticalFromSlot();
         }
         clearSlot() {
             this.assignedSlot = null;
             this.positionPx = null;
+        }
+        setHorizontalPositionPx(px) {
+            const host = this.resolveHost();
+            let clamped = px;
+            if (host) {
+                const max = Math.max(0, host.offsetWidth - this.el.offsetWidth);
+                clamped = Math.max(0, Math.min(px, max));
+            }
+            this.positionPx = clamped;
+            this.applyPosition();
         }
     }
     Jamble.BirdElement = BirdElement;
@@ -973,9 +1074,33 @@ var Jamble;
                 el.style.left = '50%';
             el.style.display = 'none';
             return el;
+        },
+        'laps-control': (root, id) => {
+            let el = root.querySelector('.jamble-laps[data-element-id="' + id + '"]');
+            if (el)
+                return el;
+            el = document.createElement('div');
+            el.className = 'jamble-laps';
+            el.setAttribute('data-element-id', id);
+            el.style.display = 'none';
+            root.appendChild(el);
+            return el;
         }
     };
     const CORE_ELEMENTS = [
+        {
+            id: 'laps.basic',
+            name: 'Laps',
+            emoji: '🔁',
+            type: 'laps',
+            hostKind: 'laps-control',
+            defaults: { value: 1 },
+            ensureHost: (root, id) => hostFactories['laps-control'](root, id),
+            create: ({ id, host, root, config }) => {
+                const el = host || hostFactories['laps-control'](root, id);
+                return new Jamble.LapsElement(id, el, config);
+            }
+        },
         {
             id: 'tree.basic',
             name: 'Tree',
@@ -1036,6 +1161,7 @@ var Jamble;
 (function (Jamble) {
     Jamble.CoreDeckConfig = {
         pool: [
+            { definitionId: 'laps.basic', quantity: 1, config: { value: 1 } },
             { definitionId: 'tree.basic', quantity: 3 },
             { definitionId: 'tree.ceiling', quantity: 3 },
             { definitionId: 'bird.basic', quantity: 3 }
@@ -1249,20 +1375,368 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
+    class LapsElement {
+        constructor(id, el, config) {
+            this.type = 'laps';
+            this.collidable = false;
+            this.id = id;
+            this.el = el;
+            this.el.classList.add('jamble-laps');
+            this.el.setAttribute('aria-hidden', 'true');
+            this.el.style.display = 'none';
+            this.value = clampLaps(config === null || config === void 0 ? void 0 : config.value);
+        }
+        rect() {
+            return this.el.getBoundingClientRect();
+        }
+        getValue() {
+            return this.value;
+        }
+        setValue(next) {
+            this.value = clampLaps(next);
+        }
+        increment() {
+            this.value = clampLaps(this.value + 1);
+            return this.value;
+        }
+    }
+    Jamble.LapsElement = LapsElement;
+    function clampLaps(value) {
+        if (!Number.isFinite(value))
+            return 1;
+        return Math.max(1, Math.min(9, Math.floor(value)));
+    }
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class HandController {
+        constructor(levelElements, settings) {
+            this.levelElements = levelElements;
+            this.instances = new Map();
+            this.lapsCardId = null;
+            this.lapsValue = 1;
+            this.deck = settings.deck.map(card => ({ ...card }));
+            this.handSlots = settings.hand.map(slot => ({ ...slot }));
+            this.initializeDeckElements();
+        }
+        getDeckEntries() {
+            return this.deck.map(card => ({ ...card }));
+        }
+        getHandView() {
+            return this.handSlots.map((slot, index) => {
+                if (!slot.cardId) {
+                    return {
+                        id: 'placeholder-' + index,
+                        definitionId: 'placeholder',
+                        name: 'Empty',
+                        type: 'empty',
+                        emoji: '…',
+                        active: false,
+                        available: false
+                    };
+                }
+                const meta = this.instances.get(slot.cardId) || this.deck.find(card => card.id === slot.cardId);
+                if (!meta) {
+                    return {
+                        id: slot.cardId,
+                        definitionId: 'unknown',
+                        name: 'Unknown',
+                        type: 'empty',
+                        emoji: '❔',
+                        active: slot.active,
+                        available: false
+                    };
+                }
+                return {
+                    id: slot.cardId,
+                    definitionId: meta.definitionId,
+                    name: meta.name,
+                    type: meta.type,
+                    emoji: meta.emoji || '❔',
+                    active: slot.active,
+                    available: true
+                };
+            });
+        }
+        getCardMeta(cardId) {
+            return this.instances.get(cardId) || this.deck.find(card => card.id === cardId);
+        }
+        setCardActive(cardId, active) {
+            const slot = this.handSlots.find(s => s.cardId === cardId);
+            if (!slot)
+                return false;
+            if (slot.active === active)
+                return false;
+            slot.active = active;
+            return true;
+        }
+        isCardActive(cardId) {
+            const slot = this.handSlots.find(s => s.cardId === cardId);
+            return !!slot && !!slot.active;
+        }
+        forEachSlot(callback) {
+            this.handSlots.forEach(slot => {
+                callback({
+                    slotId: slot.slotId,
+                    cardId: slot.cardId,
+                    isActive: () => slot.active,
+                    setActive: (active) => { slot.active = active; }
+                });
+            });
+        }
+        incrementLaps() {
+            const lapsElement = this.getLapsElement();
+            if (!lapsElement)
+                return this.lapsValue;
+            const next = lapsElement.increment();
+            this.lapsValue = next;
+            this.updateLapsConfig(next);
+            return this.lapsValue;
+        }
+        getLapsValue() {
+            return this.lapsValue;
+        }
+        setLapsValue(value) {
+            const clamped = this.clampLaps(value);
+            const lapsElement = this.getLapsElement();
+            if (lapsElement)
+                lapsElement.setValue(clamped);
+            this.lapsValue = clamped;
+            this.updateLapsConfig(clamped);
+            return this.lapsValue;
+        }
+        resetLapsValue() {
+            return this.setLapsValue(1);
+        }
+        getLapsCardId() {
+            return this.lapsCardId;
+        }
+        isLapsCard(cardId) {
+            return !!this.lapsCardId && this.lapsCardId === cardId;
+        }
+        resetForIdle() {
+            const lapsId = this.lapsCardId;
+            const pool = this.deck.filter(card => card.id !== lapsId);
+            const available = pool.slice();
+            this.handSlots.forEach(slot => {
+                slot.active = false;
+                if (lapsId && slot.cardId === lapsId) {
+                    return;
+                }
+                if (available.length === 0) {
+                    slot.cardId = null;
+                    return;
+                }
+                const index = Math.floor(Math.random() * available.length);
+                const [card] = available.splice(index, 1);
+                slot.cardId = card.id;
+            });
+            if (lapsId && !this.handSlots.some(slot => slot.cardId === lapsId)) {
+                const target = this.handSlots[0];
+                if (target.cardId) {
+                }
+                target.cardId = lapsId;
+            }
+        }
+        initializeDeckElements() {
+            this.deck.forEach(card => {
+                const instance = this.levelElements.spawnFromRegistry(card.definitionId, {
+                    instanceId: card.id,
+                    config: card.config,
+                    active: false
+                });
+                if (instance) {
+                    this.instances.set(card.id, { ...card });
+                    if (instance instanceof Jamble.LapsElement) {
+                        this.lapsCardId = card.id;
+                        this.lapsValue = instance.getValue();
+                    }
+                }
+            });
+            if (!this.lapsCardId) {
+                const lapsEntry = this.deck.find(card => card.definitionId === 'laps.basic');
+                if (lapsEntry)
+                    this.lapsCardId = lapsEntry.id;
+            }
+        }
+        getLapsElement() {
+            if (!this.lapsCardId)
+                return null;
+            const instance = this.levelElements.get(this.lapsCardId);
+            if (instance && instance instanceof Jamble.LapsElement)
+                return instance;
+            return null;
+        }
+        updateLapsConfig(value) {
+            if (this.lapsCardId) {
+                const meta = this.instances.get(this.lapsCardId);
+                if (meta) {
+                    meta.config = { ...(meta.config || {}), value };
+                }
+                const deckEntry = this.deck.find(card => card.id === this.lapsCardId);
+                if (deckEntry) {
+                    deckEntry.config = { ...(deckEntry.config || {}), value };
+                }
+            }
+        }
+        clampLaps(value) {
+            if (!Number.isFinite(value))
+                return 1;
+            return Math.max(1, Math.min(9, Math.floor(value)));
+        }
+    }
+    Jamble.HandController = HandController;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class RunController {
+        constructor() {
+            this.state = 'idle';
+            this.lapsTarget = 1;
+            this.lapsRemaining = 1;
+            this.runsCompleted = 0;
+        }
+        setInitialLaps(value) {
+            const clamped = this.clampLaps(value);
+            this.lapsTarget = clamped;
+            this.lapsRemaining = clamped;
+            this.state = 'idle';
+        }
+        startCountdown(lapsValue) {
+            const target = this.clampLaps(lapsValue);
+            this.lapsTarget = target;
+            this.lapsRemaining = target;
+            this.state = 'countdown';
+        }
+        startRun() {
+            if (this.state !== 'countdown')
+                return;
+            this.state = 'running';
+        }
+        handleEdgeArrival() {
+            if (this.state !== 'running')
+                return false;
+            if (this.lapsRemaining > 0)
+                this.lapsRemaining -= 1;
+            if (this.lapsRemaining <= 0) {
+                this.finishRun();
+                return true;
+            }
+            return false;
+        }
+        finishRun() {
+            this.runsCompleted += 1;
+            this.state = 'finished';
+            this.lapsRemaining = 0;
+        }
+        resetToIdle(lapsValue) {
+            this.lapsTarget = this.clampLaps(lapsValue);
+            this.lapsRemaining = this.lapsTarget;
+            this.state = 'idle';
+        }
+        getSnapshot() {
+            return {
+                state: this.state,
+                lapsTarget: this.lapsTarget,
+                lapsRemaining: this.lapsRemaining,
+                runsCompleted: this.runsCompleted
+            };
+        }
+        getRunsCompleted() {
+            return this.runsCompleted;
+        }
+        setRunsCompleted(value) {
+            this.runsCompleted = Math.max(0, Math.floor(value));
+        }
+        setLapsValue(value) {
+            const clamped = this.clampLaps(value);
+            this.lapsTarget = clamped;
+            this.lapsRemaining = clamped;
+        }
+        applyLapValue(value) {
+            const clamped = this.clampLaps(value);
+            this.lapsTarget = clamped;
+            this.lapsRemaining = clamped;
+        }
+        getLapsRemaining() {
+            return this.lapsRemaining;
+        }
+        getLapsTarget() {
+            return this.lapsTarget;
+        }
+        getState() {
+            return this.state;
+        }
+        clampLaps(value) {
+            if (!Number.isFinite(value))
+                return 1;
+            return Math.max(1, Math.min(9, Math.floor(value)));
+        }
+    }
+    Jamble.RunController = RunController;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class GameUi {
+        constructor(options) {
+            var _a, _b, _c, _d;
+            this.startButton = options.startButton;
+            this.resetButton = options.resetButton;
+            this.skillSlots = (_a = options.skillSlots) !== null && _a !== void 0 ? _a : null;
+            this.skillMenu = (_b = options.skillMenu) !== null && _b !== void 0 ? _b : null;
+            this.elementHand = (_c = options.elementHand) !== null && _c !== void 0 ? _c : null;
+            this.levelLabel = (_d = options.levelLabel) !== null && _d !== void 0 ? _d : null;
+        }
+        getStartButton() {
+            return this.startButton;
+        }
+        getResetButton() {
+            return this.resetButton;
+        }
+        isControlElement(target) {
+            return target === this.startButton || target === this.resetButton;
+        }
+        showIdleControls() {
+            this.startButton.style.display = 'block';
+            if (this.skillSlots)
+                this.skillSlots.style.display = 'flex';
+            if (this.skillMenu)
+                this.skillMenu.style.display = 'flex';
+            if (this.elementHand)
+                this.elementHand.style.display = 'flex';
+        }
+        hideIdleControls() {
+            this.startButton.style.display = 'none';
+            if (this.skillSlots)
+                this.skillSlots.style.display = 'flex';
+            if (this.skillMenu)
+                this.skillMenu.style.display = 'none';
+            if (this.elementHand)
+                this.elementHand.style.display = 'none';
+        }
+        setResetVisible(visible) {
+            this.resetButton.style.display = visible ? 'block' : 'none';
+        }
+        setRunDisplay(text) {
+            if (!this.levelLabel)
+                return;
+            if (this.levelLabel.textContent !== text)
+                this.levelLabel.textContent = text;
+        }
+    }
+    Jamble.GameUi = GameUi;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
     class Game {
         constructor(root) {
             var _a, _b, _c, _d, _f, _g, _h, _j;
-            this.elementInstances = new Map();
-            this.skillSlotsEl = null;
-            this.skillMenuEl = null;
-            this.elementHandEl = null;
             this.lastTime = null;
             this.rafId = null;
             this.awaitingStartTap = false;
             this.startCountdownTimer = null;
             this.direction = 1;
             this.level = 0;
-            this.levelEl = null;
             this.deathWiggleTimer = null;
             this.showResetTimer = null;
             this.waitGroundForStart = false;
@@ -1271,6 +1745,9 @@ var Jamble;
             this.watchingResize = false;
             this.elementSlots = new Map();
             this.elementEditingEnabled = false;
+            this.elementOriginOverrides = new Map();
+            this.pendingOriginElementIds = new Set();
+            this.pendingOriginFrame = null;
             this.landCbs = [];
             this.wasGrounded = true;
             this.impulses = [];
@@ -1292,23 +1769,21 @@ var Jamble;
             this.elementRegistry = new Jamble.LevelElementRegistry();
             this.levelElements = new Jamble.LevelElementManager(gameEl, this.elementRegistry);
             Jamble.registerCoreElements(this.elementRegistry);
-            const canonicalElements = Jamble.deriveElementsSettings(Jamble.CoreDeckConfig);
-            this.elementDeckPool = canonicalElements.deck.map(card => ({ ...card }));
-            this.elementDeckPool.forEach(card => {
-                const instance = this.levelElements.spawnFromRegistry(card.definitionId, { instanceId: card.id, config: card.config, active: false });
-                if (instance)
-                    this.elementInstances.set(card.id, { definitionId: card.definitionId, name: card.name, type: card.type, emoji: card.emoji, config: card.config });
-            });
-            this.elementHandSlots = canonicalElements.hand.map(slot => ({ ...slot }));
-            this.countdown = new Jamble.Countdown(cdEl);
-            this.resetBtn = resetBtn;
-            this.startBtn = startBtn;
-            this.skillSlotsEl = skillSlotsEl;
-            this.skillMenuEl = skillMenuEl;
-            this.elementHandEl = elementHandEl;
-            this.levelEl = levelEl;
-            this.wiggle = new Jamble.Wiggle(this.player.el);
             this.slotManager = new Jamble.SlotManager(gameEl);
+            const canonicalElements = Jamble.deriveElementsSettings(Jamble.CoreDeckConfig);
+            this.hand = new Jamble.HandController(this.levelElements, canonicalElements);
+            this.run = new Jamble.RunController();
+            this.run.setInitialLaps(this.hand.getLapsValue());
+            this.countdown = new Jamble.Countdown(cdEl);
+            this.ui = new Jamble.GameUi({
+                startButton: startBtn,
+                resetButton: resetBtn,
+                skillSlots: skillSlotsEl,
+                skillMenu: skillMenuEl,
+                elementHand: elementHandEl,
+                levelLabel: levelEl
+            });
+            this.wiggle = new Jamble.Wiggle(this.player.el);
             this.handleWindowResize = () => { this.rebuildSlots(); };
             this.applyElementHand();
             this.onPointerDown = this.onPointerDown.bind(this);
@@ -1384,7 +1859,7 @@ var Jamble;
             }
             this.impulses.length = 0;
             this.player.reset();
-            this.resetBtn.style.display = 'none';
+            this.ui.setResetVisible(false);
             this.player.setFrozenStart();
             this.awaitingStartTap = true;
             this.waitGroundForStart = false;
@@ -1392,27 +1867,30 @@ var Jamble;
             this.showIdleControls();
             this.direction = 1;
             this.level = 0;
+            this.run.setRunsCompleted(0);
+            const defaultLaps = this.hand.resetLapsValue();
+            this.run.setInitialLaps(defaultLaps);
+            this.resetHandForIdle();
             this.updateLevel();
         }
         applyElementHand() {
-            this.elementHandSlots.forEach(slot => {
+            this.hand.forEachSlot(slot => {
                 const cardId = slot.cardId;
                 if (!cardId)
                     return;
-                if (!this.levelElements.get(cardId))
+                const element = this.levelElements.get(cardId);
+                if (!element)
                     return;
                 const currentlyActive = this.levelElements.isActive(cardId);
-                if (slot.active) {
-                    const placed = this.ensurePlacementForElement(cardId);
-                    if (!placed) {
-                        slot.active = false;
-                        if (currentlyActive)
-                            this.levelElements.setActive(cardId, false);
-                        this.releaseElementSlot(cardId);
-                        return;
-                    }
+                if (slot.isActive()) {
                     if (!currentlyActive)
                         this.levelElements.setActive(cardId, true);
+                    const placed = this.ensurePlacementForElement(cardId);
+                    if (!placed) {
+                        slot.setActive(false);
+                        this.levelElements.setActive(cardId, false);
+                        this.releaseElementSlot(cardId);
+                    }
                 }
                 else {
                     if (currentlyActive)
@@ -1420,7 +1898,11 @@ var Jamble;
                     this.releaseElementSlot(cardId);
                 }
             });
+            if (this.isIdleState()) {
+                this.run.applyLapValue(this.hand.getLapsValue());
+            }
             this.emitElementHandChanged();
+            this.updateRunDisplay();
         }
         emitElementHandChanged() {
             try {
@@ -1429,32 +1911,42 @@ var Jamble;
             catch (_e) { }
         }
         getElementHand() {
-            return this.elementHandSlots.map((slot, index) => {
-                if (!slot.cardId) {
-                    return { id: 'placeholder-' + index, definitionId: 'placeholder', name: 'Empty', type: 'empty', emoji: '…', active: false, available: false };
-                }
-                const meta = this.elementInstances.get(slot.cardId) || this.elementDeckPool.find(card => card.id === slot.cardId);
-                if (!meta) {
-                    return { id: slot.cardId, definitionId: 'unknown', name: 'Unknown', type: 'empty', emoji: '❔', active: false, available: false };
-                }
-                return { id: slot.cardId, definitionId: meta.definitionId, name: meta.name, type: meta.type, emoji: meta.emoji || '❔', active: slot.active, available: true };
-            });
+            return this.hand.getHandView();
         }
         getElementDeck() {
-            return this.elementDeckPool.slice();
+            return this.hand.getDeckEntries();
         }
         setElementCardActive(id, active) {
-            const slot = this.elementHandSlots.find(s => s.cardId === id);
-            if (!slot)
+            if (this.hand.isLapsCard(id))
                 return;
-            if (!slot.cardId)
+            const wasActive = this.hand.isCardActive(id);
+            if (!active && wasActive && !this.elementEditingEnabled)
                 return;
-            if (!active && slot.active && !this.elementEditingEnabled)
+            const changed = this.hand.setCardActive(id, active);
+            if (!changed)
                 return;
-            if (slot.active === active)
-                return;
-            slot.active = active;
             this.applyElementHand();
+        }
+        incrementLaps() {
+            if (!this.isIdleState())
+                return this.hand.getLapsValue();
+            const next = this.hand.incrementLaps();
+            this.run.applyLapValue(next);
+            this.updateRunDisplay();
+            this.emitElementHandChanged();
+            return next;
+        }
+        getLapsState() {
+            return {
+                value: this.hand.getLapsValue(),
+                target: this.run.getLapsTarget(),
+                remaining: this.run.getLapsRemaining(),
+                max: 9,
+                runs: this.run.getRunsCompleted()
+            };
+        }
+        isIdle() {
+            return this.isIdleState();
         }
         onStartClick() {
             if (this.waitGroundForStart)
@@ -1464,45 +1956,36 @@ var Jamble;
             this.awaitingStartTap = false;
             this.player.setPrestart();
             this.hideIdleControls();
+            this.run.startCountdown(this.hand.getLapsValue());
+            this.updateRunDisplay();
             this.countdown.start(Jamble.Settings.current.startFreezeTime);
             this.inCountdown = true;
             this.startCountdownTimer = window.setTimeout(() => {
                 this.player.clearFrozenStart();
+                this.run.startRun();
                 this.inCountdown = false;
                 this.startCountdownTimer = null;
             }, Jamble.Settings.current.startFreezeTime);
         }
         bind() {
             document.addEventListener('pointerdown', this.onPointerDown);
-            this.resetBtn.addEventListener('click', this.reset);
-            this.startBtn.addEventListener('click', this.onStartClick);
+            this.ui.getResetButton().addEventListener('click', this.reset);
+            this.ui.getStartButton().addEventListener('click', this.onStartClick);
         }
         unbind() {
             document.removeEventListener('pointerdown', this.onPointerDown);
-            this.resetBtn.removeEventListener('click', this.reset);
-            this.startBtn.removeEventListener('click', this.onStartClick);
+            this.ui.getResetButton().removeEventListener('click', this.reset);
+            this.ui.getStartButton().removeEventListener('click', this.onStartClick);
         }
         showIdleControls() {
-            this.startBtn.style.display = 'block';
-            if (this.skillSlotsEl)
-                this.skillSlotsEl.style.display = 'flex';
-            if (this.skillMenuEl)
-                this.skillMenuEl.style.display = 'flex';
-            if (this.elementHandEl)
-                this.elementHandEl.style.display = 'flex';
+            this.ui.showIdleControls();
             this.emitElementHandChanged();
         }
         hideIdleControls() {
-            this.startBtn.style.display = 'none';
-            if (this.skillSlotsEl)
-                this.skillSlotsEl.style.display = 'flex';
-            if (this.skillMenuEl)
-                this.skillMenuEl.style.display = 'none';
-            if (this.elementHandEl)
-                this.elementHandEl.style.display = 'none';
+            this.ui.hideIdleControls();
         }
         onPointerDown(e) {
-            if (e.target === this.resetBtn || e.target === this.startBtn)
+            if (this.ui.isControlElement(e.target))
                 return;
             if (this.player.frozenDeath)
                 return;
@@ -1526,8 +2009,7 @@ var Jamble;
             }
         }
         updateLevel() {
-            if (this.levelEl)
-                this.levelEl.textContent = String(this.level);
+            this.updateRunDisplay();
         }
         collisionWith(ob) {
             const pr = this.player.el.getBoundingClientRect();
@@ -1542,22 +2024,28 @@ var Jamble;
         handleEdgeArrival(nextDirection, align) {
             align();
             this.level += 1;
-            this.updateLevel();
             if (Jamble.Settings.current.mode === 'idle') {
-                this.player.setFrozenStart();
-                if (this.player.velocity > 0)
-                    this.player.velocity = -0.1;
-                this.waitGroundForStart = true;
-                this.awaitingStartTap = false;
-            }
-            else {
+                const finished = this.run.handleEdgeArrival();
+                if (finished) {
+                    this.finishRun(nextDirection);
+                    this.updateLevel();
+                    return;
+                }
                 if (this.player.velocity > 0)
                     this.player.velocity = -0.1;
                 this.awaitingStartTap = false;
                 this.waitGroundForStart = false;
-                this.hideIdleControls();
+                this.direction = nextDirection;
+                this.updateLevel();
+                return;
             }
+            if (this.player.velocity > 0)
+                this.player.velocity = -0.1;
+            this.awaitingStartTap = false;
+            this.waitGroundForStart = false;
+            this.hideIdleControls();
             this.direction = nextDirection;
+            this.updateLevel();
         }
         loop(ts) {
             if (this.lastTime === null)
@@ -1645,7 +2133,7 @@ var Jamble;
                     this.deathWiggleTimer = null;
                 }, Jamble.Settings.current.deathFreezeTime);
                 this.showResetTimer = window.setTimeout(() => {
-                    this.resetBtn.style.display = 'block';
+                    this.ui.setResetVisible(true);
                     this.showResetTimer = null;
                 }, Jamble.Settings.current.showResetDelayMs);
             }
@@ -1677,6 +2165,18 @@ var Jamble;
         getElementSlot(cardId) {
             return this.elementSlots.get(cardId);
         }
+        setElementOriginOverride(elementId, origin) {
+            if (!origin) {
+                this.elementOriginOverrides.delete(elementId);
+            }
+            else {
+                this.elementOriginOverrides.set(elementId, origin);
+            }
+            const element = this.levelElements.get(elementId);
+            const slot = element ? this.elementSlots.get(elementId) : undefined;
+            if (element && slot)
+                this.applySlotToElement(element, slot);
+        }
         debugActiveSlots() {
             return Array.from(this.elementSlots.values()).map(slot => ({ id: slot.id, type: slot.type, elementId: slot.elementId, elementType: slot.elementType }));
         }
@@ -1695,17 +2195,17 @@ var Jamble;
         }
         refreshActiveElementPlacements() {
             this.elementSlots.clear();
-            this.elementHandSlots.forEach(slot => {
+            this.hand.forEachSlot(slot => {
                 const cardId = slot.cardId;
                 if (!cardId)
                     return;
                 this.slotManager.releaseSlot(cardId);
             });
-            this.elementHandSlots.forEach(slot => {
+            this.hand.forEachSlot(slot => {
                 const cardId = slot.cardId;
                 if (!cardId)
                     return;
-                if (!slot.active)
+                if (!slot.isActive())
                     return;
                 if (!this.levelElements.isActive(cardId))
                     return;
@@ -1719,9 +2219,11 @@ var Jamble;
             }
             this.slotManager.releaseSlot(cardId);
             this.elementSlots.delete(cardId);
+            this.elementOriginOverrides.delete(cardId);
+            this.pendingOriginElementIds.delete(cardId);
         }
         ensurePlacementForElement(cardId) {
-            const meta = this.elementInstances.get(cardId);
+            const meta = this.hand.getCardMeta(cardId);
             if (!meta)
                 return false;
             const descriptor = this.elementRegistry.get(meta.definitionId);
@@ -1745,7 +2247,54 @@ var Jamble;
             this.applySlotToElement(element, slot);
             return true;
         }
+        isIdleState() {
+            return this.awaitingStartTap && this.player.frozenStart && !this.inCountdown;
+        }
+        updateRunDisplay() {
+            const inRun = this.run.getState() === 'running';
+            const value = inRun ? Math.max(this.run.getLapsRemaining(), 0) : Math.max(this.hand.getLapsValue(), 1);
+            const text = String(value);
+            this.ui.setRunDisplay(text);
+        }
+        clearHandPlacements() {
+            this.hand.forEachSlot(slot => {
+                const cardId = slot.cardId;
+                if (!cardId)
+                    return;
+                if (this.levelElements.isActive(cardId))
+                    this.levelElements.setActive(cardId, false);
+                this.releaseElementSlot(cardId);
+                slot.setActive(false);
+            });
+        }
+        resetHandForIdle() {
+            this.clearHandPlacements();
+            this.hand.resetForIdle();
+            this.applyElementHand();
+        }
+        finishRun(nextDirection) {
+            this.run.finishRun();
+            const defaultLaps = this.hand.resetLapsValue();
+            this.run.resetToIdle(defaultLaps);
+            this.player.setFrozenStart();
+            this.player.velocity = 0;
+            this.awaitingStartTap = true;
+            this.waitGroundForStart = false;
+            this.inCountdown = false;
+            this.direction = nextDirection;
+            this.showIdleControls();
+            this.impulses.length = 0;
+            this.resetHandForIdle();
+            this.updateRunDisplay();
+        }
         applySlotToElement(element, slot) {
+            const origin = this.getEffectiveOrigin(element);
+            if (origin) {
+                const applied = this.applyOriginToElement(element, slot, origin);
+                if (applied)
+                    return;
+                this.enqueueOriginRetry(element.id);
+            }
             if (element instanceof Jamble.BirdElement) {
                 element.assignSlot(slot);
                 return;
@@ -1760,6 +2309,93 @@ var Jamble;
             if (Jamble.isPositionableLevelElement(element)) {
                 element.setLeftPct(slot.xPercent);
             }
+        }
+        applyOriginToElement(element, slot, origin) {
+            const host = element.el.offsetParent || element.el.parentElement;
+            if (!host)
+                return false;
+            const hostRect = host.getBoundingClientRect();
+            const hostWidth = host.offsetWidth || hostRect.width;
+            const hostHeight = host.offsetHeight || hostRect.height;
+            if (hostWidth <= 0 || hostHeight <= 0)
+                return false;
+            const elRect = element.el.getBoundingClientRect();
+            const elWidth = element.el.offsetWidth || elRect.width;
+            const elHeight = element.el.offsetHeight || elRect.height;
+            const computedWidth = elWidth || 1;
+            const computedHeight = elHeight || 1;
+            const originX = origin.xUnit === 'px'
+                ? origin.x
+                : this.clamp(origin.x, 0, 1) * computedWidth;
+            const originY = origin.yUnit === 'px'
+                ? origin.y
+                : this.clamp(origin.y, 0, 1) * computedHeight;
+            const maxLeft = Math.max(0, hostWidth - computedWidth);
+            const maxBottom = Math.max(0, hostHeight - computedHeight);
+            const leftPx = this.clamp(slot.xPx - originX, 0, maxLeft);
+            const bottomPx = this.clamp(slot.yPx - originY, 0, maxBottom);
+            element.el.style.left = leftPx.toFixed(1) + 'px';
+            element.el.style.bottom = bottomPx.toFixed(1) + 'px';
+            if (element instanceof Jamble.BirdElement) {
+                element.assignSlot(slot, leftPx);
+            }
+            return true;
+        }
+        getEffectiveOrigin(element) {
+            const override = this.elementOriginOverrides.get(element.id);
+            if (override)
+                return this.normalizeOrigin(override);
+            if (typeof element.getOrigin === 'function') {
+                const fromElement = element.getOrigin();
+                if (fromElement)
+                    return this.normalizeOrigin(fromElement);
+            }
+            return null;
+        }
+        normalizeOrigin(origin) {
+            return {
+                x: Number.isFinite(origin.x) ? origin.x : 0.5,
+                y: Number.isFinite(origin.y) ? origin.y : 0,
+                xUnit: origin.xUnit === 'px' ? 'px' : 'fraction',
+                yUnit: origin.yUnit === 'px' ? 'px' : 'fraction'
+            };
+        }
+        clamp(value, min, max) {
+            return Math.min(max, Math.max(min, value));
+        }
+        enqueueOriginRetry(elementId) {
+            this.pendingOriginElementIds.add(elementId);
+            this.schedulePendingOriginPass();
+        }
+        schedulePendingOriginPass() {
+            if (this.pendingOriginFrame !== null)
+                return;
+            this.pendingOriginFrame = window.requestAnimationFrame(() => {
+                this.pendingOriginFrame = null;
+                if (this.pendingOriginElementIds.size === 0)
+                    return;
+                const pending = Array.from(this.pendingOriginElementIds);
+                this.pendingOriginElementIds.clear();
+                let needsAnotherPass = false;
+                for (const id of pending) {
+                    const element = this.levelElements.get(id);
+                    if (!element)
+                        continue;
+                    const slot = this.elementSlots.get(id);
+                    if (!slot)
+                        continue;
+                    const origin = this.getEffectiveOrigin(element);
+                    if (!origin)
+                        continue;
+                    const applied = this.applyOriginToElement(element, slot, origin);
+                    if (!applied) {
+                        this.pendingOriginElementIds.add(id);
+                        needsAnotherPass = true;
+                    }
+                }
+                if (needsAnotherPass)
+                    this.schedulePendingOriginPass();
+            });
         }
     }
     Jamble.Game = Game;
