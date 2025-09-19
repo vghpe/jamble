@@ -35,13 +35,13 @@ namespace Jamble {
   export const CoreDeckConfig: DeckConfig = {
     pool: [
       { definitionId: 'laps.basic', quantity: 1, config: { value: 1 } },
-      { definitionId: 'tree.basic', quantity: 3 },
-      { definitionId: 'tree.ceiling', quantity: 3 },
-      { definitionId: 'bird.basic', quantity: 3 }
+      { definitionId: 'tree.basic', quantity: 5 },
+      { definitionId: 'tree.ceiling', quantity: 5 },
+      { definitionId: 'bird.basic', quantity: 5 }
     ]
   };
 
-  const HAND_SLOTS = 5;
+  const HAND_SLOTS = 8;
 
   function generateCardId(baseId: string, index: number): string {
     return baseId + '-' + (index + 1);

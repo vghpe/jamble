@@ -75,6 +75,10 @@ namespace Jamble {
       });
     }
 
+    getSlotCount(): number {
+      return this.handSlots.length;
+    }
+
     getCardMeta(cardId: string): ElementDeckEntry | undefined {
       return this.instances.get(cardId) || this.deck.find(card => card.id === cardId);
     }

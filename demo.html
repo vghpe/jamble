@@ -440,7 +440,8 @@
         function renderElementHand(hand){
           if (!elementHandEl) return;
           var cards = Array.isArray(hand) ? hand : (game.getElementHand ? game.getElementHand() : []);
-          var maxSlots = 5;
+          var defaultSlots = (game && typeof game.getHandSlotCount === 'function') ? game.getHandSlotCount() : cards.length;
+          var maxSlots = Math.max(cards.length, defaultSlots);
           var canEditElements = typeof game.canEditElements === 'function' ? game.canEditElements() : false;
           elementHandEl.innerHTML = '';
           for (var idx = 0; idx < maxSlots; idx++){

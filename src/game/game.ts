@@ -219,6 +219,10 @@ namespace Jamble {
       return this.hand.getHandView();
     }
 
+    public getHandSlotCount(): number {
+      return this.hand.getSlotCount();
+    }
+
     public getElementDeck(): ReadonlyArray<{ id: string; definitionId: string; name: string; type: LevelElementType; emoji: string }> {
       return this.hand.getDeckEntries();
     }
