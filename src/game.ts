@@ -7,6 +7,7 @@
 /// <reference path="./hand-controller.ts" />
 /// <reference path="./run-controller.ts" />
 /// <reference path="./game-ui.ts" />
+/// <reference path="./input-controller.ts" />
 /// <reference path="./countdown.ts" />
 /// <reference path="./wiggle.ts" />
 /// <reference path="./settings.ts" />
@@ -26,6 +27,7 @@ namespace Jamble {
     private run: RunController;
     private countdown: Countdown;
     private ui: GameUi;
+    private input: InputController;
     private wiggle: Wiggle;
     private lastTime: number | null = null;
     private rafId: number | null = null;
@@ -93,7 +95,6 @@ namespace Jamble {
 
       this.applyElementHand();
 
-      this.onPointerDown = this.onPointerDown.bind(this);
       this.onStartClick = this.onStartClick.bind(this);
       this.reset = this.reset.bind(this);
       this.loop = this.loop.bind(this);
@@ -129,6 +130,14 @@ namespace Jamble {
       // Equip from loadout or fallback
       const loadoutMoves = Jamble.Settings.skills.loadout.movement || ['move','jump','dash'];
       loadoutMoves.forEach(id => { try { this.skills.equip(id); } catch(_e){} });
+
+      this.input = new InputController({
+        player: this.player,
+        skills: this.skills,
+        ui: this.ui,
+        gameEl: this.gameEl,
+        getWaitGroundForStart: () => this.waitGroundForStart
+      });
     }
     public getSkillManager(): SkillManager { return this.skills; }
 
@@ -265,12 +274,12 @@ namespace Jamble {
     }
 
     private bind(): void {
-      document.addEventListener('pointerdown', this.onPointerDown);
+      this.input.bind();
       this.ui.getResetButton().addEventListener('click', this.reset);
       this.ui.getStartButton().addEventListener('click', this.onStartClick);
     }
     private unbind(): void {
-      document.removeEventListener('pointerdown', this.onPointerDown);
+      this.input.unbind();
       this.ui.getResetButton().removeEventListener('click', this.reset);
       this.ui.getStartButton().removeEventListener('click', this.onStartClick);
     }
@@ -281,30 +290,6 @@ namespace Jamble {
     }
     private hideIdleControls(): void {
       this.ui.hideIdleControls();
-    }
-
-    private onPointerDown(e: PointerEvent): void {
-      if (this.ui.isControlElement(e.target)) return;
-      if (this.player.frozenDeath) return;
-      const rect = this.gameEl.getBoundingClientRect();
-      const withinX = e.clientX >= rect.left && e.clientX <= rect.right;
-      const withinY = e.clientY >= rect.top && e.clientY <= rect.bottom + rect.height * 2;
-      if (withinX && withinY) {
-        // Note: starting countdown happens via Start button only
-        // Build intent based on grounded state; allow jumps during idle unless waiting for ground
-        const grounded = this.player.jumpHeight === 0 && !this.player.isJumping;
-        if (this.player.frozenStart && this.waitGroundForStart) return;
-        const intent = grounded ? InputIntent.Tap : InputIntent.AirTap;
-        const ctx: SkillContext = {
-          nowMs: performance.now(),
-          grounded,
-          velocityY: this.player.velocity,
-          isDashing: this.player.isDashing,
-          jumpHeight: this.player.jumpHeight,
-          dashAvailable: !this.player.isDashing
-        };
-        this.skills.handleInput(intent, ctx);
-      }
     }
 
     private updateLevel(): void {
