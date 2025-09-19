@@ -5,7 +5,7 @@
 /// <reference path="../level/elements/bird.ts" />
 /// <reference path="../level/elements/laps.ts" />
 /// <reference path="./hand-manager.ts" />
-/// <reference path="./run-session.ts" />
+/// <reference path="./run-state-manager.ts" />
 /// <reference path="./ui/game-ui.ts" />
 /// <reference path="./input-controller.ts" />
 /// <reference path="./countdown.ts" />
@@ -26,7 +26,7 @@ namespace Jamble {
     private levelElements: LevelElementManager;
     private elementRegistry: LevelElementRegistry;
     private hand: HandManager;
-    private run: RunSession;
+  private run: RunStateManager;
     private countdown: Countdown;
     private ui: GameUi;
     private input: InputController;
@@ -80,7 +80,7 @@ namespace Jamble {
       this.slotManager = new SlotLayoutManager(gameEl);
       const canonicalElements = Jamble.deriveElementsSettings(Jamble.CoreDeckConfig);
       this.hand = new HandManager(this.levelElements, canonicalElements);
-      this.run = new RunSession();
+  this.run = new RunStateManager();
       this.run.setInitialLaps(this.hand.getLapsValue());
       this.countdown = new Countdown(cdEl);
       this.ui = new GameUi({

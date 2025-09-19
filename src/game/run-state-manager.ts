@@ -10,7 +10,7 @@ namespace Jamble {
     runsCompleted: number;
   }
 
-  export class RunSession {
+  export class RunStateManager {
     private state: RunState = 'idle';
     private lapsTarget = 1;
     private lapsRemaining = 1;
