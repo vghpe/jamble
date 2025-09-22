@@ -302,11 +302,25 @@ namespace Jamble {
       // direction: 1 for left collision (push right), -1 for right collision (push left)  
       const maxAngle = (this.config.maxAngleDeg * Math.PI) / 180;
       this.thetaTarget = direction * maxAngle;
+      
+      // Trigger emoji reaction
+      this.triggerEmojiReaction('colliding');
     }
 
     public endCollision(): void {
       // Return to center when collision ends
       this.thetaTarget = 0;
+      
+      // Trigger emoji reaction
+      this.triggerEmojiReaction('post');
+    }
+
+    private triggerEmojiReaction(state: 'colliding' | 'post'): void {
+      // Access the game instance through the global reference
+      const gameInstance = (window as any).__game;
+      if (gameInstance && typeof gameInstance.triggerEmojiReaction === 'function') {
+        gameInstance.triggerEmojiReaction(state);
+      }
     }
 
     public updateConfig(newConfig: Partial<KnobConfig>): void {

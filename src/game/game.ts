@@ -10,6 +10,7 @@
 /// <reference path="./input-controller.ts" />
 /// <reference path="./countdown.ts" />
 /// <reference path="./animations/wiggle.ts" />
+/// <reference path="./animations/emoji-reaction.ts" />
 /// <reference path="../core/settings.ts" />
 /// <reference path="../level/registry/core-elements.ts" />
 /// <reference path="../skills/types.ts" />
@@ -31,6 +32,7 @@ namespace Jamble {
     private ui: GameUi;
     private input: InputController;
     private wiggle: Wiggle;
+    private emojiReaction: EmojiReaction;
     private lastTime: number | null = null;
     private rafId: number | null = null;
     private awaitingStartTap: boolean = false;
@@ -92,6 +94,7 @@ namespace Jamble {
         levelLabel: levelEl
       });
       this.wiggle = new Wiggle(this.player.el);
+      this.emojiReaction = new EmojiReaction(this.gameEl);
       this.handleWindowResize = () => { this.rebuildSlots(); };
 
       this.applyElementHand();
@@ -610,6 +613,22 @@ namespace Jamble {
         }
         if (needsAnotherPass) this.schedulePendingOriginPass();
       });
+    }
+
+    public triggerEmojiReaction(state: 'colliding' | 'post'): void {
+      if (state === 'colliding') {
+        this.emojiReaction.beginCollision();
+      } else if (state === 'post') {
+        this.emojiReaction.endCollision();
+      }
+    }
+
+    public setEmojiEnabled(enabled: boolean): void {
+      this.emojiReaction.setEnabled(enabled);
+    }
+
+    public isEmojiEnabled(): boolean {
+      return this.emojiReaction.isEnabled();
     }
   }
 }
