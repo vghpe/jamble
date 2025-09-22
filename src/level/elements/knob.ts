@@ -13,6 +13,7 @@ namespace Jamble {
     knobColor: string;       // Spring and knob color
     baseRadius: number;      // Base circle radius
     showPoints: boolean;     // Debug: show control points
+    visualOffsetY: number;   // Visual Y offset in pixels (positive = down)
   }
 
   export class KnobElement implements PositionableLevelElement {
@@ -54,10 +55,11 @@ namespace Jamble {
         zeta: 0.25,           // Much less damping (was 0.8)
         maxAngleDeg: 85,      // Much larger deflection (was 30)
         bowFactor: 0.35,      // More bow curve (was 0.2)
-        lineWidth: 8,         // Thicker but not as thick as experiment's 46
+        lineWidth: 12,        // Thicker line width
         knobColor: '#ff968f', // Same spring color
         baseRadius: 3,        // Same base size
-        showPoints: false     // No debug points
+        showPoints: false,    // No debug points
+        visualOffsetY: 4      // Visual offset down in pixels
       };
       
       this.config = { ...defaults, ...config };
@@ -67,7 +69,7 @@ namespace Jamble {
       this.canvas.className = 'jamble-knob-canvas';
       this.canvas.style.cssText = `
         position: absolute;
-        top: 0;
+        top: ${this.config.visualOffsetY}px;
         left: 0;
         width: 100%;
         height: 100%;
@@ -309,6 +311,11 @@ namespace Jamble {
 
     public updateConfig(newConfig: Partial<KnobConfig>): void {
       this.config = { ...this.config, ...newConfig };
+      
+      // Update canvas position if visualOffsetY changed
+      if ('visualOffsetY' in newConfig) {
+        this.canvas.style.top = `${this.config.visualOffsetY}px`;
+      }
       
       // Only call setupCanvas, not setupElementStyle to avoid repositioning
       this.setupCanvas();

@@ -167,6 +167,8 @@
               <input id="knob-color" type="color" style="width:120px">
               <label for="knob-baseRadius">Base Radius</label>
               <input id="knob-baseRadius" type="number" step="0.1" min="0.1" style="width:120px">
+              <label for="knob-visualOffsetY">Visual Offset Y</label>
+              <input id="knob-visualOffsetY" type="number" step="1" style="width:120px">
               <label for="knob-showPoints">Show Points</label>
               <input id="knob-showPoints" type="checkbox" style="width:auto">
             </div>
@@ -254,6 +256,7 @@
           knobLineWidth: document.getElementById('knob-lineWidth'),
           knobColor: document.getElementById('knob-color'),
           knobBaseRadius: document.getElementById('knob-baseRadius'),
+          knobVisualOffsetY: document.getElementById('knob-visualOffsetY'),
           knobShowPoints: document.getElementById('knob-showPoints'),
           knobImpulse: document.getElementById('knob-impulse'),
           knobCollideLeft: document.getElementById('knob-collide-left'),
@@ -575,10 +578,11 @@
             zeta: 0.25,           // Much less damping (was 0.8)
             maxAngleDeg: 85,      // Much larger deflection (was 30)
             bowFactor: 0.35,      // More bow curve (was 0.2)
-            lineWidth: 8,         // Thicker but not as thick as experiment's 46
+            lineWidth: 12,        // Thicker line width
             knobColor: '#ff968f', // Same spring color
             baseRadius: 3,        // Same base size
-            showPoints: false     // No debug points
+            showPoints: false,    // No debug points
+            visualOffsetY: 4      // Visual offset down in pixels
           };
           window.knobConfig = window.knobConfig || { ...knobDefaults };
           var kc = window.knobConfig;
@@ -591,6 +595,7 @@
           if (controls.knobLineWidth) controls.knobLineWidth.value = String(kc.lineWidth);
           if (controls.knobColor) controls.knobColor.value = kc.knobColor;
           if (controls.knobBaseRadius) controls.knobBaseRadius.value = String(kc.baseRadius);
+          if (controls.knobVisualOffsetY) controls.knobVisualOffsetY.value = String(kc.visualOffsetY);
           if (controls.knobShowPoints) controls.knobShowPoints.checked = !!kc.showPoints;
 
           var jumpCfg = settings.skills.configs.jump || {};
@@ -696,6 +701,7 @@
         bindKnobNumber(controls.knobBow, 'bowFactor');
         bindKnobNumber(controls.knobLineWidth, 'lineWidth');
         bindKnobNumber(controls.knobBaseRadius, 'baseRadius');
+        bindKnobNumber(controls.knobVisualOffsetY, 'visualOffsetY');
 
         if (controls.knobColor) {
           controls.knobColor.addEventListener('change', function() {
