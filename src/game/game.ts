@@ -145,6 +145,9 @@ namespace Jamble {
         gameEl: this.gameEl,
         getWaitGroundForStart: () => this.waitGroundForStart
       });
+
+      // Register global instance for element-triggered animations
+      (window as any).__game = this;
     }
     public getSkillManager(): SkillManager { return this.skills; }
 

@@ -177,6 +177,9 @@
               <button id="knob-collide-left" style="flex:1;padding:4px 8px;font-size:12px;border:1px solid #ffcc02;border-radius:4px;background:#fff3e0;color:#ef6c00;cursor:pointer;transition:background-color 0.2s">◀ Collide Left</button>
               <button id="knob-collide-right" style="flex:1;padding:4px 8px;font-size:12px;border:1px solid #ffcc02;border-radius:4px;background:#fff3e0;color:#ef6c00;cursor:pointer;transition:background-color 0.2s">Collide Right ▶</button>
             </div>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:13px;color:#ef6c00">
+              <input id="dbg-emojiEnabled" type="checkbox" style="width:auto"> Show emoji reactions
+            </label>
           </details>
           <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
             <summary style="font-weight:600;color:#2e7d32">Slot Debug</summary>
@@ -260,7 +263,8 @@
           knobShowPoints: document.getElementById('knob-showPoints'),
           knobImpulse: document.getElementById('knob-impulse'),
           knobCollideLeft: document.getElementById('knob-collide-left'),
-          knobCollideRight: document.getElementById('knob-collide-right')
+          knobCollideRight: document.getElementById('knob-collide-right'),
+          emojiEnabled: document.getElementById('dbg-emojiEnabled')
         };
 
         var elementHandEl = document.getElementById('element-hand');
@@ -714,6 +718,15 @@
           controls.knobShowPoints.addEventListener('change', function() {
             window.knobConfig.showPoints = controls.knobShowPoints.checked;
             updateAllKnobs();
+          });
+        }
+
+        // Emoji reactions control
+        if (controls.emojiEnabled) {
+          controls.emojiEnabled.addEventListener('change', function() {
+            if (window.__game && typeof window.__game.setEmojiEnabled === 'function') {
+              window.__game.setEmojiEnabled(controls.emojiEnabled.checked);
+            }
           });
         }
 
