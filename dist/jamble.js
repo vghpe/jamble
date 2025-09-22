@@ -1269,12 +1269,12 @@ var Jamble;
     Jamble.CoreDeckConfig = {
         pool: [
             { definitionId: 'laps.basic', quantity: 1, config: { value: 1 } },
-            { definitionId: 'tree.basic', quantity: 3 },
-            { definitionId: 'tree.ceiling', quantity: 3 },
-            { definitionId: 'bird.basic', quantity: 3 }
+            { definitionId: 'tree.basic', quantity: 5 },
+            { definitionId: 'tree.ceiling', quantity: 5 },
+            { definitionId: 'bird.basic', quantity: 5 }
         ]
     };
-    const HAND_SLOTS = 5;
+    const HAND_SLOTS = 8;
     function generateCardId(baseId, index) {
         return baseId + '-' + (index + 1);
     }
@@ -1531,6 +1531,9 @@ var Jamble;
                 };
             });
         }
+        getSlotCount() {
+            return this.handSlots.length;
+        }
         getCardMeta(cardId) {
             return this.instances.get(cardId) || this.deck.find(card => card.id === cardId);
         }
@@ -1662,7 +1665,7 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
-    class RunSession {
+    class RunStateManager {
         constructor() {
             this.state = 'idle';
             this.lapsTarget = 1;
@@ -1746,7 +1749,7 @@ var Jamble;
             return Math.max(1, Math.min(9, Math.floor(value)));
         }
     }
-    Jamble.RunSession = RunSession;
+    Jamble.RunStateManager = RunStateManager;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
@@ -1874,6 +1877,77 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
+    class MovementSystem {
+        constructor(gameEl) {
+            this.gameEl = gameEl;
+            this.impulses = [];
+        }
+        tick(deltaMs, deltaSec, player, direction, skills) {
+            if (player.frozenStart || player.frozenDeath) {
+                return { hit: false };
+            }
+            if (skills.isEquipped('move')) {
+                const base = Jamble.Settings.current.playerSpeed;
+                const dx = base * deltaSec * direction;
+                player.moveX(dx);
+            }
+            this.processImpulses(deltaMs, deltaSec, direction, player);
+            return this.checkBoundaries(player, direction);
+        }
+        addImpulse(speed, durationMs) {
+            this.impulses.push({ speed, remainingMs: Math.max(0, durationMs) });
+        }
+        clearImpulses() {
+            this.impulses.length = 0;
+        }
+        getActiveImpulses() {
+            return this.impulses;
+        }
+        processImpulses(deltaMs, deltaSec, direction, player) {
+            if (this.impulses.length === 0)
+                return;
+            let totalSpeed = 0;
+            for (const imp of this.impulses) {
+                totalSpeed += Math.max(0, imp.speed);
+            }
+            if (totalSpeed > 0) {
+                const dxImp = totalSpeed * deltaSec * direction;
+                player.moveX(dxImp);
+            }
+            for (const imp of this.impulses) {
+                imp.remainingMs -= deltaMs;
+            }
+            this.impulses = this.impulses.filter(i => i.remainingMs > 0);
+        }
+        checkBoundaries(player, direction) {
+            if (direction === 1 && this.reachedRight(player)) {
+                return {
+                    hit: true,
+                    newDirection: -1,
+                    alignmentFn: () => player.snapRight(this.gameEl.offsetWidth)
+                };
+            }
+            if (direction === -1 && this.reachedLeft(player)) {
+                return {
+                    hit: true,
+                    newDirection: 1,
+                    alignmentFn: () => player.setX(Jamble.Settings.current.playerStartOffset)
+                };
+            }
+            return { hit: false };
+        }
+        reachedRight(player) {
+            const rightLimit = this.gameEl.offsetWidth - Jamble.Settings.current.playerStartOffset;
+            return player.getRight(this.gameEl.offsetWidth) >= rightLimit;
+        }
+        reachedLeft(player) {
+            return player.x <= Jamble.Settings.current.playerStartOffset;
+        }
+    }
+    Jamble.MovementSystem = MovementSystem;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
     class Game {
         constructor(root) {
             var _a, _b, _c, _d, _f, _g, _h, _j;
@@ -1896,7 +1970,6 @@ var Jamble;
             this.pendingOriginFrame = null;
             this.landCbs = [];
             this.wasGrounded = true;
-            this.impulses = [];
             this.root = root;
             const gameEl = root.querySelector('.jamble-game');
             const playerEl = root.querySelector('.jamble-player');
@@ -1918,7 +1991,7 @@ var Jamble;
             this.slotManager = new Jamble.SlotLayoutManager(gameEl);
             const canonicalElements = Jamble.deriveElementsSettings(Jamble.CoreDeckConfig);
             this.hand = new Jamble.HandManager(this.levelElements, canonicalElements);
-            this.run = new Jamble.RunSession();
+            this.run = new Jamble.RunStateManager();
             this.run.setInitialLaps(this.hand.getLapsValue());
             this.countdown = new Jamble.Countdown(cdEl);
             this.ui = new Jamble.GameUi({
@@ -1935,6 +2008,7 @@ var Jamble;
             this.onStartClick = this.onStartClick.bind(this);
             this.reset = this.reset.bind(this);
             this.loop = this.loop.bind(this);
+            this.movementSystem = new Jamble.MovementSystem(this.gameEl);
             const caps = {
                 requestJump: (strength) => {
                     if (this.player.isJumping || this.player.frozenDeath)
@@ -1948,7 +2022,7 @@ var Jamble;
                     return this.player.startDash(durationMs);
                 },
                 addHorizontalImpulse: (speed, durationMs) => {
-                    this.impulses.push({ speed, remainingMs: Math.max(0, durationMs) });
+                    this.movementSystem.addImpulse(speed, durationMs);
                 },
                 setVerticalVelocity: (vy) => { this.player.velocity = vy; },
                 onLand: (cb) => { this.landCbs.push(cb); }
@@ -1992,7 +2066,7 @@ var Jamble;
             this.teardownSlotResizeMonitoring();
             this.wiggle.stop();
             this.countdown.hide();
-            this.impulses.length = 0;
+            this.movementSystem.clearImpulses();
         }
         reset() {
             this.wiggle.stop();
@@ -2009,7 +2083,7 @@ var Jamble;
                 window.clearTimeout(this.showResetTimer);
                 this.showResetTimer = null;
             }
-            this.impulses.length = 0;
+            this.movementSystem.clearImpulses();
             this.player.reset();
             this.ui.setResetVisible(false);
             this.player.setFrozenStart();
@@ -2064,6 +2138,9 @@ var Jamble;
         }
         getElementHand() {
             return this.hand.getHandView();
+        }
+        getHandSlotCount() {
+            return this.hand.getSlotCount();
         }
         getElementDeck() {
             return this.hand.getDeckEntries();
@@ -2144,11 +2221,6 @@ var Jamble;
             const tr = ob.rect();
             return pr.left < tr.right && pr.right > tr.left && pr.bottom > tr.top && pr.top < tr.bottom;
         }
-        reachedRight() {
-            const rightLimit = this.gameEl.offsetWidth - Jamble.Settings.current.playerStartOffset;
-            return this.player.getRight(this.gameEl.offsetWidth) >= rightLimit;
-        }
-        reachedLeft() { return this.player.x <= Jamble.Settings.current.playerStartOffset; }
         handleEdgeArrival(nextDirection, align) {
             align();
             this.level += 1;
@@ -2192,27 +2264,9 @@ var Jamble;
                 this.player.clearFrozenStart();
             }
             if (!this.player.frozenStart && !this.player.frozenDeath) {
-                if (this.skills.isEquipped('move')) {
-                    const base = Jamble.Settings.current.playerSpeed;
-                    const dx = base * deltaSec * this.direction;
-                    this.player.moveX(dx);
-                }
-                if (this.impulses.length > 0) {
-                    let sum = 0;
-                    for (const imp of this.impulses)
-                        sum += Math.max(0, imp.speed);
-                    const dxImp = sum * deltaSec * this.direction;
-                    if (dxImp !== 0)
-                        this.player.moveX(dxImp);
-                    for (const imp of this.impulses)
-                        imp.remainingMs -= deltaMs;
-                    this.impulses = this.impulses.filter(i => i.remainingMs > 0);
-                }
-                if (this.direction === 1 && this.reachedRight()) {
-                    this.handleEdgeArrival(-1, () => this.player.snapRight(this.gameEl.offsetWidth));
-                }
-                else if (this.direction === -1 && this.reachedLeft()) {
-                    this.handleEdgeArrival(1, () => this.player.setX(Jamble.Settings.current.playerStartOffset));
+                const boundary = this.movementSystem.tick(deltaMs, deltaSec, this.player, this.direction, this.skills);
+                if (boundary.hit && typeof boundary.newDirection === 'number' && boundary.alignmentFn) {
+                    this.handleEdgeArrival(boundary.newDirection, boundary.alignmentFn);
                 }
                 this.levelElements.tick(deltaMs);
             }
@@ -2418,7 +2472,7 @@ var Jamble;
             this.inCountdown = false;
             this.direction = nextDirection;
             this.showIdleControls();
-            this.impulses.length = 0;
+            this.movementSystem.clearImpulses();
             this.resetHandForIdle();
             this.updateRunDisplay();
         }
