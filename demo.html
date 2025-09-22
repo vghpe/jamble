@@ -146,6 +146,36 @@
             </label>
             <ul id="dbg-deck" style="list-style:none;padding:0;margin:6px 0 0 0;font-size:13px;color:#2e7d32"></ul>
           </details>
+          <details style="background:#fff3e0;padding:8px;border-radius:6px;border:1px solid #ffcc02">
+            <summary style="font-weight:600;color:#ef6c00">🔔 Knob Element</summary>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
+              <label for="knob-length">Spring Length</label>
+              <input id="knob-length" type="number" step="1" min="1" style="width:120px">
+              <label for="knob-segments">Segments</label>
+              <input id="knob-segments" type="number" step="1" min="1" style="width:120px">
+              <label for="knob-omega">Frequency (ω)</label>
+              <input id="knob-omega" type="number" step="0.1" min="0.1" style="width:120px">
+              <label for="knob-zeta">Damping (ζ)</label>
+              <input id="knob-zeta" type="number" step="0.01" min="0" style="width:120px">
+              <label for="knob-maxAngle">Max Angle (°)</label>
+              <input id="knob-maxAngle" type="number" step="1" min="1" style="width:120px">
+              <label for="knob-bow">Bow Factor</label>
+              <input id="knob-bow" type="number" step="0.01" min="0" style="width:120px">
+              <label for="knob-lineWidth">Line Width</label>
+              <input id="knob-lineWidth" type="number" step="0.1" min="0.1" style="width:120px">
+              <label for="knob-color">Color</label>
+              <input id="knob-color" type="color" style="width:120px">
+              <label for="knob-baseRadius">Base Radius</label>
+              <input id="knob-baseRadius" type="number" step="0.1" min="0.1" style="width:120px">
+              <label for="knob-showPoints">Show Points</label>
+              <input id="knob-showPoints" type="checkbox" style="width:auto">
+            </div>
+            <button id="knob-impulse" style="margin-top:8px;padding:4px 8px;font-size:12px;border:1px solid #ffcc02;border-radius:4px;background:#fff3e0;color:#ef6c00;cursor:pointer">Apply Impulse to All</button>
+            <div style="display:flex;gap:8px;margin-top:4px">
+              <button id="knob-collide-left" style="flex:1;padding:4px 8px;font-size:12px;border:1px solid #ffcc02;border-radius:4px;background:#fff3e0;color:#ef6c00;cursor:pointer;transition:background-color 0.2s">◀ Collide Left</button>
+              <button id="knob-collide-right" style="flex:1;padding:4px 8px;font-size:12px;border:1px solid #ffcc02;border-radius:4px;background:#fff3e0;color:#ef6c00;cursor:pointer;transition:background-color 0.2s">Collide Right ▶</button>
+            </div>
+          </details>
           <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
             <summary style="font-weight:600;color:#2e7d32">Slot Debug</summary>
             <label style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:13px;color:#2e7d32">
@@ -213,7 +243,21 @@
           treeMargin: document.getElementById('dbg-treeMargin'),
           treeGap: document.getElementById('dbg-treeGap'),
           shuffleEnabled: document.getElementById('dbg-shuffleEnabled'),
-          shuffleLimit: document.getElementById('dbg-shuffleLimit')
+          shuffleLimit: document.getElementById('dbg-shuffleLimit'),
+          // Knob controls
+          knobLength: document.getElementById('knob-length'),
+          knobSegments: document.getElementById('knob-segments'),
+          knobOmega: document.getElementById('knob-omega'),
+          knobZeta: document.getElementById('knob-zeta'),
+          knobMaxAngle: document.getElementById('knob-maxAngle'),
+          knobBow: document.getElementById('knob-bow'),
+          knobLineWidth: document.getElementById('knob-lineWidth'),
+          knobColor: document.getElementById('knob-color'),
+          knobBaseRadius: document.getElementById('knob-baseRadius'),
+          knobShowPoints: document.getElementById('knob-showPoints'),
+          knobImpulse: document.getElementById('knob-impulse'),
+          knobCollideLeft: document.getElementById('knob-collide-left'),
+          knobCollideRight: document.getElementById('knob-collide-right')
         };
 
         var elementHandEl = document.getElementById('element-hand');
@@ -523,6 +567,32 @@
           if (controls.shuffleEnabled) controls.shuffleEnabled.checked = !!s.shuffleEnabled;
           if (controls.shuffleLimit) controls.shuffleLimit.value = String(s.shuffleLimit);
 
+          // Knob settings - use updated values matching experiment physics
+          var knobDefaults = {
+            length: 10,           // Match experiment default
+            segments: 6,          // Same as experiment  
+            omega: 18.0,          // Much higher frequency (was 6.0)
+            zeta: 0.25,           // Much less damping (was 0.8)
+            maxAngleDeg: 85,      // Much larger deflection (was 30)
+            bowFactor: 0.35,      // More bow curve (was 0.2)
+            lineWidth: 8,         // Thicker but not as thick as experiment's 46
+            knobColor: '#ff968f', // Same spring color
+            baseRadius: 3,        // Same base size
+            showPoints: false     // No debug points
+          };
+          window.knobConfig = window.knobConfig || { ...knobDefaults };
+          var kc = window.knobConfig;
+          if (controls.knobLength) controls.knobLength.value = String(kc.length);
+          if (controls.knobSegments) controls.knobSegments.value = String(kc.segments);
+          if (controls.knobOmega) controls.knobOmega.value = String(kc.omega);
+          if (controls.knobZeta) controls.knobZeta.value = String(kc.zeta);
+          if (controls.knobMaxAngle) controls.knobMaxAngle.value = String(kc.maxAngleDeg);
+          if (controls.knobBow) controls.knobBow.value = String(kc.bowFactor);
+          if (controls.knobLineWidth) controls.knobLineWidth.value = String(kc.lineWidth);
+          if (controls.knobColor) controls.knobColor.value = kc.knobColor;
+          if (controls.knobBaseRadius) controls.knobBaseRadius.value = String(kc.baseRadius);
+          if (controls.knobShowPoints) controls.knobShowPoints.checked = !!kc.showPoints;
+
           var jumpCfg = settings.skills.configs.jump || {};
           if (controls.jumpStrength) controls.jumpStrength.value = String(jumpCfg.strength ?? s.jumpStrength);
           if (controls.jumpCooldown) controls.jumpCooldown.value = String(jumpCfg.cooldownMs ?? 0);
@@ -594,6 +664,134 @@
           settings.skills.configs.dash = { ...(settings.skills.configs.dash || {}), cooldownMs: value };
           applySkillsFromSettings();
         });
+
+        // Knob control handlers
+        function updateAllKnobs() {
+          // Find all active knob elements and update their config
+          var knobs = Array.from(document.querySelectorAll('.jamble-knob')).map(function(el) {
+            return el.__knob_instance;
+          }).filter(Boolean);
+          
+          knobs.forEach(function(knob) {
+            if (knob.updateConfig) {
+              knob.updateConfig(window.knobConfig);
+            }
+          });
+        }
+
+        function bindKnobNumber(input, prop) {
+          if (!input) return;
+          input.addEventListener('change', function() {
+            var value = toNumber(input.value, window.knobConfig[prop]);
+            window.knobConfig[prop] = value;
+            updateAllKnobs();
+          });
+        }
+
+        bindKnobNumber(controls.knobLength, 'length');
+        bindKnobNumber(controls.knobSegments, 'segments');
+        bindKnobNumber(controls.knobOmega, 'omega');
+        bindKnobNumber(controls.knobZeta, 'zeta');
+        bindKnobNumber(controls.knobMaxAngle, 'maxAngleDeg');
+        bindKnobNumber(controls.knobBow, 'bowFactor');
+        bindKnobNumber(controls.knobLineWidth, 'lineWidth');
+        bindKnobNumber(controls.knobBaseRadius, 'baseRadius');
+
+        if (controls.knobColor) {
+          controls.knobColor.addEventListener('change', function() {
+            window.knobConfig.knobColor = controls.knobColor.value;
+            updateAllKnobs();
+          });
+        }
+
+        if (controls.knobShowPoints) {
+          controls.knobShowPoints.addEventListener('change', function() {
+            window.knobConfig.showPoints = controls.knobShowPoints.checked;
+            updateAllKnobs();
+          });
+        }
+
+        if (controls.knobImpulse) {
+          controls.knobImpulse.addEventListener('click', function() {
+            // Apply impulse to all knobs
+            var knobs = Array.from(document.querySelectorAll('.jamble-knob')).map(function(el) {
+              return el.__knob_instance;
+            }).filter(Boolean);
+            
+            knobs.forEach(function(knob) {
+              if (knob.applyImpulse) {
+                knob.applyImpulse(3); // Match experiment impulse strength
+              }
+            });
+          });
+        }
+
+        // Collision buttons for knobs
+        function attachCollisionHandler(button, direction) {
+          if (!button) return;
+          
+          function startCollision() {
+            var knobs = Array.from(document.querySelectorAll('.jamble-knob')).map(function(el) {
+              return el.__knob_instance;
+            }).filter(Boolean);
+            
+            knobs.forEach(function(knob) {
+              if (knob.beginCollision) {
+                knob.beginCollision(direction);
+              }
+            });
+            button.classList.add('active');
+            // Add visual feedback for active state
+            button.style.backgroundColor = '#ff6600';
+            button.style.color = '#ffffff';
+          }
+          
+          function endCollision() {
+            var knobs = Array.from(document.querySelectorAll('.jamble-knob')).map(function(el) {
+              return el.__knob_instance;
+            }).filter(Boolean);
+            
+            knobs.forEach(function(knob) {
+              if (knob.endCollision) {
+                knob.endCollision();
+              }
+            });
+            button.classList.remove('active');
+            // Reset visual state
+            button.style.backgroundColor = '#fff3e0';
+            button.style.color = '#ef6c00';
+          }
+
+          button.addEventListener('pointerdown', function(event) {
+            startCollision();
+            if (button.setPointerCapture) {
+              button.setPointerCapture(event.pointerId);
+            }
+            event.preventDefault();
+          });
+
+          button.addEventListener('pointerup', function(event) {
+            endCollision();
+            if (button.releasePointerCapture) {
+              try {
+                button.releasePointerCapture(event.pointerId);
+              } catch (e) {
+                // ignore if not captured
+              }
+            }
+          });
+
+          button.addEventListener('pointercancel', function(event) {
+            endCollision();
+          });
+
+          button.addEventListener('pointerleave', function(event) {
+            endCollision();
+          });
+        }
+
+        attachCollisionHandler(controls.knobCollideLeft, 1);   // Push right (positive angle)
+        attachCollisionHandler(controls.knobCollideRight, -1); // Push left (negative angle)
 
         if (skillMenu){
           skillMenu.addEventListener('pointerdown', function(ev){ ev.stopPropagation(); });

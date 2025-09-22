@@ -43,16 +43,16 @@ namespace Jamble {
       
       // Default configuration (scaled down from experiment)
       const defaults: KnobConfig = {
-        length: 30,           // Much smaller than experiment's 300
-        segments: 8,          // Fewer segments for performance
-        omega: 8.0,           // Spring frequency
-        zeta: 0.7,            // Damping (slightly overdamped)
-        maxAngleDeg: 45,      // Maximum deflection
-        bowFactor: 0.3,       // Moderate curve bow
-        lineWidth: 2,         // Thin line for small size
-        knobColor: '#ff968f', // Matching experiment color
-        baseRadius: 2,        // Small base
-        showPoints: false     // No debug points by default
+        length: 10,           // Match experiment default
+        segments: 6,          // Same as experiment  
+        omega: 18.0,          // Much higher frequency (was 6.0)
+        zeta: 0.25,           // Much less damping (was 0.8)
+        maxAngleDeg: 85,      // Much larger deflection (was 30)
+        bowFactor: 0.35,      // More bow curve (was 0.2)
+        lineWidth: 8,         // Thicker but not as thick as experiment's 46
+        knobColor: '#ff968f', // Same spring color
+        baseRadius: 3,        // Same base size
+        showPoints: false     // No debug points
       };
       
       this.config = { ...defaults, ...config };
@@ -75,14 +75,19 @@ namespace Jamble {
       
       this.el.appendChild(this.canvas);
       this.setupElementStyle();
+      
+      // Store reference for debug menu access
+      (this.el as any).__knob_instance = this;
     }
 
     private setupElementStyle(): void {
       this.el.classList.add('jamble-knob');
+      // Fixed size - don't tie to spring length to avoid positioning issues
+      const elementSize = 60; // Fixed size regardless of spring physics length
       this.el.style.cssText = `
         position: absolute;
-        width: ${this.config.length * 1.5}px;
-        height: ${this.config.length * 1.5}px;
+        width: ${elementSize}px;
+        height: ${elementSize}px;
         pointer-events: none;
       `;
     }
@@ -108,21 +113,28 @@ namespace Jamble {
     }
 
     private setupCanvas(): void {
-      const size = this.config.length * 1.5;
+      const elementSize = 60; // Fixed size to match setupElementStyle
       const ratio = Math.min(window.devicePixelRatio || 1, 2);
       
-      this.canvas.width = size * ratio;
-      this.canvas.height = size * ratio;
+      this.canvas.width = elementSize * ratio;
+      this.canvas.height = elementSize * ratio;
       this.ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       
-      // Center the base position
-      this.basePos.x = size * 0.5;
-      this.basePos.y = size * 0.8; // Slightly towards bottom
+      // Position base at bottom center
+      this.basePos.x = elementSize * 0.5;
+      this.basePos.y = elementSize * 0.9; // Near bottom
     }
 
     activate(): void {
       this.el.style.display = this.defaultDisplay;
       this.lastTickTime = performance.now();
+      
+      // Give it a small impulse to start moving
+      this.applyImpulse(1);
+      
+      // Force an immediate render
+      this.updateSpringPoints();
+      this.render();
     }
 
     deactivate(): void {
@@ -181,8 +193,8 @@ namespace Jamble {
     }
 
     private render(): void {
-      const size = this.config.length * 1.5;
-      this.ctx.clearRect(0, 0, size, size);
+      const elementSize = 60; // Fixed size to match canvas size
+      this.ctx.clearRect(0, 0, elementSize, elementSize);
       
       // Draw spring curve
       this.ctx.save();
@@ -238,17 +250,42 @@ namespace Jamble {
       this.thetaTarget = Math.max(-maxAngle, Math.min(maxAngle, (angleDeg * Math.PI) / 180));
     }
 
+    public beginCollision(direction: number): void {
+      // direction: 1 for left collision (push right), -1 for right collision (push left)  
+      const maxAngle = (this.config.maxAngleDeg * Math.PI) / 180;
+      this.thetaTarget = direction * maxAngle;
+    }
+
+    public endCollision(): void {
+      // Return to center when collision ends
+      this.thetaTarget = 0;
+    }
+
     public updateConfig(newConfig: Partial<KnobConfig>): void {
       this.config = { ...this.config, ...newConfig };
-      this.setupElementStyle();
+      
+      // Only call setupCanvas, not setupElementStyle to avoid repositioning
       this.setupCanvas();
+      
+      // Force immediate re-render with new config
+      this.updateSpringPoints();
+      this.render();
     }
 
     public getCurrentAngleDeg(): number {
       return (this.theta * 180) / Math.PI;
     }
 
+    getOrigin(): ElementOrigin {
+      // Anchor the knob at its base position (where the spring attaches)
+      // This matches where the spring base is drawn (center-x, 90% down)
+      return { x: 0.5, y: 0.9, xUnit: 'fraction', yUnit: 'fraction' };
+    }
+
     dispose(): void {
+      // Clean up reference
+      delete (this.el as any).__knob_instance;
+      
       if (this.canvas.parentNode) {
         this.canvas.parentNode.removeChild(this.canvas);
       }

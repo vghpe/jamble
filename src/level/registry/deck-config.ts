@@ -37,7 +37,8 @@ namespace Jamble {
       { definitionId: 'laps.basic', quantity: 1, config: { value: 1 } },
       { definitionId: 'tree.basic', quantity: 5 },
       { definitionId: 'tree.ceiling', quantity: 5 },
-      { definitionId: 'bird.basic', quantity: 5 }
+      { definitionId: 'bird.basic', quantity: 5 },
+      { definitionId: 'knob.basic', quantity: 3 }
     ]
   };
 

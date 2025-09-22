@@ -1,6 +1,7 @@
 /// <reference path="../elements/types.ts" />
 /// <reference path="../elements/tree.ts" />
 /// <reference path="../elements/bird.ts" />
+/// <reference path="../elements/knob.ts" />
 
 namespace Jamble {
   type CoreElementDescriptor<TCfg = any> = LevelElementDescriptor<TCfg> & {
@@ -49,6 +50,17 @@ namespace Jamble {
       el = document.createElement('div');
       el.className = 'jamble-laps';
       el.setAttribute('data-element-id', id);
+      el.style.display = 'none';
+      root.appendChild(el);
+      return el;
+    },
+    'knob-interactive': (root, id) => {
+      let el = root.querySelector('.jamble-knob[data-element-id="' + id + '"]') as HTMLElement | null;
+      if (el) return el;
+      el = document.createElement('div');
+      el.className = 'jamble-knob';
+      el.setAttribute('data-element-id', id);
+      if (!el.style.left) el.style.left = '50%';
       el.style.display = 'none';
       root.appendChild(el);
       return el;
@@ -109,6 +121,20 @@ namespace Jamble {
       create: ({ id, host, root, config }) => {
         const el = host || hostFactories['bird-floating'](root, id);
         return new BirdElement(id, el, config as BirdElementConfig | undefined);
+      }
+    },
+    {
+      id: 'knob.basic',
+      name: 'Knob',
+      emoji: '🔔',
+      type: 'knob',
+      hostKind: 'knob-interactive',
+      defaults: {} as KnobConfig,
+      placement: { validSlotTypes: ['ground'], blockedNeighbors: { types: [], distance: 0 }, allowStartZone: true },
+      ensureHost: (root, id) => hostFactories['knob-interactive'](root, id),
+      create: ({ id, host, root, config }) => {
+        const el = host || hostFactories['knob-interactive'](root, id);
+        return new KnobElement(id, el, config as Partial<KnobConfig> | undefined);
       }
     }
   ];

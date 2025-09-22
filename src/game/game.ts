@@ -359,9 +359,10 @@ namespace Jamble {
         if (boundary.hit && typeof boundary.newDirection === 'number' && boundary.alignmentFn){
           this.handleEdgeArrival(boundary.newDirection, boundary.alignmentFn);
         }
-
-        this.levelElements.tick(deltaMs);
       }
+
+      // Level elements should animate even in idle state (like knobs responding to debug controls)
+      this.levelElements.tick(deltaMs);
 
       // Vertical physics and dash timer
       this.player.update(dt60);

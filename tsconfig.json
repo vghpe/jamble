@@ -23,6 +23,7 @@
     "src/level/elements/tree.ts",
     "src/level/elements/bird.ts",
     "src/level/elements/laps.ts",
+    "src/level/elements/knob.ts",
     "src/level/slots/slot-layout-manager.ts",
     "src/level/registry/core-elements.ts",
     "src/level/registry/deck-config.ts",
