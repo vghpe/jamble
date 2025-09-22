@@ -395,7 +395,7 @@ namespace Jamble {
 
       // Collision: wiggle + freeze; show reset button, no auto reset
       const hitElement = this.levelElements.someCollidable(el => this.collisionWith(el));
-      if (!this.player.frozenStart && !this.player.frozenDeath && hitElement){
+      if (!this.player.frozenStart && !this.player.frozenDeath && hitElement && hitElement.deadly){
         this.player.setFrozenDeath();
         if (this.deathWiggleTimer !== null) { window.clearTimeout(this.deathWiggleTimer); this.deathWiggleTimer = null; }
         if (this.showResetTimer !== null) { window.clearTimeout(this.showResetTimer); this.showResetTimer = null; }

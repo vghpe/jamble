@@ -7,6 +7,7 @@ namespace Jamble {
     readonly type: LevelElementType;
     readonly el: HTMLElement;
     readonly collidable: boolean = true;
+    readonly deadly: boolean = true;     // Trees are deadly obstacles
     private defaultDisplay: string = '';
     private initialized: boolean = false;
     private variant: 'ground' | 'ceiling';

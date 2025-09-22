@@ -118,17 +118,17 @@ namespace Jamble {
       return list;
     }
 
-    someCollidable(predicate: (element: LevelElement) => boolean): boolean {
+    someCollidable(predicate: (element: LevelElement) => boolean): LevelElement | null {
       for (const id of this.activeIds){
         const el = this.elements.get(id);
         if (!el || !el.collidable) continue;
         const hit = predicate(el);
         if (hit){
           if (el.onCollision) el.onCollision({ manager: this });
-          return true;
+          return el; // Return the element instead of true
         }
       }
-      return false;
+      return null; // Return null instead of false
     }
 
     tick(deltaMs: number): void {

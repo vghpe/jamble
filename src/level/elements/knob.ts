@@ -19,7 +19,8 @@ namespace Jamble {
     readonly id: string;
     readonly type: LevelElementType = 'knob';
     readonly el: HTMLElement;
-    readonly collidable: boolean = false; // Non-collidable as requested
+    readonly collidable: boolean = true; // Enable collision detection
+    readonly deadly: boolean = false;    // Harmless - collision doesn't cause death
     
     private config: KnobConfig;
     private canvas: HTMLCanvasElement;
@@ -32,6 +33,10 @@ namespace Jamble {
     private thetaDot: number = 0;        // Angular velocity  
     private thetaTarget: number = 0;     // Target angle
     private lastTickTime: number = 0;
+    
+    // Player collision state
+    private collisionState: 'none' | 'left' | 'right' = 'none';
+    private lastPlayerCenter: number = 0; // Track player center for side detection
     
     // Cached calculations
     private basePos: { x: number; y: number } = { x: 0, y: 0 };
@@ -151,9 +156,50 @@ namespace Jamble {
       // Clamp delta time to prevent instability
       dt = Math.max(0.001, Math.min(dt, 1/30));
       
+      // Check for collision exit
+      this.checkCollisionExit();
+      
       this.updatePhysics(dt);
       this.updateSpringPoints();
       this.render();
+    }
+
+    private checkCollisionExit(): void {
+      // Only check if we're currently in a collision state
+      if (this.collisionState === 'none') return;
+      
+      // Get player and knob positions
+      const playerEl = document.querySelector('.jamble-player') as HTMLElement;
+      if (!playerEl) {
+        // Player not found, end collision
+        this.endCollision();
+        return;
+      }
+
+      const playerRect = playerEl.getBoundingClientRect();
+      const knobRect = this.el.getBoundingClientRect();
+      
+      // Check if player is still colliding with knob
+      const stillColliding = 
+        playerRect.left < knobRect.right && 
+        playerRect.right > knobRect.left && 
+        playerRect.bottom > knobRect.top && 
+        playerRect.top < knobRect.bottom;
+      
+      if (!stillColliding) {
+        // Collision ended
+        this.handleCollisionExit();
+      }
+    }
+
+    private handleCollisionExit(): void {
+      if (this.collisionState === 'none') return;
+      
+      // Reset collision state
+      this.collisionState = 'none';
+      
+      // Trigger collision end behavior (same as button release)
+      this.endCollision();
     }
 
     private updatePhysics(dt: number): void {
@@ -280,6 +326,42 @@ namespace Jamble {
       // Anchor the knob at its base position (where the spring attaches)
       // This matches where the spring base is drawn (center-x, 90% down)
       return { x: 0.5, y: 0.9, xUnit: 'fraction', yUnit: 'fraction' };
+    }
+
+    onCollision(ctx: LevelElementCollisionContext): void {
+      // Get player position to determine collision side
+      const playerEl = document.querySelector('.jamble-player') as HTMLElement;
+      if (!playerEl) return;
+
+      const playerRect = playerEl.getBoundingClientRect();
+      const knobRect = this.el.getBoundingClientRect();
+      
+      // Calculate player center and knob center
+      const playerCenter = playerRect.left + playerRect.width / 2;
+      const knobCenter = knobRect.left + knobRect.width / 2;
+      
+      // Determine collision side based on player center relative to knob center
+      const side: 'left' | 'right' = playerCenter < knobCenter ? 'left' : 'right';
+      
+      // Handle collision state changes
+      if (this.collisionState === 'none') {
+        // Collision enter
+        this.collisionState = side;
+        this.lastPlayerCenter = playerCenter;
+        
+        // Trigger collision behavior (same as button press)
+        const direction = side === 'left' ? 1 : -1; // left collision pushes right (+1), right collision pushes left (-1)
+        this.beginCollision(direction);
+        
+      } else if (this.collisionState !== side) {
+        // Side changed during collision - unusual but handle gracefully
+        this.collisionState = side;
+        const direction = side === 'left' ? 1 : -1;
+        this.beginCollision(direction);
+      }
+      
+      // Update player center tracking
+      this.lastPlayerCenter = playerCenter;
     }
 
     dispose(): void {

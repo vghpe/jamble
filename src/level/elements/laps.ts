@@ -10,6 +10,7 @@ namespace Jamble {
     readonly type: LevelElementType = 'laps';
     readonly el: HTMLElement;
     readonly collidable: boolean = false;
+    readonly deadly: boolean = false;    // Laps counter is non-collidable and harmless
     private value: number;
 
     constructor(id: string, el: HTMLElement, config?: LapsElementConfig){

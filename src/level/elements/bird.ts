@@ -12,6 +12,7 @@ namespace Jamble {
     readonly type: LevelElementType = 'bird';
     readonly el: HTMLElement;
     readonly collidable: boolean = true;
+    readonly deadly: boolean = true;     // Birds are deadly obstacles
     private defaultDisplay: string = '';
     private initialized: boolean = false;
     private positionPx: number | null = null;

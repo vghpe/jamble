@@ -30,6 +30,7 @@ namespace Jamble {
     readonly type: LevelElementType;
     readonly el: HTMLElement;
     readonly collidable: boolean;
+    readonly deadly: boolean;  // Whether collision with this element causes player death
     rect(): DOMRect;
     init?(ctx: LevelElementLifecycleContext): void;
     activate?(ctx: LevelElementLifecycleContext): void;
