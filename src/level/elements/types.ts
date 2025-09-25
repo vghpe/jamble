@@ -32,6 +32,7 @@ namespace Jamble {
     readonly collidable: boolean;
     readonly deadly: boolean;  // Whether collision with this element causes player death
     rect(): DOMRect;
+    getCollisionShape?(): CollisionShape; // New: optional collision shape support
     init?(ctx: LevelElementLifecycleContext): void;
     activate?(ctx: LevelElementLifecycleContext): void;
     deactivate?(ctx: LevelElementLifecycleContext): void;

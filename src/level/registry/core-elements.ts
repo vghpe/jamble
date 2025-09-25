@@ -124,6 +124,20 @@ namespace Jamble {
       }
     },
     {
+      id: 'bird.fast',
+      name: 'Fast Bird',
+      emoji: '🐦‍⬛', // Different emoji for visual distinction
+      type: 'bird',
+      hostKind: 'bird-floating',
+      defaults: { speed: 60, direction: 1 } as BirdElementConfig,
+      placement: { validSlotTypes: ['air_low', 'air_mid'], blockedNeighbors: { types: ['bird'], distance: 1 }, allowStartZone: true },
+      ensureHost: (root, id) => hostFactories['bird-floating'](root, id),
+      create: ({ id, host, root, config }) => {
+        const el = host || hostFactories['bird-floating'](root, id);
+        return new BirdElement(id, el, config as BirdElementConfig | undefined);
+      }
+    },
+    {
       id: 'knob.basic',
       name: 'Knob',
       emoji: '🔔',

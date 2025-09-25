@@ -310,6 +310,14 @@ namespace Jamble {
       this.updateRunDisplay();
     }
     private collisionWith(ob: LevelElement): boolean {
+      // Use new collision system if both objects support it
+      if (this.player.getCollisionShape && ob.getCollisionShape) {
+        const playerShape = this.player.getCollisionShape();
+        const elementShape = ob.getCollisionShape();
+        return CollisionManager.checkCollision(playerShape, elementShape);
+      }
+      
+      // Fallback to old rect-based collision for compatibility
       const pr = this.player.el.getBoundingClientRect();
       const tr = ob.rect();
       return pr.left < tr.right && pr.right > tr.left && pr.bottom > tr.top && pr.top < tr.bottom;

@@ -23,6 +23,27 @@ namespace Jamble {
 
     rect(): DOMRect { return this.el.getBoundingClientRect(); }
 
+    getCollisionShape(): CollisionShape {
+      const visualRect = this.el.getBoundingClientRect();
+      // Make collision box smaller than visual for more forgiving gameplay
+      // CSS: trees are 10px wide × 30px tall, make collision 8px × 25px
+      const collisionWidth = 8;
+      const collisionHeight = 25;
+      
+      // Center the collision box within the visual bounds
+      const offsetX = (visualRect.width - collisionWidth) / 2;
+      const offsetY = (visualRect.height - collisionHeight) / 2;
+      
+      const collisionBounds = new DOMRect(
+        visualRect.x + offsetX,
+        visualRect.y + offsetY,
+        collisionWidth,
+        collisionHeight
+      );
+      
+      return CollisionManager.createRectShape(collisionBounds);
+    }
+
     setLeftPct(pct: number): void {
       const n = Math.max(0, Math.min(100, pct));
       this.el.style.left = n.toFixed(1) + '%';

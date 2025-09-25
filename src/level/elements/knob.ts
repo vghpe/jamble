@@ -103,6 +103,17 @@ namespace Jamble {
       return this.el.getBoundingClientRect(); 
     }
 
+    getCollisionShape(): CollisionShape {
+      const rect = this.el.getBoundingClientRect();
+      // Knobs use circular collision for more natural interaction
+      const centerX = rect.x + rect.width / 2;
+      const centerY = rect.y + rect.height / 2;
+      // Use 60% of the element size for more forgiving collision
+      const radius = Math.min(rect.width, rect.height) / 2 * 0.6;
+      
+      return CollisionManager.createCircleShape(centerX, centerY, radius);
+    }
+
     setLeftPct(pct: number): void {
       const n = Math.max(0, Math.min(100, pct));
       this.el.style.left = n.toFixed(1) + '%';

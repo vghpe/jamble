@@ -18,6 +18,7 @@
     "src/skills/jump.ts",
     "src/skills/dash.ts",
     "src/game/countdown.ts",
+    "src/game/collision-manager.ts",
     "src/level/elements/types.ts",
     "src/level/elements/level-element-manager.ts",
     "src/level/elements/tree.ts",

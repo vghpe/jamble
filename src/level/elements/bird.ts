@@ -31,6 +31,16 @@ namespace Jamble {
 
     rect(): DOMRect { return this.el.getBoundingClientRect(); }
 
+    getCollisionShape(): CollisionShape {
+      const rect = this.el.getBoundingClientRect();
+      const centerX = rect.x + rect.width / 2;
+      const centerY = rect.y + rect.height / 2;
+      // Use 70% of the smaller dimension for more forgiving collision
+      const radius = Math.min(rect.width, rect.height) / 2 * 0.7;
+      
+      return CollisionManager.createCircleShape(centerX, centerY, radius);
+    }
+
     private resolveHost(): HTMLElement | null {
       return (this.el.offsetParent as HTMLElement | null) || this.el.parentElement;
     }

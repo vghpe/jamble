@@ -41,6 +41,17 @@ namespace Jamble {
     clearFrozenStart(): void { this.frozenStart = false; this.setNormal(); }
     setFrozenDeath(): void { this.frozenDeath = true; this.el.className = 'jamble-player jamble-frozen-death'; }
 
+    // Collision shape for more forgiving gameplay
+    getCollisionShape(): CollisionShape {
+      const rect = this.el.getBoundingClientRect();
+      const centerX = rect.x + rect.width / 2;
+      const centerY = rect.y + rect.height / 2;
+      // Use 80% of the smaller dimension for more forgiving collision
+      const radius = Math.min(rect.width, rect.height) / 2 * 0.8;
+      
+      return CollisionManager.createCircleShape(centerX, centerY, radius);
+    }
+
     // Idle at current x
     idle(): void {
       this.isJumping = false;
