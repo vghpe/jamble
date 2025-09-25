@@ -5,207 +5,132 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Jamble Demo</title>
     <link rel="stylesheet" href="./dist/jamble.css" />
+    <style>
+      /* Layout styles for debug panel and game frames */
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: system-ui, sans-serif;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      
+      .demo-header {
+        text-align: center;
+        padding: 16px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        margin: 0;
+        font-size: 24px;
+        font-weight: 600;
+        color: #212529;
+      }
+      
+      .demo-container {
+        flex: 1;
+        display: flex;
+        min-height: 0; /* Important for flex child to shrink */
+      }
+      
+      .debug-frame {
+        width: 320px;
+        min-width: 320px;
+        border-right: 1px solid #dee2e6;
+        background: #f8f9fa;
+      }
+      
+      .debug-frame iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        display: block;
+      }
+      
+      .game-frame {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 20px;
+        background: #fff;
+        overflow: auto;
+      }
+      
+      /* Responsive behavior - stack on smaller screens */
+      @media (max-width: 968px) {
+        .demo-container {
+          flex-direction: column;
+        }
+        
+        .debug-frame {
+          width: 100%;
+          height: 300px;
+          border-right: none;
+          border-bottom: 1px solid #dee2e6;
+        }
+        
+        .game-frame {
+          padding: 16px;
+        }
+      }
+      
+      /* Further adjustments for very small screens */
+      @media (max-width: 640px) {
+        .demo-header {
+          font-size: 20px;
+          padding: 12px;
+        }
+        
+        .debug-frame {
+          height: 250px;
+        }
+        
+        .game-frame {
+          padding: 12px;
+        }
+      }
+    </style>
   </head>
   <body>
-    <h1 style="text-align:center;font-family:system-ui,sans-serif">Jamble Demo</h1>
-    <div id="jamble">
-      <div class="jamble-game">
-        <div class="jamble-player jamble-player-idle"></div>
-        <div class="jamble-level">0</div>
-        <div class="jamble-countdown">3</div>
-        <button class="jamble-reset" title="Reset">↻</button>
+    <h1 class="demo-header">Jamble Demo</h1>
+    <div class="demo-container">
+      <div class="debug-frame">
+        <iframe src="./debug-panel.html" title="Debug Panel"></iframe>
       </div>
-      <div class="jamble-controls">
-        <button class="jamble-start" title="Start">▶</button>
-        <button class="jamble-shuffle" title="Shuffle">⇄</button>
-      </div>
-      <div class="jamble-section">
-        <h3 class="jamble-section-heading">Skill Loadout</h3>
-        <div class="jamble-skill-slots" id="skill-slots">
-          <div class="jamble-skill-slot"></div>
-          <div class="jamble-skill-slot"></div>
-          <div class="jamble-skill-slot"></div>
-          <div class="jamble-skill-slot"></div>
-        </div>
-        <div class="jamble-skill-menu" id="skill-menu">
-          <div class="jamble-skill-btn" data-skill="move">M</div>
-          <div class="jamble-skill-btn" data-skill="jump">J</div>
-          <div class="jamble-skill-btn" data-skill="dash">D</div>
-          <div class="jamble-skill-btn" data-skill="empty"></div>
-        </div>
-      </div>
-      <div class="jamble-section">
-        <h3 class="jamble-section-heading">Level Element Hand</h3>
-        <div class="jamble-element-hand" id="element-hand"></div>
-      </div>
-    </div>
-
-    <!-- Debug Panel -->
-    <div id="jamble-debug" style="position:fixed;left:0;bottom:12px;width:100%;padding:0 12px;box-sizing:border-box;font-family:system-ui,sans-serif;z-index:1000">
-      <details open>
-        <summary>Debug</summary>
-        <p style="margin:8px 0 12px 0;font-size:12px;color:#555">Changes apply immediately and reset on reload.</p>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;align-items:start">
-          <details style="background:#f9fff9;padding:8px;border-radius:6px;border:1px solid #cdeccd">
-            <summary style="font-weight:600;color:#2e7d32">Skill: Move</summary>
-            <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
-              <label for="sk-moveSpeed">Speed</label>
-              <input id="sk-moveSpeed" type="number" step="1" min="10" max="600" style="width:120px">
-            </div>
-          </details>
-          <details style="background:#f9fff9;padding:8px;border-radius:6px;border:1px solid #cdeccd">
-            <summary style="font-weight:600;color:#2e7d32">Skill: Jump</summary>
-            <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
-              <label for="sk-jumpStrength">Strength</label>
-              <input id="sk-jumpStrength" type="number" step="0.1" min="1" max="30" style="width:120px">
-              <label for="sk-jumpCd">Cooldown (ms)</label>
-              <input id="sk-jumpCd" type="number" step="10" min="0" max="2000" style="width:120px">
-            </div>
-          </details>
-          <details style="background:#f9fff9;padding:8px;border-radius:6px;border:1px solid#cdeccd">
-            <summary style="font-weight:600;color:#2e7d32">Skill: Dash</summary>
-            <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
-              <label for="sk-dashSpeed">Speed</label>
-              <input id="sk-dashSpeed" type="number" step="5" min="0" max="1000" style="width:120px">
-              <label for="sk-dashDur">Duration (ms)</label>
-              <input id="sk-dashDur" type="number" step="10" min="0" max="2000" style="width:120px">
-              <label for="sk-dashCd">Cooldown (ms)</label>
-              <input id="sk-dashCd" type="number" step="10" min="0" max="2000" style="width:120px">
-            </div>
-          </details>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;align-items:start;margin-top:8px">
-          <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
-            <label for="dbg-mode">Ping-pong mode</label>
-            <input id="dbg-mode" type="checkbox" style="width:auto">
-            <label for="dbg-squash">Squash animation</label>
-            <input id="dbg-squash" type="checkbox" style="width:auto">
-            <label for="dbg-shuffleEnabled">Idle shuffle</label>
-            <input id="dbg-shuffleEnabled" type="checkbox" style="justify-self:start">
-            <label for="dbg-shuffleLimit">Shuffles per idle</label>
-            <input id="dbg-shuffleLimit" type="number" step="1" min="0" max="10" style="width:120px">
+      <div class="game-frame">
+        <div id="jamble">
+          <div class="jamble-game">
+            <div class="jamble-player jamble-player-idle"></div>
+            <div class="jamble-level">0</div>
+            <div class="jamble-countdown">3</div>
+            <button class="jamble-reset" title="Reset">↻</button>
           </div>
-          <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
-            <summary style="font-weight:600;color:#2e7d32">Animation</summary>
-            <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
-              <label for="dbg-stretch">Air stretch</label>
-              <input id="dbg-stretch" type="number" step="0.005" min="0" max="0.2" style="width:120px">
-              <label for="dbg-squashFactor">Air squash</label>
-              <input id="dbg-squashFactor" type="number" step="0.005" min="0" max="0.1" style="width:120px">
-              <label for="dbg-airMs">Air smoothing (ms)</label>
-              <input id="dbg-airMs" type="number" step="10" min="0" max="500" style="width:120px">
-              <label for="dbg-landMs">Land squash (ms)</label>
-              <input id="dbg-landMs" type="number" step="10" min="0" max="1000" style="width:120px">
-              <label for="dbg-landSY">Land scale Y</label>
-              <input id="dbg-landSY" type="number" step="0.05" min="0.2" max="2" style="width:120px">
-              <label for="dbg-landSX">Land scale X</label>
-              <input id="dbg-landSX" type="number" step="0.05" min="0.5" max="3" style="width:120px">
-              <label for="dbg-landEase">Land ease (ms)</label>
-              <input id="dbg-landEase" type="number" step="10" min="0" max="1000" style="width:120px">
+          <div class="jamble-controls">
+            <button class="jamble-start" title="Start">▶</button>
+            <button class="jamble-shuffle" title="Shuffle">⇄</button>
+          </div>
+          <div class="jamble-section">
+            <h3 class="jamble-section-heading">Skill Loadout</h3>
+            <div class="jamble-skill-slots" id="skill-slots">
+              <div class="jamble-skill-slot"></div>
+              <div class="jamble-skill-slot"></div>
+              <div class="jamble-skill-slot"></div>
+              <div class="jamble-skill-slot"></div>
             </div>
-          </details>
-          <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
-            <summary style="font-weight:600;color:#2e7d32">Gravity</summary>
-            <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
-              <label for="dbg-gUp">Up gravity</label>
-              <input id="dbg-gUp" type="number" step="0.01" min="0" max="5" style="width:120px">
-              <label for="dbg-gMid">Mid gravity</label>
-              <input id="dbg-gMid" type="number" step="0.01" min="0" max="5" style="width:120px">
-              <label for="dbg-gDown">Down gravity</label>
-              <input id="dbg-gDown" type="number" step="0.01" min="0" max="5" style="width:120px">
+            <div class="jamble-skill-menu" id="skill-menu">
+              <div class="jamble-skill-btn" data-skill="move">M</div>
+              <div class="jamble-skill-btn" data-skill="jump">J</div>
+              <div class="jamble-skill-btn" data-skill="dash">D</div>
+              <div class="jamble-skill-btn" data-skill="empty"></div>
             </div>
-          </details>
-          <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
-            <summary style="font-weight:600;color:#2e7d32">Timings</summary>
-            <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
-              <label for="dbg-startFreeze">Start freeze (ms)</label>
-              <input id="dbg-startFreeze" type="number" step="50" min="0" max="6000" style="width:120px">
-              <label for="dbg-deathFreeze">Death freeze (ms)</label>
-              <input id="dbg-deathFreeze" type="number" step="10" min="0" max="2000" style="width:120px">
-              <label for="dbg-resetDelay">Show reset delay (ms)</label>
-              <input id="dbg-resetDelay" type="number" step="10" min="0" max="2000" style="width:120px">
-            </div>
-          </details>
-          <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
-            <summary style="font-weight:600;color:#2e7d32">Geometry</summary>
-            <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
-              <label for="dbg-startOffset">Start offset (px)</label>
-              <input id="dbg-startOffset" type="number" step="1" min="0" max="200" style="width:120px">
-              <label for="dbg-wiggleDist">Death wiggle (px)</label>
-              <input id="dbg-wiggleDist" type="number" step="0.5" min="0" max="10" style="width:120px">
-              <label for="dbg-treeMargin">Tree edge margin (%)</label>
-              <input id="dbg-treeMargin" type="number" step="1" min="0" max="50" style="width:120px">
-              <label for="dbg-treeGap">Tree gap (%)</label>
-              <input id="dbg-treeGap" type="number" step="1" min="0" max="50" style="width:120px">
-            </div>
-          </details>
-          <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
-            <summary style="font-weight:600;color:#2e7d32">Level Elements</summary>
-            <label style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:13px;color:#2e7d32">
-              <input id="dbg-elementEdit" type="checkbox" style="width:auto"> Allow element removal
-            </label>
-            <ul id="dbg-deck" style="list-style:none;padding:0;margin:6px 0 0 0;font-size:13px;color:#2e7d32"></ul>
-          </details>
-          <details style="background:#fff3e0;padding:8px;border-radius:6px;border:1px solid #ffcc02">
-            <summary style="font-weight:600;color:#ef6c00">🔔 Knob Element</summary>
-            <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-top:6px">
-              <label for="knob-length">Spring Length</label>
-              <input id="knob-length" type="number" step="1" min="1" style="width:120px">
-              <label for="knob-segments">Segments</label>
-              <input id="knob-segments" type="number" step="1" min="1" style="width:120px">
-              <label for="knob-omega">Frequency (ω)</label>
-              <input id="knob-omega" type="number" step="0.1" min="0.1" style="width:120px">
-              <label for="knob-zeta">Damping (ζ)</label>
-              <input id="knob-zeta" type="number" step="0.01" min="0" style="width:120px">
-              <label for="knob-maxAngle">Max Angle (°)</label>
-              <input id="knob-maxAngle" type="number" step="1" min="1" style="width:120px">
-              <label for="knob-bow">Bow Factor</label>
-              <input id="knob-bow" type="number" step="0.01" min="0" style="width:120px">
-              <label for="knob-lineWidth">Line Width</label>
-              <input id="knob-lineWidth" type="number" step="0.1" min="0.1" style="width:120px">
-              <label for="knob-color">Color</label>
-              <input id="knob-color" type="color" style="width:120px">
-              <label for="knob-baseRadius">Base Radius</label>
-              <input id="knob-baseRadius" type="number" step="0.1" min="0.1" style="width:120px">
-              <label for="knob-visualOffsetY">Visual Offset Y</label>
-              <input id="knob-visualOffsetY" type="number" step="1" style="width:120px">
-              <label for="knob-showPoints">Show Points</label>
-              <input id="knob-showPoints" type="checkbox" style="width:auto">
-            </div>
-            <button id="knob-impulse" style="margin-top:8px;padding:4px 8px;font-size:12px;border:1px solid #ffcc02;border-radius:4px;background:#fff3e0;color:#ef6c00;cursor:pointer">Apply Impulse to All</button>
-            <div style="display:flex;gap:8px;margin-top:4px">
-              <button id="knob-collide-left" style="flex:1;padding:4px 8px;font-size:12px;border:1px solid #ffcc02;border-radius:4px;background:#fff3e0;color:#ef6c00;cursor:pointer;transition:background-color 0.2s">◀ Collide Left</button>
-              <button id="knob-collide-right" style="flex:1;padding:4px 8px;font-size:12px;border:1px solid #ffcc02;border-radius:4px;background:#fff3e0;color:#ef6c00;cursor:pointer;transition:background-color 0.2s">Collide Right ▶</button>
-            </div>
-            <label style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:13px;color:#ef6c00">
-              <input id="dbg-emojiEnabled" type="checkbox" style="width:auto"> Show emoji reactions
-            </label>
-          </details>
-          <details style="background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd">
-            <summary style="font-weight:600;color:#2e7d32">Slot Debug</summary>
-            <label style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:13px;color:#2e7d32">
-              <input id="dbg-slotOverlay" type="checkbox" style="width:auto"> Show slot overlay
-            </label>
-            <label style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:13px;color:#2e7d32">
-              <input id="dbg-slotNoiseEnabled" type="checkbox" style="width:auto"> Enable noise
-            </label>
-            <div style="display:grid;grid-template-columns:1fr auto;gap:6px;margin-top:6px;font-size:12px;color:#2e7d32">
-              <label for="dbg-slotNoiseX">Noise X scale</label>
-              <input id="dbg-slotNoiseX" type="number" step="0.1" min="0" max="5" style="width:80px">
-              <label for="dbg-slotNoiseY">Noise Y scale</label>
-              <input id="dbg-slotNoiseY" type="number" step="0.1" min="0" max="5" style="width:80px">
-            </div>
-            <label style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:13px;color:#2e7d32">
-              <input id="dbg-slotNormalEnabled" type="checkbox" style="width:auto"> Bias slots toward center
-            </label>
-            <div style="display:grid;grid-template-columns:1fr auto;gap:6px;margin-top:6px;font-size:12px;color:#2e7d32">
-              <label for="dbg-slotNormalIntensity">Center bias intensity</label>
-              <input id="dbg-slotNormalIntensity" type="number" step="0.05" min="0" max="1" style="width:80px">
-            </div>
-            <button id="dbg-printSlots" style="margin-top:8px;padding:4px 8px;font-size:12px;border:1px solid #81c784;border-radius:4px;background:#f9fff9;color:#2e7d32;cursor:pointer">Log active slots</button>
-          </details>
+          </div>
+          <div class="jamble-section">
+            <h3 class="jamble-section-heading">Level Element Hand</h3>
+            <div class="jamble-element-hand" id="element-hand"></div>
+          </div>
         </div>
-      </details>
+      </div>
     </div>
 
     <script src="./dist/jamble.js"></script>
@@ -221,212 +146,12 @@
         var settings = window.Jamble.Settings;
         var skillManager = game.getSkillManager();
 
-        var controls = {
-          moveSpeed: document.getElementById('sk-moveSpeed'),
-          jumpStrength: document.getElementById('sk-jumpStrength'),
-          jumpCooldown: document.getElementById('sk-jumpCd'),
-          dashSpeed: document.getElementById('sk-dashSpeed'),
-          dashDuration: document.getElementById('sk-dashDur'),
-          dashCooldown: document.getElementById('sk-dashCd'),
-          mode: document.getElementById('dbg-mode'),
-          squashToggle: document.getElementById('dbg-squash'),
-          stretch: document.getElementById('dbg-stretch'),
-          squashFactor: document.getElementById('dbg-squashFactor'),
-          airMs: document.getElementById('dbg-airMs'),
-          landMs: document.getElementById('dbg-landMs'),
-          landSY: document.getElementById('dbg-landSY'),
-          landSX: document.getElementById('dbg-landSX'),
-          landEase: document.getElementById('dbg-landEase'),
-          gUp: document.getElementById('dbg-gUp'),
-          gMid: document.getElementById('dbg-gMid'),
-          gDown: document.getElementById('dbg-gDown'),
-          startFreeze: document.getElementById('dbg-startFreeze'),
-          deathFreeze: document.getElementById('dbg-deathFreeze'),
-          resetDelay: document.getElementById('dbg-resetDelay'),
-          startOffset: document.getElementById('dbg-startOffset'),
-          wiggleDist: document.getElementById('dbg-wiggleDist'),
-          treeMargin: document.getElementById('dbg-treeMargin'),
-          treeGap: document.getElementById('dbg-treeGap'),
-          shuffleEnabled: document.getElementById('dbg-shuffleEnabled'),
-          shuffleLimit: document.getElementById('dbg-shuffleLimit'),
-          // Knob controls
-          knobLength: document.getElementById('knob-length'),
-          knobSegments: document.getElementById('knob-segments'),
-          knobOmega: document.getElementById('knob-omega'),
-          knobZeta: document.getElementById('knob-zeta'),
-          knobMaxAngle: document.getElementById('knob-maxAngle'),
-          knobBow: document.getElementById('knob-bow'),
-          knobLineWidth: document.getElementById('knob-lineWidth'),
-          knobColor: document.getElementById('knob-color'),
-          knobBaseRadius: document.getElementById('knob-baseRadius'),
-          knobVisualOffsetY: document.getElementById('knob-visualOffsetY'),
-          knobShowPoints: document.getElementById('knob-showPoints'),
-          knobImpulse: document.getElementById('knob-impulse'),
-          knobCollideLeft: document.getElementById('knob-collide-left'),
-          knobCollideRight: document.getElementById('knob-collide-right'),
-          emojiEnabled: document.getElementById('dbg-emojiEnabled')
-        };
-
+        // Game UI elements
         var elementHandEl = document.getElementById('element-hand');
-        var deckEl = document.getElementById('dbg-deck');
         var skillSlots = document.getElementById('skill-slots');
         var skillMenu = document.getElementById('skill-menu');
         var slotEls = skillSlots ? Array.from(skillSlots.querySelectorAll('.jamble-skill-slot')) : [];
         var LETTER = { move: 'M', jump: 'J', dash: 'D' };
-        var slotOverlayToggle = document.getElementById('dbg-slotOverlay');
-        var slotPrintBtn = document.getElementById('dbg-printSlots');
-        var slotNoiseToggle = document.getElementById('dbg-slotNoiseEnabled');
-        var slotNoiseX = document.getElementById('dbg-slotNoiseX');
-        var slotNoiseY = document.getElementById('dbg-slotNoiseY');
-        var slotNormalToggle = document.getElementById('dbg-slotNormalEnabled');
-        var slotNormalIntensity = document.getElementById('dbg-slotNormalIntensity');
-        var elementEditToggle = document.getElementById('dbg-elementEdit');
-        var slotOverlayEl = null;
-
-        function intensityToSpread(value){
-          var v = Math.min(1, Math.max(0, value));
-          var min = 0.18;
-          var max = 0.36;
-          return min + v * (max - min);
-        }
-
-        function spreadToIntensity(value){
-          var min = 0.18;
-          var max = 0.36;
-          if (!Number.isFinite(value)) return 0.6;
-          var clamped = Math.min(max, Math.max(min, value));
-          return (clamped - min) / (max - min);
-        }
-
-        function ensureSlotOverlay(){
-          if (!slotOverlayToggle || !slotOverlayToggle.checked){
-            if (slotOverlayEl && slotOverlayEl.parentNode) slotOverlayEl.parentNode.removeChild(slotOverlayEl);
-            slotOverlayEl = null;
-            return;
-          }
-          if (!slotOverlayEl){
-            slotOverlayEl = document.createElement('div');
-            slotOverlayEl.id = 'jamble-slot-overlay';
-            slotOverlayEl.style.position = 'absolute';
-            slotOverlayEl.style.left = '0';
-            slotOverlayEl.style.top = '0';
-            slotOverlayEl.style.width = '100%';
-            slotOverlayEl.style.height = '100%';
-            slotOverlayEl.style.pointerEvents = 'none';
-            slotOverlayEl.style.zIndex = '10';
-            slotOverlayEl.style.display = 'flex';
-            slotOverlayEl.style.flexDirection = 'column';
-            slotOverlayEl.style.justifyContent = 'flex-start';
-            slotOverlayEl.style.alignItems = 'stretch';
-            slotOverlayEl.style.fontSize = '10px';
-            slotOverlayEl.style.fontFamily = 'system-ui, sans-serif';
-            slotOverlayEl.style.color = 'rgba(46,125,50,0.8)';
-            slotOverlayEl.style.textShadow = '0 0 2px rgba(255,255,255,0.9)';
-            slotOverlayEl.style.mixBlendMode = 'normal';
-            slotOverlayEl.style.border = 'none';
-            slotOverlayEl.style.boxSizing = 'border-box';
-            slotOverlayEl.style.padding = '4px';
-            slotOverlayEl.style.gap = '2px';
-            slotOverlayEl.style.pointerEvents = 'none';
-            var gameWrap = root.querySelector('.jamble-game');
-            if (gameWrap) gameWrap.appendChild(slotOverlayEl);
-          }
-          renderSlotOverlay();
-        }
-
-        function renderSlotOverlay(){
-          if (!slotOverlayEl){
-            ensureSlotOverlay();
-            return;
-          }
-          var slots = game.getSlotManager().getAllSlots();
-          var fragment = document.createDocumentFragment();
-          slotOverlayEl.innerHTML = '';
-          slots.forEach(function(slot){
-            var marker = document.createElement('div');
-            marker.style.position = 'absolute';
-            marker.style.left = slot.xPercent + '%';
-            marker.style.bottom = slot.yPercent + '%';
-            marker.style.transform = 'translate(-50%, 50%)';
-            marker.style.width = '6px';
-            marker.style.height = '6px';
-            marker.style.borderRadius = '50%';
-            marker.style.background = slot.invalid && slot.type === 'ground'
-              ? '#9e2a2a'
-              : (slot.occupied ? '#4caf50' : '#8d8d8d');
-            marker.title = slot.type + ' • column ' + slot.column + (slot.occupied ? ' (occupied)' : '');
-            fragment.appendChild(marker);
-          });
-          slotOverlayEl.appendChild(fragment);
-        }
-
-        function applySlotNoiseSettings(){
-          var mgr = game.getSlotManager();
-          if (slotNoiseToggle && slotNoiseX && slotNoiseY){
-            var noiseOpts = {
-              enabled: !!slotNoiseToggle.checked,
-              horizontal: Math.max(0, parseFloat(slotNoiseX.value) || 0),
-              vertical: Math.max(0, parseFloat(slotNoiseY.value) || 0)
-            };
-            mgr.setNoiseOptions(noiseOpts);
-          }
-          if (slotNormalToggle && slotNormalIntensity){
-            var rawIntensity = parseFloat(slotNormalIntensity.value);
-            var distOpts = mgr.getNormalDistributionOptions();
-            var fallbackIntensity = typeof distOpts.intensity === 'number'
-              ? distOpts.intensity
-              : spreadToIntensity(distOpts.spread);
-            if (!Number.isFinite(rawIntensity)) rawIntensity = fallbackIntensity;
-            var intensityValue = Math.min(1, Math.max(0, rawIntensity));
-            mgr.setNormalDistributionOptions({
-              enabled: !!slotNormalToggle.checked,
-              intensity: intensityValue,
-              spread: intensityToSpread(intensityValue)
-            });
-          }
-          if (game.recomputeSlots) game.recomputeSlots();
-          renderSlotOverlay();
-        }
-
-        (function initSlotDebugControls(){
-          var opts = game.getSlotManager().getNoiseOptions();
-          if (slotNoiseToggle) slotNoiseToggle.checked = opts.enabled;
-          if (slotNoiseX) slotNoiseX.value = Number(opts.horizontal || 0).toString();
-          if (slotNoiseY) slotNoiseY.value = Number(opts.vertical || 0).toString();
-          var distOpts = game.getSlotManager().getNormalDistributionOptions();
-          if (slotNormalToggle) slotNormalToggle.checked = distOpts.enabled;
-          var intensity = typeof distOpts.intensity === 'number'
-            ? distOpts.intensity
-            : spreadToIntensity(distOpts.spread);
-          if (slotNormalIntensity) slotNormalIntensity.value = intensity.toFixed(2);
-          if (elementEditToggle) elementEditToggle.checked = typeof game.canEditElements === 'function' ? game.canEditElements() : false;
-        })();
-
-        if (slotOverlayToggle) slotOverlayToggle.addEventListener('change', ensureSlotOverlay);
-        if (slotPrintBtn){
-          slotPrintBtn.addEventListener('click', function(){
-            if (!window.__game) return;
-            console.log('Active slots:', window.__game.debugActiveSlots());
-          });
-        }
-        if (slotNoiseToggle) slotNoiseToggle.addEventListener('change', applySlotNoiseSettings);
-        if (slotNoiseX) slotNoiseX.addEventListener('change', applySlotNoiseSettings);
-        if (slotNoiseY) slotNoiseY.addEventListener('change', applySlotNoiseSettings);
-        if (slotNormalToggle) slotNormalToggle.addEventListener('change', applySlotNoiseSettings);
-        if (slotNormalIntensity) slotNormalIntensity.addEventListener('change', applySlotNoiseSettings);
-        if (elementEditToggle){
-          elementEditToggle.addEventListener('change', function(){
-            if (typeof game.setElementEditMode === 'function') game.setElementEditMode(!!this.checked);
-            renderElementHand();
-          });
-        }
-
-        window.addEventListener('resize', renderSlotOverlay);
-
-        function toNumber(value, fallback){
-          var n = Number(value);
-          return Number.isFinite(n) ? n : fallback;
-        }
 
         function getLoadout(){
           var load = settings.skills.loadout || { movement: [] };
@@ -466,23 +191,11 @@
           });
         }
 
-        function renderDeckList(){
-          if (!deckEl || !game.getElementDeck) return;
-          var hand = game.getElementHand ? game.getElementHand() : [];
-          var deck = game.getElementDeck();
-          deckEl.innerHTML = '';
-          deck.forEach(function(card){
-            var li = document.createElement('li');
-            var inHand = hand.some(function(h){ return h.id === card.id && h.available; });
-            li.textContent = card.name + (inHand ? ' (in hand)' : '');
-            deckEl.appendChild(li);
-          });
-        }
-
         function iconForCard(card){
           if (!card) return '…';
           if (card.emoji) return card.emoji;
           if (card.definitionId === 'bird.basic') return '🐦';
+          if (card.definitionId === 'bird.fast') return '🐦';
           if (card.definitionId === 'tree.ceiling') return '🌲';
           if (card.definitionId === 'tree.basic') return '🌳';
           return '❔';
@@ -549,269 +262,7 @@
           }
         }
 
-        function syncFromSettings(){
-          var s = settings.current;
-          if (controls.moveSpeed) controls.moveSpeed.value = String(s.playerSpeed);
-          if (controls.mode) controls.mode.checked = (s.mode === 'pingpong');
-          if (controls.squashToggle) controls.squashToggle.checked = !!s.squashEnabled;
-          if (controls.stretch) controls.stretch.value = String(s.stretchFactor);
-          if (controls.squashFactor) controls.squashFactor.value = String(s.squashFactor);
-          if (controls.airMs) controls.airMs.value = String(s.airTransformSmoothingMs);
-          if (controls.landMs) controls.landMs.value = String(s.landSquashDurationMs);
-          if (controls.landSY) controls.landSY.value = String(s.landScaleY);
-          if (controls.landSX) controls.landSX.value = String(s.landScaleX);
-          if (controls.landEase) controls.landEase.value = String(s.landEaseMs);
-          if (controls.gUp) controls.gUp.value = String(s.gravityUp);
-          if (controls.gMid) controls.gMid.value = String(s.gravityMid);
-          if (controls.gDown) controls.gDown.value = String(s.gravityDown);
-          if (controls.startFreeze) controls.startFreeze.value = String(s.startFreezeTime);
-          if (controls.deathFreeze) controls.deathFreeze.value = String(s.deathFreezeTime);
-          if (controls.resetDelay) controls.resetDelay.value = String(s.showResetDelayMs);
-          if (controls.startOffset) controls.startOffset.value = String(s.playerStartOffset);
-          if (controls.wiggleDist) controls.wiggleDist.value = String(s.deathWiggleDistance);
-          if (controls.treeMargin) controls.treeMargin.value = String(s.treeEdgeMarginPct);
-          if (controls.treeGap) controls.treeGap.value = String(s.treeMinGapPct);
-          if (controls.shuffleEnabled) controls.shuffleEnabled.checked = !!s.shuffleEnabled;
-          if (controls.shuffleLimit) controls.shuffleLimit.value = String(s.shuffleLimit);
-
-          // Knob settings - use updated values matching experiment physics
-          var knobDefaults = {
-            length: 10,           // Match experiment default
-            segments: 6,          // Same as experiment  
-            omega: 18.0,          // Much higher frequency (was 6.0)
-            zeta: 0.25,           // Much less damping (was 0.8)
-            maxAngleDeg: 85,      // Much larger deflection (was 30)
-            bowFactor: 0.35,      // More bow curve (was 0.2)
-            lineWidth: 12,        // Thicker line width
-            knobColor: '#ff968f', // Same spring color
-            baseRadius: 3,        // Same base size
-            showPoints: false,    // No debug points
-            visualOffsetY: 4      // Visual offset down in pixels
-          };
-          window.knobConfig = window.knobConfig || { ...knobDefaults };
-          var kc = window.knobConfig;
-          if (controls.knobLength) controls.knobLength.value = String(kc.length);
-          if (controls.knobSegments) controls.knobSegments.value = String(kc.segments);
-          if (controls.knobOmega) controls.knobOmega.value = String(kc.omega);
-          if (controls.knobZeta) controls.knobZeta.value = String(kc.zeta);
-          if (controls.knobMaxAngle) controls.knobMaxAngle.value = String(kc.maxAngleDeg);
-          if (controls.knobBow) controls.knobBow.value = String(kc.bowFactor);
-          if (controls.knobLineWidth) controls.knobLineWidth.value = String(kc.lineWidth);
-          if (controls.knobColor) controls.knobColor.value = kc.knobColor;
-          if (controls.knobBaseRadius) controls.knobBaseRadius.value = String(kc.baseRadius);
-          if (controls.knobVisualOffsetY) controls.knobVisualOffsetY.value = String(kc.visualOffsetY);
-          if (controls.knobShowPoints) controls.knobShowPoints.checked = !!kc.showPoints;
-
-          var jumpCfg = settings.skills.configs.jump || {};
-          if (controls.jumpStrength) controls.jumpStrength.value = String(jumpCfg.strength ?? s.jumpStrength);
-          if (controls.jumpCooldown) controls.jumpCooldown.value = String(jumpCfg.cooldownMs ?? 0);
-          var dashCfg = settings.skills.configs.dash || {};
-          if (controls.dashSpeed) controls.dashSpeed.value = String(dashCfg.speed ?? s.dashSpeed);
-          if (controls.dashDuration) controls.dashDuration.value = String(dashCfg.durationMs ?? s.dashDurationMs);
-          if (controls.dashCooldown) controls.dashCooldown.value = String(dashCfg.cooldownMs ?? 150);
-
-          renderSkillSlotsAndMenu();
-          renderElementHand();
-          renderDeckList();
-        }
-
-        function bindNumber(input, getter, setter){
-          if (!input) return;
-          input.addEventListener('change', function(){
-            var current = getter();
-            var value = toNumber(input.value, current);
-            setter(value);
-          });
-        }
-
-        if (controls.moveSpeed) bindNumber(controls.moveSpeed, function(){ return settings.current.playerSpeed; }, function(value){ settings.update({ playerSpeed: value }); });
-        if (controls.mode) controls.mode.addEventListener('change', function(){ settings.update({ mode: controls.mode.checked ? 'pingpong' : 'idle' }); });
-        if (controls.squashToggle) controls.squashToggle.addEventListener('change', function(){ settings.update({ squashEnabled: controls.squashToggle.checked }); });
-
-        bindNumber(controls.stretch, function(){ return settings.current.stretchFactor; }, function(value){ settings.update({ stretchFactor: value }); });
-        bindNumber(controls.squashFactor, function(){ return settings.current.squashFactor; }, function(value){ settings.update({ squashFactor: value }); });
-        bindNumber(controls.airMs, function(){ return settings.current.airTransformSmoothingMs; }, function(value){ settings.update({ airTransformSmoothingMs: value }); });
-        bindNumber(controls.landMs, function(){ return settings.current.landSquashDurationMs; }, function(value){ settings.update({ landSquashDurationMs: value }); });
-        bindNumber(controls.landSY, function(){ return settings.current.landScaleY; }, function(value){ settings.update({ landScaleY: value }); });
-        bindNumber(controls.landSX, function(){ return settings.current.landScaleX; }, function(value){ settings.update({ landScaleX: value }); });
-        bindNumber(controls.landEase, function(){ return settings.current.landEaseMs; }, function(value){ settings.update({ landEaseMs: value }); });
-
-        bindNumber(controls.gUp, function(){ return settings.current.gravityUp; }, function(value){ settings.update({ gravityUp: value }); });
-        bindNumber(controls.gMid, function(){ return settings.current.gravityMid; }, function(value){ settings.update({ gravityMid: value }); });
-        bindNumber(controls.gDown, function(){ return settings.current.gravityDown; }, function(value){ settings.update({ gravityDown: value }); });
-
-        bindNumber(controls.startFreeze, function(){ return settings.current.startFreezeTime; }, function(value){ settings.update({ startFreezeTime: value }); });
-        bindNumber(controls.deathFreeze, function(){ return settings.current.deathFreezeTime; }, function(value){ settings.update({ deathFreezeTime: value }); });
-        bindNumber(controls.resetDelay, function(){ return settings.current.showResetDelayMs; }, function(value){ settings.update({ showResetDelayMs: value }); });
-        bindNumber(controls.startOffset, function(){ return settings.current.playerStartOffset; }, function(value){ settings.update({ playerStartOffset: value }); });
-        bindNumber(controls.wiggleDist, function(){ return settings.current.deathWiggleDistance; }, function(value){ settings.update({ deathWiggleDistance: value }); });
-        bindNumber(controls.treeMargin, function(){ return settings.current.treeEdgeMarginPct; }, function(value){ settings.update({ treeEdgeMarginPct: value }); });
-        bindNumber(controls.treeGap, function(){ return settings.current.treeMinGapPct; }, function(value){ settings.update({ treeMinGapPct: value }); });
-        if (controls.shuffleEnabled) controls.shuffleEnabled.addEventListener('change', function(){ settings.update({ shuffleEnabled: controls.shuffleEnabled.checked }); });
-        bindNumber(controls.shuffleLimit, function(){ return settings.current.shuffleLimit; }, function(value){ settings.update({ shuffleLimit: value }); });
-
-        bindNumber(controls.jumpStrength, function(){ return settings.skills.configs.jump?.strength ?? settings.current.jumpStrength; }, function(value){
-          settings.update({ jumpStrength: value });
-          settings.skills.configs.jump = { ...(settings.skills.configs.jump || {}), strength: value };
-          applySkillsFromSettings();
-        });
-        bindNumber(controls.jumpCooldown, function(){ return settings.skills.configs.jump?.cooldownMs ?? 0; }, function(value){
-          settings.skills.configs.jump = { ...(settings.skills.configs.jump || {}), cooldownMs: value };
-          applySkillsFromSettings();
-        });
-        bindNumber(controls.dashSpeed, function(){ return settings.skills.configs.dash?.speed ?? settings.current.dashSpeed; }, function(value){
-          settings.update({ dashSpeed: value });
-          settings.skills.configs.dash = { ...(settings.skills.configs.dash || {}), speed: value };
-          applySkillsFromSettings();
-        });
-        bindNumber(controls.dashDuration, function(){ return settings.skills.configs.dash?.durationMs ?? settings.current.dashDurationMs; }, function(value){
-          settings.update({ dashDurationMs: value });
-          settings.skills.configs.dash = { ...(settings.skills.configs.dash || {}), durationMs: value };
-          applySkillsFromSettings();
-        });
-        bindNumber(controls.dashCooldown, function(){ return settings.skills.configs.dash?.cooldownMs ?? 150; }, function(value){
-          settings.skills.configs.dash = { ...(settings.skills.configs.dash || {}), cooldownMs: value };
-          applySkillsFromSettings();
-        });
-
-        // Knob control handlers
-        function updateAllKnobs() {
-          // Find all active knob elements and update their config
-          var knobs = Array.from(document.querySelectorAll('.jamble-knob')).map(function(el) {
-            return el.__knob_instance;
-          }).filter(Boolean);
-          
-          knobs.forEach(function(knob) {
-            if (knob.updateConfig) {
-              knob.updateConfig(window.knobConfig);
-            }
-          });
-        }
-
-        function bindKnobNumber(input, prop) {
-          if (!input) return;
-          input.addEventListener('change', function() {
-            var value = toNumber(input.value, window.knobConfig[prop]);
-            window.knobConfig[prop] = value;
-            updateAllKnobs();
-          });
-        }
-
-        bindKnobNumber(controls.knobLength, 'length');
-        bindKnobNumber(controls.knobSegments, 'segments');
-        bindKnobNumber(controls.knobOmega, 'omega');
-        bindKnobNumber(controls.knobZeta, 'zeta');
-        bindKnobNumber(controls.knobMaxAngle, 'maxAngleDeg');
-        bindKnobNumber(controls.knobBow, 'bowFactor');
-        bindKnobNumber(controls.knobLineWidth, 'lineWidth');
-        bindKnobNumber(controls.knobBaseRadius, 'baseRadius');
-        bindKnobNumber(controls.knobVisualOffsetY, 'visualOffsetY');
-
-        if (controls.knobColor) {
-          controls.knobColor.addEventListener('change', function() {
-            window.knobConfig.knobColor = controls.knobColor.value;
-            updateAllKnobs();
-          });
-        }
-
-        if (controls.knobShowPoints) {
-          controls.knobShowPoints.addEventListener('change', function() {
-            window.knobConfig.showPoints = controls.knobShowPoints.checked;
-            updateAllKnobs();
-          });
-        }
-
-        // Emoji reactions control
-        if (controls.emojiEnabled) {
-          controls.emojiEnabled.addEventListener('change', function() {
-            if (window.__game && typeof window.__game.setEmojiEnabled === 'function') {
-              window.__game.setEmojiEnabled(controls.emojiEnabled.checked);
-            }
-          });
-        }
-
-        if (controls.knobImpulse) {
-          controls.knobImpulse.addEventListener('click', function() {
-            // Apply impulse to all knobs
-            var knobs = Array.from(document.querySelectorAll('.jamble-knob')).map(function(el) {
-              return el.__knob_instance;
-            }).filter(Boolean);
-            
-            knobs.forEach(function(knob) {
-              if (knob.applyImpulse) {
-                knob.applyImpulse(3); // Match experiment impulse strength
-              }
-            });
-          });
-        }
-
-        // Collision buttons for knobs
-        function attachCollisionHandler(button, direction) {
-          if (!button) return;
-          
-          function startCollision() {
-            var knobs = Array.from(document.querySelectorAll('.jamble-knob')).map(function(el) {
-              return el.__knob_instance;
-            }).filter(Boolean);
-            
-            knobs.forEach(function(knob) {
-              if (knob.beginCollision) {
-                knob.beginCollision(direction);
-              }
-            });
-            button.classList.add('active');
-            // Add visual feedback for active state
-            button.style.backgroundColor = '#ff6600';
-            button.style.color = '#ffffff';
-          }
-          
-          function endCollision() {
-            var knobs = Array.from(document.querySelectorAll('.jamble-knob')).map(function(el) {
-              return el.__knob_instance;
-            }).filter(Boolean);
-            
-            knobs.forEach(function(knob) {
-              if (knob.endCollision) {
-                knob.endCollision();
-              }
-            });
-            button.classList.remove('active');
-            // Reset visual state
-            button.style.backgroundColor = '#fff3e0';
-            button.style.color = '#ef6c00';
-          }
-
-          button.addEventListener('pointerdown', function(event) {
-            startCollision();
-            if (button.setPointerCapture) {
-              button.setPointerCapture(event.pointerId);
-            }
-            event.preventDefault();
-          });
-
-          button.addEventListener('pointerup', function(event) {
-            endCollision();
-            if (button.releasePointerCapture) {
-              try {
-                button.releasePointerCapture(event.pointerId);
-              } catch (e) {
-                // ignore if not captured
-              }
-            }
-          });
-
-          button.addEventListener('pointercancel', function(event) {
-            endCollision();
-          });
-
-          button.addEventListener('pointerleave', function(event) {
-            endCollision();
-          });
-        }
-
-        attachCollisionHandler(controls.knobCollideLeft, 1);   // Push right (positive angle)
-        attachCollisionHandler(controls.knobCollideRight, -1); // Push left (negative angle)
-
+        // Skill menu interactions
         if (skillMenu){
           skillMenu.addEventListener('pointerdown', function(ev){ ev.stopPropagation(); });
           skillMenu.addEventListener('click', function(ev){ ev.stopPropagation(); });
@@ -832,21 +283,23 @@
           });
         }
 
+        // Element hand interactions
         if (elementHandEl){
           elementHandEl.addEventListener('pointerdown', function(ev){ ev.stopPropagation(); });
           elementHandEl.addEventListener('click', function(ev){ ev.stopPropagation(); });
         }
 
+        // Listen for element hand changes
         window.addEventListener('jamble:elementHandChanged', function(ev){
           renderElementHand(ev && ev.detail);
-          renderDeckList();
         });
 
-        syncFromSettings();
+        // Initialize everything
         applySkillsFromSettings();
         renderSkillSlotsAndMenu();
-        renderDeckList();
         renderElementHand();
+
+        console.log('🎮 Game UI initialized with skill and element management');
       })();
     </script>
   </body>

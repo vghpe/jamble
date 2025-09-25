@@ -327,6 +327,68 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
+    class CollisionManager {
+        static checkCollision(a, b) {
+            if (a.type === 'rect' && b.type === 'rect') {
+                return CollisionManager.rectRect(a.bounds, b.bounds);
+            }
+            if (a.type === 'circle' && b.type === 'circle') {
+                return CollisionManager.circleCircle(a, b);
+            }
+            if (a.type === 'rect' && b.type === 'circle') {
+                return CollisionManager.rectCircle(a.bounds, b);
+            }
+            if (a.type === 'circle' && b.type === 'rect') {
+                return CollisionManager.rectCircle(b.bounds, a);
+            }
+            return false;
+        }
+        static rectRect(a, b) {
+            return a.left < b.right && a.right > b.left &&
+                a.bottom > b.top && a.top < b.bottom;
+        }
+        static circleCircle(a, b) {
+            if (!a.radius || !b.radius)
+                return false;
+            const centerAx = a.bounds.x + a.bounds.width / 2;
+            const centerAy = a.bounds.y + a.bounds.height / 2;
+            const centerBx = b.bounds.x + b.bounds.width / 2;
+            const centerBy = b.bounds.y + b.bounds.height / 2;
+            const dx = centerAx - centerBx;
+            const dy = centerAy - centerBy;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            return distance < (a.radius + b.radius);
+        }
+        static rectCircle(rect, circle) {
+            if (!circle.radius)
+                return false;
+            const circleCenterX = circle.bounds.x + circle.bounds.width / 2;
+            const circleCenterY = circle.bounds.y + circle.bounds.height / 2;
+            const closestX = Math.max(rect.left, Math.min(circleCenterX, rect.right));
+            const closestY = Math.max(rect.top, Math.min(circleCenterY, rect.bottom));
+            const dx = circleCenterX - closestX;
+            const dy = circleCenterY - closestY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            return distance < circle.radius;
+        }
+        static createRectShape(bounds) {
+            return {
+                type: 'rect',
+                bounds: bounds
+            };
+        }
+        static createCircleShape(centerX, centerY, radius) {
+            return {
+                type: 'circle',
+                bounds: new DOMRect(centerX - radius, centerY - radius, radius * 2, radius * 2),
+                radius: radius
+            };
+        }
+    }
+    Jamble.CollisionManager = CollisionManager;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
     function isPositionableLevelElement(el) {
         return typeof el.setLeftPct === 'function';
     }
@@ -495,10 +557,10 @@ var Jamble;
                 if (hit) {
                     if (el.onCollision)
                         el.onCollision({ manager: this });
-                    return true;
+                    return el;
                 }
             }
-            return false;
+            return null;
         }
         tick(deltaMs) {
             if (deltaMs <= 0)
@@ -905,6 +967,7 @@ var Jamble;
     class TreeElement {
         constructor(id, el, variant = 'ground') {
             this.collidable = true;
+            this.deadly = true;
             this.defaultDisplay = '';
             this.initialized = false;
             this.id = id;
@@ -916,6 +979,15 @@ var Jamble;
                 this.el.classList.add('jamble-tree-ceiling');
         }
         rect() { return this.el.getBoundingClientRect(); }
+        getCollisionShape() {
+            const visualRect = this.el.getBoundingClientRect();
+            const collisionWidth = 8;
+            const collisionHeight = 25;
+            const offsetX = (visualRect.width - collisionWidth) / 2;
+            const offsetY = (visualRect.height - collisionHeight) / 2;
+            const collisionBounds = new DOMRect(visualRect.x + offsetX, visualRect.y + offsetY, collisionWidth, collisionHeight);
+            return Jamble.CollisionManager.createRectShape(collisionBounds);
+        }
         setLeftPct(pct) {
             const n = Math.max(0, Math.min(100, pct));
             this.el.style.left = n.toFixed(1) + '%';
@@ -965,6 +1037,7 @@ var Jamble;
             var _a;
             this.type = 'bird';
             this.collidable = true;
+            this.deadly = true;
             this.defaultDisplay = '';
             this.initialized = false;
             this.positionPx = null;
@@ -977,6 +1050,13 @@ var Jamble;
             this.direction = (cfg === null || cfg === void 0 ? void 0 : cfg.direction) === -1 ? -1 : 1;
         }
         rect() { return this.el.getBoundingClientRect(); }
+        getCollisionShape() {
+            const rect = this.el.getBoundingClientRect();
+            const centerX = rect.x + rect.width / 2;
+            const centerY = rect.y + rect.height / 2;
+            const radius = Math.min(rect.width, rect.height) / 2 * 0.7;
+            return Jamble.CollisionManager.createCircleShape(centerX, centerY, radius);
+        }
         resolveHost() {
             return this.el.offsetParent || this.el.parentElement;
         }
@@ -1110,6 +1190,7 @@ var Jamble;
         constructor(id, el, config) {
             this.type = 'laps';
             this.collidable = false;
+            this.deadly = false;
             this.id = id;
             this.el = el;
             this.el.classList.add('jamble-laps');
@@ -1137,6 +1218,274 @@ var Jamble;
             return 1;
         return Math.max(1, Math.min(9, Math.floor(value)));
     }
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class KnobElement {
+        constructor(id, el, config) {
+            this.type = 'knob';
+            this.collidable = true;
+            this.deadly = false;
+            this.initialized = false;
+            this.defaultDisplay = '';
+            this.theta = 0;
+            this.thetaDot = 0;
+            this.thetaTarget = 0;
+            this.lastTickTime = 0;
+            this.collisionState = 'none';
+            this.lastPlayerCenter = 0;
+            this.basePos = { x: 0, y: 0 };
+            this.springPoints = [];
+            this.id = id;
+            this.el = el;
+            const defaults = {
+                length: 10,
+                segments: 6,
+                omega: 18.0,
+                zeta: 0.25,
+                maxAngleDeg: 85,
+                bowFactor: 0.35,
+                lineWidth: 12,
+                knobColor: '#ff968f',
+                baseRadius: 3,
+                showPoints: false,
+                visualOffsetY: 4
+            };
+            this.config = { ...defaults, ...config };
+            this.canvas = document.createElement('canvas');
+            this.canvas.className = 'jamble-knob-canvas';
+            this.canvas.style.cssText = `
+        position: absolute;
+        top: ${this.config.visualOffsetY}px;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      `;
+            const ctx = this.canvas.getContext('2d');
+            if (!ctx)
+                throw new Error('Could not get 2D context for knob canvas');
+            this.ctx = ctx;
+            this.el.appendChild(this.canvas);
+            this.setupElementStyle();
+            this.el.__knob_instance = this;
+        }
+        setupElementStyle() {
+            this.el.classList.add('jamble-knob');
+            const elementSize = 60;
+            this.el.style.cssText = `
+        position: absolute;
+        width: ${elementSize}px;
+        height: ${elementSize}px;
+        pointer-events: none;
+      `;
+        }
+        rect() {
+            return this.el.getBoundingClientRect();
+        }
+        getCollisionShape() {
+            const rect = this.el.getBoundingClientRect();
+            const centerX = rect.x + rect.width / 2;
+            const centerY = rect.y + rect.height / 2;
+            const radius = Math.min(rect.width, rect.height) / 2 * 0.6;
+            return Jamble.CollisionManager.createCircleShape(centerX, centerY, radius);
+        }
+        setLeftPct(pct) {
+            const n = Math.max(0, Math.min(100, pct));
+            this.el.style.left = n.toFixed(1) + '%';
+        }
+        init() {
+            if (this.initialized)
+                return;
+            this.initialized = true;
+            const current = this.el.style.display;
+            this.defaultDisplay = current && current !== 'none' ? current : 'block';
+            this.el.style.display = 'none';
+            this.setupCanvas();
+        }
+        setupCanvas() {
+            const elementSize = 60;
+            const ratio = Math.min(window.devicePixelRatio || 1, 2);
+            this.canvas.width = elementSize * ratio;
+            this.canvas.height = elementSize * ratio;
+            this.ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+            this.basePos.x = elementSize * 0.5;
+            this.basePos.y = elementSize * 0.9;
+        }
+        activate() {
+            this.el.style.display = this.defaultDisplay;
+            this.lastTickTime = performance.now();
+            this.applyImpulse(1);
+            this.updateSpringPoints();
+            this.render();
+        }
+        deactivate() {
+            this.el.style.display = 'none';
+        }
+        tick(ctx) {
+            const now = performance.now();
+            if (this.lastTickTime === 0)
+                this.lastTickTime = now;
+            let dt = (now - this.lastTickTime) / 1000;
+            this.lastTickTime = now;
+            dt = Math.max(0.001, Math.min(dt, 1 / 30));
+            this.checkCollisionExit();
+            this.updatePhysics(dt);
+            this.updateSpringPoints();
+            this.render();
+        }
+        checkCollisionExit() {
+            if (this.collisionState === 'none')
+                return;
+            const playerEl = document.querySelector('.jamble-player');
+            if (!playerEl) {
+                this.endCollision();
+                return;
+            }
+            const playerRect = playerEl.getBoundingClientRect();
+            const knobRect = this.el.getBoundingClientRect();
+            const stillColliding = playerRect.left < knobRect.right &&
+                playerRect.right > knobRect.left &&
+                playerRect.bottom > knobRect.top &&
+                playerRect.top < knobRect.bottom;
+            if (!stillColliding) {
+                this.handleCollisionExit();
+            }
+        }
+        handleCollisionExit() {
+            if (this.collisionState === 'none')
+                return;
+            this.collisionState = 'none';
+            this.endCollision();
+        }
+        updatePhysics(dt) {
+            const acceleration = -2 * this.config.zeta * this.config.omega * this.thetaDot -
+                this.config.omega * this.config.omega * (this.theta - this.thetaTarget);
+            this.thetaDot += acceleration * dt;
+            this.theta += this.thetaDot * dt;
+        }
+        updateSpringPoints() {
+            const tipX = this.basePos.x + this.config.length * Math.sin(this.theta);
+            const tipY = this.basePos.y - this.config.length * Math.cos(this.theta);
+            const normal = { x: Math.cos(this.theta), y: Math.sin(this.theta) };
+            const midX = (this.basePos.x + tipX) / 2;
+            const midY = (this.basePos.y + tipY) / 2;
+            const bowOffset = -this.config.bowFactor * this.config.length * this.theta;
+            const controlX = midX + normal.x * bowOffset;
+            const controlY = midY + normal.y * bowOffset;
+            const segments = Math.max(2, Math.round(this.config.segments));
+            this.springPoints = [];
+            for (let i = 0; i <= segments; i++) {
+                const t = i / segments;
+                const omt = 1 - t;
+                const x = omt * omt * this.basePos.x + 2 * omt * t * controlX + t * t * tipX;
+                const y = omt * omt * this.basePos.y + 2 * omt * t * controlY + t * t * tipY;
+                this.springPoints.push({ x, y });
+            }
+        }
+        render() {
+            const elementSize = 60;
+            this.ctx.clearRect(0, 0, elementSize, elementSize);
+            this.ctx.save();
+            this.ctx.lineCap = 'round';
+            this.ctx.lineJoin = 'round';
+            this.ctx.strokeStyle = this.config.knobColor;
+            this.ctx.lineWidth = this.config.lineWidth;
+            this.ctx.beginPath();
+            if (this.springPoints.length > 0) {
+                this.ctx.moveTo(this.springPoints[0].x, this.springPoints[0].y);
+                for (let i = 1; i < this.springPoints.length - 1; i++) {
+                    const midX = 0.5 * (this.springPoints[i].x + this.springPoints[i + 1].x);
+                    const midY = 0.5 * (this.springPoints[i].y + this.springPoints[i + 1].y);
+                    this.ctx.quadraticCurveTo(this.springPoints[i].x, this.springPoints[i].y, midX, midY);
+                }
+                if (this.springPoints.length > 1) {
+                    const last = this.springPoints[this.springPoints.length - 1];
+                    this.ctx.lineTo(last.x, last.y);
+                }
+            }
+            this.ctx.stroke();
+            this.ctx.fillStyle = this.config.knobColor;
+            this.ctx.beginPath();
+            this.ctx.arc(this.basePos.x, this.basePos.y, this.config.baseRadius, 0, Math.PI * 2);
+            this.ctx.fill();
+            if (this.config.showPoints) {
+                this.ctx.fillStyle = '#e7e7ea';
+                for (const point of this.springPoints) {
+                    this.ctx.beginPath();
+                    this.ctx.arc(point.x, point.y, 1, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+            }
+            this.ctx.restore();
+        }
+        applyImpulse(force) {
+            this.thetaDot += force;
+        }
+        setTarget(angleDeg) {
+            const maxAngle = (this.config.maxAngleDeg * Math.PI) / 180;
+            this.thetaTarget = Math.max(-maxAngle, Math.min(maxAngle, (angleDeg * Math.PI) / 180));
+        }
+        beginCollision(direction) {
+            const maxAngle = (this.config.maxAngleDeg * Math.PI) / 180;
+            this.thetaTarget = direction * maxAngle;
+            this.triggerEmojiReaction('colliding');
+        }
+        endCollision() {
+            this.thetaTarget = 0;
+            this.triggerEmojiReaction('post');
+        }
+        triggerEmojiReaction(state) {
+            const gameInstance = window.__game;
+            if (gameInstance && typeof gameInstance.triggerEmojiReaction === 'function') {
+                gameInstance.triggerEmojiReaction(state);
+            }
+        }
+        updateConfig(newConfig) {
+            this.config = { ...this.config, ...newConfig };
+            if ('visualOffsetY' in newConfig) {
+                this.canvas.style.top = `${this.config.visualOffsetY}px`;
+            }
+            this.setupCanvas();
+            this.updateSpringPoints();
+            this.render();
+        }
+        getCurrentAngleDeg() {
+            return (this.theta * 180) / Math.PI;
+        }
+        getOrigin() {
+            return { x: 0.5, y: 0.9, xUnit: 'fraction', yUnit: 'fraction' };
+        }
+        onCollision(ctx) {
+            const playerEl = document.querySelector('.jamble-player');
+            if (!playerEl)
+                return;
+            const playerRect = playerEl.getBoundingClientRect();
+            const knobRect = this.el.getBoundingClientRect();
+            const playerCenter = playerRect.left + playerRect.width / 2;
+            const knobCenter = knobRect.left + knobRect.width / 2;
+            const side = playerCenter < knobCenter ? 'left' : 'right';
+            if (this.collisionState === 'none') {
+                this.collisionState = side;
+                this.lastPlayerCenter = playerCenter;
+                const direction = side === 'left' ? 1 : -1;
+                this.beginCollision(direction);
+            }
+            else if (this.collisionState !== side) {
+                this.collisionState = side;
+                const direction = side === 'left' ? 1 : -1;
+                this.beginCollision(direction);
+            }
+            this.lastPlayerCenter = playerCenter;
+        }
+        dispose() {
+            delete this.el.__knob_instance;
+            if (this.canvas.parentNode) {
+                this.canvas.parentNode.removeChild(this.canvas);
+            }
+        }
+    }
+    Jamble.KnobElement = KnobElement;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
@@ -1189,6 +1538,19 @@ var Jamble;
             el = document.createElement('div');
             el.className = 'jamble-laps';
             el.setAttribute('data-element-id', id);
+            el.style.display = 'none';
+            root.appendChild(el);
+            return el;
+        },
+        'knob-interactive': (root, id) => {
+            let el = root.querySelector('.jamble-knob[data-element-id="' + id + '"]');
+            if (el)
+                return el;
+            el = document.createElement('div');
+            el.className = 'jamble-knob';
+            el.setAttribute('data-element-id', id);
+            if (!el.style.left)
+                el.style.left = '50%';
             el.style.display = 'none';
             root.appendChild(el);
             return el;
@@ -1249,6 +1611,34 @@ var Jamble;
                 const el = host || hostFactories['bird-floating'](root, id);
                 return new Jamble.BirdElement(id, el, config);
             }
+        },
+        {
+            id: 'bird.fast',
+            name: 'Fast Bird',
+            emoji: '🐦‍⬛',
+            type: 'bird',
+            hostKind: 'bird-floating',
+            defaults: { speed: 60, direction: 1 },
+            placement: { validSlotTypes: ['air_low', 'air_mid'], blockedNeighbors: { types: ['bird'], distance: 1 }, allowStartZone: true },
+            ensureHost: (root, id) => hostFactories['bird-floating'](root, id),
+            create: ({ id, host, root, config }) => {
+                const el = host || hostFactories['bird-floating'](root, id);
+                return new Jamble.BirdElement(id, el, config);
+            }
+        },
+        {
+            id: 'knob.basic',
+            name: 'Knob',
+            emoji: '🔔',
+            type: 'knob',
+            hostKind: 'knob-interactive',
+            defaults: {},
+            placement: { validSlotTypes: ['ground'], blockedNeighbors: { types: [], distance: 0 }, allowStartZone: true },
+            ensureHost: (root, id) => hostFactories['knob-interactive'](root, id),
+            create: ({ id, host, root, config }) => {
+                const el = host || hostFactories['knob-interactive'](root, id);
+                return new Jamble.KnobElement(id, el, config);
+            }
         }
     ];
     function registerCoreElements(registry) {
@@ -1271,7 +1661,9 @@ var Jamble;
             { definitionId: 'laps.basic', quantity: 1, config: { value: 1 } },
             { definitionId: 'tree.basic', quantity: 5 },
             { definitionId: 'tree.ceiling', quantity: 5 },
-            { definitionId: 'bird.basic', quantity: 5 }
+            { definitionId: 'bird.basic', quantity: 3 },
+            { definitionId: 'bird.fast', quantity: 2 },
+            { definitionId: 'knob.basic', quantity: 3 }
         ]
     };
     const HAND_SLOTS = 8;
@@ -1344,6 +1736,109 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
+    class EmojiReaction {
+        constructor(gameEl) {
+            this.emojiEl = null;
+            this.currentState = 'idle';
+            this.postTimeout = null;
+            this.enabled = false;
+            this.EMOJI_MAP = {
+                idle: '🙂',
+                colliding: '😳',
+                post: '🤭'
+            };
+            this.POST_DURATION_MS = 1000;
+            this.createEmojiElement(gameEl);
+        }
+        createEmojiElement(gameEl) {
+            this.emojiEl = document.createElement('div');
+            this.emojiEl.className = 'jamble-emoji-reaction';
+            this.emojiEl.style.cssText = `
+        position: absolute;
+        font-size: 32px;
+        line-height: 1;
+        pointer-events: none;
+        z-index: 10;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        user-select: none;
+      `;
+            this.updatePosition(gameEl);
+            if (gameEl.parentNode) {
+                gameEl.parentNode.insertBefore(this.emojiEl, gameEl.nextSibling);
+            }
+            this.updateEmoji();
+        }
+        updatePosition(gameEl) {
+            var _a;
+            if (!this.emojiEl)
+                return;
+            const rect = gameEl.getBoundingClientRect();
+            const parentRect = ((_a = gameEl.offsetParent) === null || _a === void 0 ? void 0 : _a.getBoundingClientRect()) || { left: 0, top: 0 };
+            const left = gameEl.offsetLeft - 50;
+            const top = gameEl.offsetTop + (gameEl.offsetHeight / 2) - 16;
+            this.emojiEl.style.left = `${left}px`;
+            this.emojiEl.style.top = `${top}px`;
+        }
+        updateEmoji() {
+            if (!this.emojiEl)
+                return;
+            this.emojiEl.textContent = this.EMOJI_MAP[this.currentState];
+            this.emojiEl.style.opacity = this.enabled ? '1' : '0';
+        }
+        setEnabled(enabled) {
+            this.enabled = enabled;
+            this.updateEmoji();
+        }
+        isEnabled() {
+            return this.enabled;
+        }
+        setState(state) {
+            if (this.currentState === state)
+                return;
+            if (this.postTimeout !== null) {
+                window.clearTimeout(this.postTimeout);
+                this.postTimeout = null;
+            }
+            this.currentState = state;
+            this.updateEmoji();
+            if (state === 'post') {
+                this.postTimeout = window.setTimeout(() => {
+                    this.setState('idle');
+                    this.postTimeout = null;
+                }, this.POST_DURATION_MS);
+            }
+        }
+        getState() {
+            return this.currentState;
+        }
+        beginCollision() {
+            this.setState('colliding');
+        }
+        endCollision() {
+            this.setState('post');
+        }
+        reset() {
+            this.setState('idle');
+        }
+        repositionForGame(gameEl) {
+            this.updatePosition(gameEl);
+        }
+        dispose() {
+            if (this.postTimeout !== null) {
+                window.clearTimeout(this.postTimeout);
+                this.postTimeout = null;
+            }
+            if (this.emojiEl && this.emojiEl.parentNode) {
+                this.emojiEl.parentNode.removeChild(this.emojiEl);
+            }
+            this.emojiEl = null;
+        }
+    }
+    Jamble.EmojiReaction = EmojiReaction;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
     class Player {
         constructor(el) {
             this.isJumping = false;
@@ -1380,6 +1875,13 @@ var Jamble;
         setPrestart() { this.frozenStart = true; this.el.className = 'jamble-player jamble-player-prestart'; }
         clearFrozenStart() { this.frozenStart = false; this.setNormal(); }
         setFrozenDeath() { this.frozenDeath = true; this.el.className = 'jamble-player jamble-frozen-death'; }
+        getCollisionShape() {
+            const rect = this.el.getBoundingClientRect();
+            const centerX = rect.x + rect.width / 2;
+            const centerY = rect.y + rect.height / 2;
+            const radius = Math.min(rect.width, rect.height) / 2 * 0.8;
+            return Jamble.CollisionManager.createCircleShape(centerX, centerY, radius);
+        }
         idle() {
             this.isJumping = false;
             this.endDash();
@@ -2003,6 +2505,7 @@ var Jamble;
                 levelLabel: levelEl
             });
             this.wiggle = new Jamble.Wiggle(this.player.el);
+            this.emojiReaction = new Jamble.EmojiReaction(this.gameEl);
             this.handleWindowResize = () => { this.rebuildSlots(); };
             this.applyElementHand();
             this.onStartClick = this.onStartClick.bind(this);
@@ -2049,6 +2552,7 @@ var Jamble;
                 gameEl: this.gameEl,
                 getWaitGroundForStart: () => this.waitGroundForStart
             });
+            window.__game = this;
         }
         getSkillManager() { return this.skills; }
         start() {
@@ -2217,6 +2721,11 @@ var Jamble;
             this.updateRunDisplay();
         }
         collisionWith(ob) {
+            if (this.player.getCollisionShape && ob.getCollisionShape) {
+                const playerShape = this.player.getCollisionShape();
+                const elementShape = ob.getCollisionShape();
+                return Jamble.CollisionManager.checkCollision(playerShape, elementShape);
+            }
             const pr = this.player.el.getBoundingClientRect();
             const tr = ob.rect();
             return pr.left < tr.right && pr.right > tr.left && pr.bottom > tr.top && pr.top < tr.bottom;
@@ -2268,8 +2777,8 @@ var Jamble;
                 if (boundary.hit && typeof boundary.newDirection === 'number' && boundary.alignmentFn) {
                     this.handleEdgeArrival(boundary.newDirection, boundary.alignmentFn);
                 }
-                this.levelElements.tick(deltaMs);
             }
+            this.levelElements.tick(deltaMs);
             this.player.update(dt60);
             this.player.updateDash(deltaMs);
             const grounded = this.player.jumpHeight === 0 && !this.player.isJumping;
@@ -2298,7 +2807,7 @@ var Jamble;
                 this.showIdleControls();
             }
             const hitElement = this.levelElements.someCollidable(el => this.collisionWith(el));
-            if (!this.player.frozenStart && !this.player.frozenDeath && hitElement) {
+            if (!this.player.frozenStart && !this.player.frozenDeath && hitElement && hitElement.deadly) {
                 this.player.setFrozenDeath();
                 if (this.deathWiggleTimer !== null) {
                     window.clearTimeout(this.deathWiggleTimer);
@@ -2518,6 +3027,20 @@ var Jamble;
                 if (needsAnotherPass)
                     this.schedulePendingOriginPass();
             });
+        }
+        triggerEmojiReaction(state) {
+            if (state === 'colliding') {
+                this.emojiReaction.beginCollision();
+            }
+            else if (state === 'post') {
+                this.emojiReaction.endCollision();
+            }
+        }
+        setEmojiEnabled(enabled) {
+            this.emojiReaction.setEnabled(enabled);
+        }
+        isEmojiEnabled() {
+            return this.emojiReaction.isEnabled();
         }
     }
     Jamble.Game = Game;
