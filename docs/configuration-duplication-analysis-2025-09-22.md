@@ -178,6 +178,62 @@ export interface SkillsProfile {
 ### **The Architectural Disconnect**
 **Root cause analysis:** The configuration duplication problem exists because there's an **architectural boundary** between:
 
+## 📅 **UPDATE: September 24, 2025 - Refined Architecture Understanding**
+
+### **New Learnings: Configuration Architecture Tiers**
+
+After implementing collision systems and element variants, we've discovered a **better separation of concerns** than originally proposed:
+
+#### **Tier 1: Settings.ts - Core Game Systems**
+```typescript
+// settings.ts should focus ONLY on core game systems
+export interface SettingsShape {
+  jumpStrength: number;     // Player physics
+  gravityUp: number;        // World physics  
+  playerSpeed: number;      // Core mechanics
+  dashSpeed: number;        // Skill behaviors
+  // NOT element-specific configurations
+}
+```
+
+#### **Tier 2: Registry - Element Behavior Variants**
+```typescript
+// Registry defines element type variants for gameplay variety
+{
+  id: 'bird.fast',
+  defaults: { speed: 60, direction: 1 }  // Gameplay behavior
+}
+{
+  id: 'knob.sensitive', 
+  defaults: { sensitivity: 'high' }      // Interaction behavior
+}
+```
+
+#### **Tier 3: Element Classes - Implementation Defaults**
+```typescript
+// Element classes own implementation details and technical constants
+class KnobElement {
+  private physicsConstants = {
+    omega: 18.0,        // Spring frequency - affects feel but not gameplay
+    zeta: 0.25,         // Damping coefficient
+    lineWidth: 12       // Visual property
+  };
+}
+```
+
+### **Revised Recommendations (September 2025)**
+
+**❌ Previous recommendation**: *"Add element configs to SettingsShape"*  
+**✅ Correct approach**: *"Keep Settings.ts focused on core game systems"*
+
+**Benefits of Tiered Architecture:**
+- **Settings**: Clean, focused on core game feel
+- **Registry**: Designer-friendly element variants  
+- **Classes**: Technical implementation stays encapsulated
+- **No duplication**: Each config has clear ownership
+
+### **Original Architectural Boundary Analysis**
+
 1. **Core game systems** (physics, player, timing) → **Uses SettingsStore**
 2. **Level elements** (trees, birds, knobs) → **Uses isolated config patterns**
 
