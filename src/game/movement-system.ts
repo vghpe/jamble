@@ -1,6 +1,6 @@
 /// <reference path="../core/settings.ts" />
 /// <reference path="./player.ts" />
-/// <reference path="../skills/manager.ts" />
+/// <reference path="../skills/skill-manager.ts" />
 
 namespace Jamble {
   export interface BoundaryEvent {

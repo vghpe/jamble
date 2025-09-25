@@ -13,7 +13,7 @@
     "src/core/settings.ts",
     "src/skills/types.ts",
     "src/skills/utils.ts",
-    "src/skills/manager.ts",
+    "src/skills/skill-manager.ts",
     "src/skills/move.ts",
     "src/skills/jump.ts",
     "src/skills/dash.ts",
