@@ -87,7 +87,7 @@ namespace Jamble {
         return {
           hit: true,
           newDirection: 1,
-          alignmentFn: () => player.setX(Jamble.Settings.current.playerStartOffset)
+          alignmentFn: () => player.setX(Jamble.Settings.current.playerStartOffset + player.el.offsetWidth / 2)
         };
       }
 
@@ -95,12 +95,13 @@ namespace Jamble {
     }
 
     private reachedRight(player: Player): boolean {
-      const rightLimit = this.gameEl.offsetWidth - Jamble.Settings.current.playerStartOffset;
-      return player.getRight(this.gameEl.offsetWidth) >= rightLimit;
+      const rightLimit = this.gameEl.offsetWidth - Jamble.Settings.current.playerStartOffset - player.el.offsetWidth / 2;
+      return player.x >= rightLimit;
     }
 
     private reachedLeft(player: Player): boolean {
-      return player.x <= Jamble.Settings.current.playerStartOffset;
+      const leftLimit = Jamble.Settings.current.playerStartOffset + player.el.offsetWidth / 2;
+      return player.x <= leftLimit;
     }
   }
 }

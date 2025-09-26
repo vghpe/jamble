@@ -39,8 +39,13 @@ namespace Jamble {
     }
 
     setOrigin(rect: DOMRect): void {
-      this.originLeft = rect.left;
-      this.originTop = rect.top;
+      // Canvas is positioned relative to the container's padding box, but rect is for the border box.
+      // Adjust origin by the container's border widths so drawing aligns with the canvas (content) coordinates.
+      const cs = getComputedStyle(this.container);
+      const bl = parseFloat(cs.borderLeftWidth || '0') || 0;
+      const bt = parseFloat(cs.borderTopWidth || '0') || 0;
+      this.originLeft = rect.left + bl;
+      this.originTop = rect.top + bt;
     }
 
     resize(): void {

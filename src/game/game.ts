@@ -362,7 +362,7 @@ namespace Jamble {
       this.lastTime = ts;
 
       // Keep countdown position near player
-      const cx = this.player.x + this.player.el.offsetWidth / 2;
+  const cx = this.player.x;
       const cy = this.player.jumpHeight + this.player.el.offsetHeight + 10;
       this.countdown.updatePosition(cx, cy);
 
@@ -416,7 +416,8 @@ namespace Jamble {
         this.wiggle.start(this.player.x);
         this.deathWiggleTimer = window.setTimeout(() => {
           this.wiggle.stop();
-          this.player.el.style.left = this.player.x + 'px';
+          // Position is driven by transform; ensure wiggle offset is cleared
+          this.player.el.style.setProperty('--wiggle-offset', '0px');
           this.deathWiggleTimer = null;
         }, Jamble.Settings.current.deathFreezeTime);
         this.showResetTimer = window.setTimeout(() => {

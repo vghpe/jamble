@@ -30,13 +30,24 @@
   border-radius: 4px;
   transform-origin: center bottom;
   transition: transform 0.1s ease-out;
+  /* Horizontal wiggle offset used during death animation; composed into transform translate */
+  --wiggle-offset: 0px;
 }
 
-#jamble .jamble-player-idle { background: #fffde7; box-shadow: inset 0 0 0 2px #fbc02d; }
-#jamble .jamble-player-prestart { background: #fbc02d; box-shadow: inset 0 0 0 2px #fbc02d; }
-#jamble .jamble-normal       { background: #4db6ac; box-shadow: none; }
-#jamble .jamble-player.jamble-dashing { background: #3da298; box-shadow: none; }
-#jamble .jamble-player.jamble-invincible { background: #e91e63; box-shadow: 0 0 8px rgba(233, 30, 99, 0.6); opacity: 0.8; }
+/* Inner wrapper holds the visual transforms (scale + wiggle) */
+#jamble .jamble-player-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  transform-origin: center bottom;
+  transition: transform 0.1s ease-out;
+}
+
+#jamble .jamble-player-inner.jamble-player-idle { background: #fffde7; box-shadow: inset 0 0 0 2px #fbc02d; }
+#jamble .jamble-player-inner.jamble-player-prestart { background: #fbc02d; box-shadow: inset 0 0 0 2px #fbc02d; }
+#jamble .jamble-player-inner.jamble-normal       { background: #4db6ac; box-shadow: none; }
+#jamble .jamble-player-inner.jamble-dashing { background: #3da298; box-shadow: none; }
+#jamble .jamble-player-inner.jamble-invincible { background: #e91e63; box-shadow: 0 0 8px rgba(233, 30, 99, 0.6); opacity: 0.8; }
 
 /* Level counter */
 #jamble .jamble-level {
@@ -52,7 +63,7 @@
   border-radius: 10px;
   line-height: 1;
 }
-#jamble .jamble-frozen-death { background: #ef9a9a; box-shadow: none; }
+#jamble .jamble-player-inner.jamble-frozen-death { background: #ef9a9a; box-shadow: none; }
 
 /* Trees */
 #jamble .jamble-tree {
