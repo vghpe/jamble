@@ -98,18 +98,6 @@ namespace Jamble {
         cooldownMs: 100  // Short cooldown to prevent spam
       },
       create: (cfg) => new GravityFlipSkill('gravity-flip', 25, cfg)
-    },
-    {
-      id: 'gravity-flip',
-      name: 'Gravity Flip',
-      symbol: 'G⟳',
-      type: 'gravity-flip',
-      slot: 'movement',
-      priority: 25,
-      defaults: {
-        cooldownMs: 300
-      },
-      create: (cfg) => new GravityFlipSkill('gravity-flip', 25, cfg)
     }
   ];
 

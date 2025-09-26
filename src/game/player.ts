@@ -217,20 +217,26 @@ namespace Jamble {
 
         // Check for landing on current ground
         const gameEl = this.el.parentElement;
-        const maxJumpHeight = gameEl ? gameEl.offsetHeight - this.el.offsetHeight : 0;
+        const gameHeight = gameEl ? gameEl.offsetHeight : 0;
+        const playerHeight = this.el.offsetHeight;
         
         let hasLanded = false;
         if (this.gravityInverted) {
-          // When inverted, land on ceiling (max jump height)
-          if (this.jumpHeight >= maxJumpHeight) {
-            this.jumpHeight = maxJumpHeight;
+          // When inverted, land on ceiling
+          // Need to account for the 2px border to match floor positioning
+          const borderOffset = 4; // 2px top + 2px bottom border
+          const ceilingJumpHeight = gameHeight - playerHeight - borderOffset;
+          if (this.jumpHeight >= ceilingJumpHeight) {
+            this.jumpHeight = ceilingJumpHeight;
             hasLanded = true;
+            console.log(`[Player] Landed on ceiling - jumpHeight: ${this.jumpHeight}, offset: ${borderOffset}`);
           }
         } else {
           // When normal, land on floor (zero jump height)
           if (this.jumpHeight <= 0) {
             this.jumpHeight = 0;
             hasLanded = true;
+            console.log(`[Player] Landed on floor - jumpHeight: ${this.jumpHeight}`);
           }
         }
         
@@ -240,8 +246,21 @@ namespace Jamble {
           this.endDash();
           this.dashAvailable = true;
           if (this.config.squashEnabled){
+            // Set transform origin based on which surface we landed on
+            if (this.gravityInverted) {
+              // Landing on ceiling - scale from TOP (head touches ceiling)
+              this.visualEl.style.transformOrigin = 'center top';
+              console.log(`[Player] Landing squash on CEILING - origin: top`);
+            } else {
+              // Landing on floor - scale from BOTTOM (feet touch floor)
+              this.visualEl.style.transformOrigin = 'center bottom';
+              console.log(`[Player] Landing squash on FLOOR - origin: bottom`);
+            }
+            
+            // Use same squash values for both - the transform origin handles the direction
             const sy = this.config.landScaleY;
             const sx = this.config.landScaleX;
+            
             // Snap to landing squash instantly, then ease back after duration
             this.visualEl.style.transition = 'transform 0ms linear';
             this.setScale(sx, sy);
@@ -252,6 +271,10 @@ namespace Jamble {
               this.visualEl.style.transition = 'transform ' + ease + 'ms ease-out';
               this.setScale(1, 1);
               this.applyTransform();
+              // Reset transform origin after animation completes
+              window.setTimeout(() => {
+                this.visualEl.style.transformOrigin = '';
+              }, ease);
             }, dur);
           } else {
             this.setScale(1, 1, this.config.airTransformSmoothingMs);
@@ -344,34 +367,30 @@ namespace Jamble {
       console.log(`[Player] Flipping gravity from ${this.gravityInverted ? 'inverted' : 'normal'} to ${!this.gravityInverted ? 'inverted' : 'normal'}`);
       console.log(`[Player] Before flip - jumpHeight: ${this.jumpHeight}, velocity: ${this.velocity}`);
       
-      const gameEl = this.el.parentElement;
-      const maxY = gameEl ? gameEl.offsetHeight - this.el.offsetHeight : 0;
-      
-      // Preserve world Y position by transforming jumpHeight
-      const clampedHeight = Math.max(0, Math.min(this.jumpHeight, maxY));
-      const newJumpHeight = maxY - clampedHeight;
-      
-      // Invert velocity direction  
-      const newVelocity = -this.velocity;
-      
-      // Apply the transformation
-      this.jumpHeight = newJumpHeight;
-      this.velocity = newVelocity;
+      // Invert gravity state
       this.gravityInverted = !this.gravityInverted;
+      
+      // Reset velocity to a small value toward the new ground
+      // This prevents velocity buildup and gives consistent flip behavior
+      const baseFlipVelocity = 1; // Small initial velocity toward new ground
+      
+      if (this.gravityInverted) {
+        // Moving toward ceiling (positive direction)
+        this.velocity = baseFlipVelocity;
+      } else {
+        // Moving toward floor (negative direction)  
+        this.velocity = -baseFlipVelocity;
+      }
       
       // Add visual indication of gravity state
       this.el.classList.toggle('gravity-inverted', this.gravityInverted);
       
-      // If we're now at the "ground", we should be grounded
-      if ((this.gravityInverted && this.jumpHeight >= maxY) || (!this.gravityInverted && this.jumpHeight <= 0)) {
-        this.isJumping = false;
-        console.log(`[Player] Grounded on ${this.gravityInverted ? 'ceiling' : 'floor'} after flip`);
-      } else {
+      // Make sure player is in jumping state so physics continue to apply
+      if (!this.isJumping) {
         this.isJumping = true;
       }
       
-      console.log(`[Player] After flip - jumpHeight: ${this.jumpHeight}, velocity: ${this.velocity}, maxY: ${maxY}`);
-      this.applyTransform();
+      console.log(`[Player] After flip - jumpHeight: ${this.jumpHeight}, velocity: ${this.velocity} (reset), inverted: ${this.gravityInverted}`);
     }
 
     // Horizontal movement helpers
