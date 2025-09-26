@@ -14,6 +14,8 @@
 /// <reference path="../core/settings.ts" />
 /// <reference path="../level/registry/core-elements.ts" />
 /// <reference path="../skills/types.ts" />
+/// <reference path="../skills/capability-provider.ts" />
+/// <reference path="../skills/skill-context-builder.ts" />
 /// <reference path="../skills/skill-manager.ts" />
 /// <reference path="../skills/skill-bank-manager.ts" />
 /// <reference path="../skills/registry/core-skills.ts" />
@@ -112,28 +114,12 @@ namespace Jamble {
       // Movement system
       this.movementSystem = new MovementSystem(this.gameEl);
 
-      // Capabilities facade for skills
-      const caps: PlayerCapabilities = {
-        requestJump: (strength?: number) => {
-          if (this.player.isJumping || this.player.frozenDeath) return false;
-          // Use built-in jump to keep side effects consistent, then override strength if provided
-          this.player.jump();
-          if (typeof strength === 'number') this.player.velocity = strength;
-          return true;
-        },
-        startDash: (_speed: number, durationMs: number, invincible?: boolean) => {
-          return this.player.startDash(durationMs, invincible);
-        },
-        addHorizontalImpulse: (speed: number, durationMs: number) => {
-          this.movementSystem.addImpulse(speed, durationMs);
-        },
-        setVerticalVelocity: (vy: number) => { this.player.velocity = vy; },
-        onLand: (cb: () => void) => { this.landCbs.push(cb); },
-        setHoverMode: (enabled: boolean) => { this.player.setHoverMode(enabled); },
-        setHoverTarget: (targetHeight: number, liftSpeed: number, fallSpeed: number) => { 
-          this.player.setHoverTarget(targetHeight, liftSpeed, fallSpeed); 
-        }
-      };
+      // Capabilities facade for skills via provider
+      const caps: PlayerCapabilities = CapabilityProvider.create({
+        player: this.player,
+        movement: this.movementSystem,
+        onLandRegister: (cb: () => void) => { this.landCbs.push(cb); }
+      });
 
       // Skill system - registry driven
       this.skillBank = new SkillBankManager();
@@ -404,16 +390,8 @@ namespace Jamble {
       this.player.updateDash(deltaMs);
 
       // Skills tick + land detection
-      const grounded = this.player.jumpHeight === 0 && !this.player.isJumping && !this.player.isHovering;
-      const sctx: SkillContext = {
-        nowMs: performance.now(),
-        grounded,
-        velocityY: this.player.velocity,
-        isDashing: this.player.isDashing,
-        jumpHeight: this.player.jumpHeight,
-        dashAvailable: !this.player.isDashing,
-        isHovering: this.player.isHovering
-      };
+      const sctx: SkillContext = SkillContextBuilder.build(this.player);
+      const grounded = sctx.grounded;
       this.skills.tick(sctx);
       if (!this.wasGrounded && grounded){
         this.skills.onLand(sctx);

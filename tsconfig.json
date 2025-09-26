@@ -11,6 +11,8 @@
   },
   "files": [
     "src/core/settings.ts",
+    "src/skills/capability-provider.ts",
+    "src/skills/skill-context-builder.ts",
     "src/skills/types.ts",
     "src/skills/utils.ts",
     "src/skills/skill-manager.ts",

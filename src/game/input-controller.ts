@@ -2,6 +2,7 @@
 /// <reference path="./ui/game-ui.ts" />
 /// <reference path="../skills/types.ts" />
 /// <reference path="../skills/skill-manager.ts" />
+/// <reference path="../skills/skill-context-builder.ts" />
 
 namespace Jamble {
   interface InputControllerOptions {
@@ -64,26 +65,12 @@ namespace Jamble {
     private dispatchPrimaryInput(): void {
       if (this.player.frozenDeath) return;
       if (this.player.frozenStart && this.getWaitGroundForStart()) return;
-      const grounded = this.isGrounded();
+      const grounded = SkillContextBuilder.groundedFrom(this.player);
       const intent = grounded ? InputIntent.Tap : InputIntent.AirTap;
-      const ctx = this.createSkillContext(grounded);
+      const ctx = SkillContextBuilder.build(this.player);
       this.skills.handleInput(intent, ctx);
     }
 
-    private isGrounded(): boolean {
-      return this.player.jumpHeight === 0 && !this.player.isJumping && !this.player.isHovering;
-    }
-
-    private createSkillContext(grounded: boolean): SkillContext {
-      return {
-        nowMs: performance.now(),
-        grounded,
-        velocityY: this.player.velocity,
-        isDashing: this.player.isDashing,
-        jumpHeight: this.player.jumpHeight,
-        dashAvailable: !this.player.isDashing,
-        isHovering: this.player.isHovering
-      };
-    }
+    // Grounded + context now centralized in SkillContextBuilder
   }
 }
