@@ -101,7 +101,7 @@ namespace Jamble {
         elementHand: elementHandEl,
         levelLabel: levelEl
       });
-      this.wiggle = new Wiggle(this.player.el);
+  this.wiggle = new Wiggle(this.player.el, () => this.player.getConfig().deathWiggleDistance);
       this.emojiReaction = new EmojiReaction(this.gameEl);
       this.handleWindowResize = () => { this.rebuildSlots(); };
 
@@ -155,6 +155,8 @@ namespace Jamble {
     }
     public getSkillManager(): SkillManager { return this.skills; }
     public getSkillBank(): SkillBankManager { return this.skillBank; }
+  public getPlayerConfig(): Readonly<PlayerConfig> { return this.player.getConfig(); }
+  public updatePlayerConfig(patch: Partial<PlayerConfig>): void { this.player.updateConfig(patch); }
 
     start(): void {
       this.ensureSlotResizeMonitoring();

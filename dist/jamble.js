@@ -9,12 +9,8 @@ var Jamble;
         startFreezeTime: 3000,
         deathFreezeTime: 500,
         showResetDelayMs: 150,
-        shuffleEnabled: true,
-        shuffleLimit: 3,
         playerStartOffset: 10,
         deathWiggleDistance: 1,
-        treeEdgeMarginPct: 10,
-        treeMinGapPct: 20,
         mode: 'idle',
         squashEnabled: true,
         stretchFactor: 0.05,
@@ -47,6 +43,272 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
+    class Player {
+        constructor(el) {
+            this.isJumping = false;
+            this.jumpHeight = 0;
+            this.velocity = 0;
+            this.x = Jamble.Settings.current.playerStartOffset;
+            this.won = false;
+            this.frozenStart = true;
+            this.frozenDeath = false;
+            this.isDashing = false;
+            this.isInvincible = false;
+            this.dashRemainingMs = 0;
+            this.dashAvailable = true;
+            this.isHovering = false;
+            this.hoverTargetHeight = 0;
+            this.hoverLiftSpeed = 200;
+            this.hoverFallSpeed = 300;
+            this.scaleX = 1;
+            this.scaleY = 1;
+            this.config = { ...Player.defaultConfig };
+            this.el = el;
+            let inner = this.el.querySelector('.jamble-player-inner');
+            if (!inner) {
+                inner = document.createElement('div');
+                inner.className = 'jamble-player-inner jamble-player-idle';
+                while (this.el.firstChild) {
+                    inner.appendChild(this.el.firstChild);
+                }
+                this.el.appendChild(inner);
+            }
+            this.visualEl = inner;
+            this.reset();
+        }
+        getConfig() { return this.config; }
+        updateConfig(patch) {
+            this.config = { ...this.config, ...(patch || {}) };
+        }
+        reset() {
+            this.isJumping = false;
+            this.jumpHeight = 0;
+            this.velocity = 0;
+            this.x = Jamble.Settings.current.playerStartOffset + this.el.offsetWidth / 2;
+            this.won = false;
+            this.frozenStart = true;
+            this.frozenDeath = false;
+            this.isDashing = false;
+            this.isInvincible = false;
+            this.dashRemainingMs = 0;
+            this.dashAvailable = true;
+            this.isHovering = false;
+            this.hoverTargetHeight = 0;
+            this.scaleX = 1;
+            this.scaleY = 1;
+            this.visualEl.style.setProperty('--wiggle-offset', '0px');
+            const prevOuter = this.el.style.transition;
+            const prevInner = this.visualEl.style.transition;
+            this.el.style.transition = 'transform 0ms linear';
+            this.visualEl.style.transition = 'transform 0ms linear';
+            this.applyTransform();
+            window.requestAnimationFrame(() => {
+                this.el.style.transition = prevOuter || '';
+                this.visualEl.style.transition = prevInner || '';
+            });
+            this.visualEl.className = 'jamble-player-inner jamble-player-idle';
+        }
+        setNormal() { this.visualEl.className = 'jamble-player-inner jamble-normal'; }
+        setFrozenStart() { this.frozenStart = true; this.visualEl.className = 'jamble-player-inner jamble-player-idle'; }
+        setPrestart() { this.frozenStart = true; this.visualEl.className = 'jamble-player-inner jamble-player-prestart'; }
+        clearFrozenStart() { this.frozenStart = false; this.setNormal(); }
+        setFrozenDeath() { this.frozenDeath = true; this.visualEl.className = 'jamble-player-inner jamble-frozen-death'; }
+        getCollisionShape() {
+            if (this.isInvincible)
+                return null;
+            const rect = this.el.getBoundingClientRect();
+            const centerX = rect.x + rect.width / 2;
+            const centerY = rect.y + rect.height / 2;
+            const radius = Math.min(rect.width, rect.height) / 2 * 0.8;
+            return Jamble.CollisionManager.createCircleShape(centerX, centerY, radius, 'player');
+        }
+        idle() {
+            this.isJumping = false;
+            this.endDash();
+            this.velocity = 0;
+            if (!this.isHovering) {
+                this.jumpHeight = 0;
+            }
+            this.setScale(1, 1, this.config.airTransformSmoothingMs);
+            this.applyTransform();
+            this.setFrozenStart();
+        }
+        getRight(_gameWidth) { return this.x + this.el.offsetWidth / 2; }
+        snapRight(gameWidth) {
+            this.x = gameWidth - Jamble.Settings.current.playerStartOffset - this.el.offsetWidth / 2;
+            this.applyTransform();
+        }
+        jump() {
+            if (this.isJumping || this.frozenDeath)
+                return;
+            this.isJumping = true;
+            this.velocity = 7;
+        }
+        startDash(durationOverrideMs, invincible) {
+            if (this.frozenStart || this.frozenDeath || !this.isJumping)
+                return false;
+            if (this.isDashing || !this.dashAvailable)
+                return false;
+            this.isDashing = true;
+            this.isInvincible = invincible !== null && invincible !== void 0 ? invincible : false;
+            this.dashRemainingMs = durationOverrideMs !== null && durationOverrideMs !== void 0 ? durationOverrideMs : 220;
+            this.dashAvailable = false;
+            this.updateDashVisualState();
+            this.applyTransform();
+            return true;
+        }
+        updateDashVisualState() {
+            this.visualEl.classList.toggle('jamble-dashing', this.isDashing);
+            this.visualEl.classList.toggle('jamble-invincible', this.isDashing && this.isInvincible);
+        }
+        updateDash(deltaMs) {
+            if (!this.isDashing)
+                return;
+            this.dashRemainingMs -= deltaMs;
+            if (this.dashRemainingMs <= 0)
+                this.endDash();
+        }
+        endDash() {
+            if (!this.isDashing)
+                return;
+            this.isDashing = false;
+            this.isInvincible = false;
+            this.dashRemainingMs = 0;
+            if (this.velocity > 0)
+                this.velocity = -0.1;
+            this.updateDashVisualState();
+            this.applyTransform();
+        }
+        update(dt60) {
+            if (this.isDashing)
+                return;
+            if (this.isHovering) {
+                this.updateHoverPhysics(dt60);
+                return;
+            }
+            if (!this.frozenDeath && this.isJumping) {
+                this.jumpHeight += this.velocity * dt60;
+                if (this.velocity > 2)
+                    this.velocity -= Jamble.Settings.current.gravityUp * dt60;
+                else if (this.velocity > -2)
+                    this.velocity -= Jamble.Settings.current.gravityMid * dt60;
+                else
+                    this.velocity -= Jamble.Settings.current.gravityDown * dt60;
+                if (this.jumpHeight <= 0) {
+                    this.jumpHeight = 0;
+                    this.isJumping = false;
+                    this.endDash();
+                    this.dashAvailable = true;
+                    if (this.config.squashEnabled) {
+                        const sy = this.config.landScaleY;
+                        const sx = this.config.landScaleX;
+                        this.visualEl.style.transition = 'transform 0ms linear';
+                        this.setScale(sx, sy);
+                        this.applyTransform();
+                        const dur = Math.max(0, this.config.landSquashDurationMs);
+                        window.setTimeout(() => {
+                            const ease = Math.max(0, this.config.landEaseMs);
+                            this.visualEl.style.transition = 'transform ' + ease + 'ms ease-out';
+                            this.setScale(1, 1);
+                            this.applyTransform();
+                        }, dur);
+                    }
+                    else {
+                        this.setScale(1, 1, this.config.airTransformSmoothingMs);
+                        this.applyTransform();
+                    }
+                }
+                else {
+                    if (this.config.squashEnabled) {
+                        const v = Math.max(0, this.velocity);
+                        const stretch = 1 + v * this.config.stretchFactor;
+                        const squash = 1 - v * this.config.squashFactor;
+                        this.visualEl.style.transition = 'transform 0ms linear';
+                        this.setScale(squash, stretch);
+                        this.applyTransform();
+                    }
+                    else {
+                        this.setScale(1, 1);
+                        this.applyTransform();
+                    }
+                }
+                this.applyTransform();
+            }
+        }
+        setHoverMode(enabled) {
+            this.isHovering = enabled;
+            if (enabled) {
+                this.isJumping = true;
+                this.velocity = 0;
+            }
+            else {
+                if (this.jumpHeight > 0) {
+                    this.isJumping = true;
+                    this.velocity = -1;
+                }
+                else {
+                    this.isJumping = false;
+                }
+            }
+        }
+        setHoverTarget(targetHeight, liftSpeed, fallSpeed) {
+            this.hoverTargetHeight = targetHeight;
+            this.hoverLiftSpeed = liftSpeed;
+            this.hoverFallSpeed = fallSpeed;
+        }
+        updateHoverPhysics(dt60) {
+            if (!this.isHovering)
+                return;
+            const deltaHeight = this.hoverTargetHeight - this.jumpHeight;
+            const threshold = 2;
+            if (Math.abs(deltaHeight) < threshold) {
+                this.jumpHeight = this.hoverTargetHeight;
+                this.velocity = 0;
+            }
+            else {
+                const speed = deltaHeight > 0 ? this.hoverLiftSpeed : this.hoverFallSpeed;
+                const direction = deltaHeight > 0 ? 1 : -1;
+                const maxMove = speed * (dt60 / 60);
+                const actualMove = Math.min(Math.abs(deltaHeight), maxMove) * direction;
+                this.jumpHeight += actualMove;
+                this.velocity = actualMove / (dt60 / 60);
+            }
+            this.applyTransform();
+        }
+        moveX(dx) { this.x += dx; this.applyTransform(); }
+        setX(x) { this.x = x; this.applyTransform(); }
+        setScale(sx, sy, transitionMs) {
+            this.scaleX = sx;
+            this.scaleY = sy;
+            if (typeof transitionMs === 'number') {
+                this.visualEl.style.transition = 'transform ' + Math.max(0, transitionMs) + 'ms ease-out';
+            }
+        }
+        applyTransform() {
+            const tx = `${this.x - this.el.offsetWidth / 2}px`;
+            const ty = `${-this.jumpHeight}px`;
+            this.el.style.transform = `translate(${tx}, ${ty})`;
+            const wx = `var(--wiggle-offset, 0px)`;
+            this.visualEl.style.transform = `translateX(${wx}) scaleY(${this.scaleY}) scaleX(${this.scaleX})`;
+            this.el.style.left = '0px';
+            this.el.style.bottom = '0px';
+        }
+    }
+    Player.defaultConfig = {
+        squashEnabled: true,
+        stretchFactor: 0.05,
+        squashFactor: 0.02,
+        landSquashDurationMs: 150,
+        landScaleY: 0.6,
+        landScaleX: 1.4,
+        airTransformSmoothingMs: 100,
+        landEaseMs: 100,
+        deathWiggleDistance: 1
+    };
+    Jamble.Player = Player;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
     let InputIntent;
     (function (InputIntent) {
         InputIntent["Tap"] = "tap";
@@ -55,24 +317,6 @@ var Jamble;
         InputIntent["DoubleTap"] = "double_tap";
         InputIntent["AirTap"] = "air_tap";
     })(InputIntent = Jamble.InputIntent || (Jamble.InputIntent = {}));
-})(Jamble || (Jamble = {}));
-var Jamble;
-(function (Jamble) {
-    class CooldownTimer {
-        constructor(durationMs) {
-            this.readyAt = 0;
-            this.durationMs = Math.max(0, durationMs);
-        }
-        reset() { this.readyAt = 0; }
-        isReady(nowMs) { return nowMs >= this.readyAt; }
-        tryConsume(nowMs) {
-            if (!this.isReady(nowMs))
-                return false;
-            this.readyAt = nowMs + this.durationMs;
-            return true;
-        }
-    }
-    Jamble.CooldownTimer = CooldownTimer;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
@@ -396,6 +640,149 @@ var Jamble;
         }
     }
     Jamble.SkillManager = SkillManager;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class MovementSystem {
+        constructor(gameEl) {
+            this.gameEl = gameEl;
+            this.impulses = [];
+        }
+        tick(deltaMs, deltaSec, player, direction, skills) {
+            if (player.frozenStart || player.frozenDeath) {
+                return { hit: false };
+            }
+            if (skills.isEquipped('move')) {
+                const base = Jamble.Settings.current.playerSpeed;
+                const dx = base * deltaSec * direction;
+                player.moveX(dx);
+            }
+            this.processImpulses(deltaMs, deltaSec, direction, player);
+            return this.checkBoundaries(player, direction);
+        }
+        addImpulse(speed, durationMs) {
+            this.impulses.push({ speed, remainingMs: Math.max(0, durationMs) });
+        }
+        clearImpulses() {
+            this.impulses.length = 0;
+        }
+        getActiveImpulses() {
+            return this.impulses;
+        }
+        processImpulses(deltaMs, deltaSec, direction, player) {
+            if (this.impulses.length === 0)
+                return;
+            let totalSpeed = 0;
+            for (const imp of this.impulses) {
+                totalSpeed += Math.max(0, imp.speed);
+            }
+            if (totalSpeed > 0) {
+                const dxImp = totalSpeed * deltaSec * direction;
+                player.moveX(dxImp);
+            }
+            for (const imp of this.impulses) {
+                imp.remainingMs -= deltaMs;
+            }
+            this.impulses = this.impulses.filter(i => i.remainingMs > 0);
+        }
+        checkBoundaries(player, direction) {
+            if (direction === 1 && this.reachedRight(player)) {
+                return {
+                    hit: true,
+                    newDirection: -1,
+                    alignmentFn: () => player.snapRight(this.gameEl.offsetWidth)
+                };
+            }
+            if (direction === -1 && this.reachedLeft(player)) {
+                return {
+                    hit: true,
+                    newDirection: 1,
+                    alignmentFn: () => player.setX(Jamble.Settings.current.playerStartOffset + player.el.offsetWidth / 2)
+                };
+            }
+            return { hit: false };
+        }
+        reachedRight(player) {
+            const rightLimit = this.gameEl.offsetWidth - Jamble.Settings.current.playerStartOffset - player.el.offsetWidth / 2;
+            return player.x >= rightLimit;
+        }
+        reachedLeft(player) {
+            const leftLimit = Jamble.Settings.current.playerStartOffset + player.el.offsetWidth / 2;
+            return player.x <= leftLimit;
+        }
+    }
+    Jamble.MovementSystem = MovementSystem;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class CapabilityProvider {
+        static create(deps) {
+            const { player, movement, onLandRegister } = deps;
+            const caps = {
+                requestJump: (strength) => {
+                    if (player.isJumping || player.frozenDeath)
+                        return false;
+                    player.jump();
+                    if (typeof strength === 'number')
+                        player.velocity = strength;
+                    return true;
+                },
+                startDash: (_speed, durationMs, invincible) => {
+                    return player.startDash(durationMs, invincible);
+                },
+                addHorizontalImpulse: (speed, durationMs) => {
+                    movement.addImpulse(speed, durationMs);
+                },
+                setVerticalVelocity: (vy) => { player.velocity = vy; },
+                onLand: (cb) => { onLandRegister(cb); },
+                setHoverMode: (enabled) => { player.setHoverMode(enabled); },
+                setHoverTarget: (targetHeight, liftSpeed, fallSpeed) => {
+                    player.setHoverTarget(targetHeight, liftSpeed, fallSpeed);
+                }
+            };
+            return caps;
+        }
+    }
+    Jamble.CapabilityProvider = CapabilityProvider;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class SkillContextBuilder {
+        static groundedFrom(player) {
+            return player.jumpHeight === 0 && !player.isJumping && !player.isHovering;
+        }
+        static build(player) {
+            const grounded = this.groundedFrom(player);
+            return {
+                nowMs: performance.now(),
+                grounded,
+                velocityY: player.velocity,
+                isDashing: player.isDashing,
+                jumpHeight: player.jumpHeight,
+                dashAvailable: !player.isDashing,
+                isHovering: player.isHovering
+            };
+        }
+    }
+    Jamble.SkillContextBuilder = SkillContextBuilder;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class CooldownTimer {
+        constructor(durationMs) {
+            this.readyAt = 0;
+            this.durationMs = Math.max(0, durationMs);
+        }
+        reset() { this.readyAt = 0; }
+        isReady(nowMs) { return nowMs >= this.readyAt; }
+        tryConsume(nowMs) {
+            if (!this.isReady(nowMs))
+                return false;
+            this.readyAt = nowMs + this.durationMs;
+            return true;
+        }
+    }
+    Jamble.CooldownTimer = CooldownTimer;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
@@ -1836,22 +2223,29 @@ var Jamble;
 var Jamble;
 (function (Jamble) {
     class Wiggle {
-        constructor(playerEl) {
+        constructor(playerEl, getDistance) {
             this.interval = null;
             this.playerEl = playerEl;
+            this.getDistance = getDistance;
         }
         start(x) {
             let direction = 1;
             this.stop();
             this.interval = window.setInterval(() => {
-                this.playerEl.style.left = (x + direction * Jamble.Settings.current.deathWiggleDistance) + 'px';
+                const offset = direction * (this.getDistance ? this.getDistance() : 1);
+                const inner = this.playerEl.querySelector('.jamble-player-inner');
+                (inner || this.playerEl).style.setProperty('--wiggle-offset', offset + 'px');
                 direction *= -1;
             }, 100);
         }
-        stop() { if (this.interval !== null) {
-            window.clearInterval(this.interval);
-            this.interval = null;
-        } }
+        stop() {
+            if (this.interval !== null) {
+                window.clearInterval(this.interval);
+                this.interval = null;
+            }
+            const inner = this.playerEl.querySelector('.jamble-player-inner');
+            (inner || this.playerEl).style.setProperty('--wiggle-offset', '0px');
+        }
     }
     Jamble.Wiggle = Wiggle;
 })(Jamble || (Jamble = {}));
@@ -1994,8 +2388,11 @@ var Jamble;
             window.addEventListener('resize', () => this.resize());
         }
         setOrigin(rect) {
-            this.originLeft = rect.left;
-            this.originTop = rect.top;
+            const cs = getComputedStyle(this.container);
+            const bl = parseFloat(cs.borderLeftWidth || '0') || 0;
+            const bt = parseFloat(cs.borderTopWidth || '0') || 0;
+            this.originLeft = rect.left + bl;
+            this.originTop = rect.top + bt;
         }
         resize() {
             const { clientWidth, clientHeight } = this.container;
@@ -2062,213 +2459,6 @@ var Jamble;
         }
     }
     Jamble.DebugDraw = DebugDraw;
-})(Jamble || (Jamble = {}));
-var Jamble;
-(function (Jamble) {
-    class Player {
-        constructor(el) {
-            this.isJumping = false;
-            this.jumpHeight = 0;
-            this.velocity = 0;
-            this.x = Jamble.Settings.current.playerStartOffset;
-            this.won = false;
-            this.frozenStart = true;
-            this.frozenDeath = false;
-            this.isDashing = false;
-            this.isInvincible = false;
-            this.dashRemainingMs = 0;
-            this.dashAvailable = true;
-            this.isHovering = false;
-            this.hoverTargetHeight = 0;
-            this.hoverLiftSpeed = 200;
-            this.hoverFallSpeed = 300;
-            this.el = el;
-            this.reset();
-        }
-        reset() {
-            this.isJumping = false;
-            this.jumpHeight = 0;
-            this.velocity = 0;
-            this.x = Jamble.Settings.current.playerStartOffset;
-            this.won = false;
-            this.frozenStart = true;
-            this.frozenDeath = false;
-            this.isDashing = false;
-            this.isInvincible = false;
-            this.dashRemainingMs = 0;
-            this.dashAvailable = true;
-            this.isHovering = false;
-            this.hoverTargetHeight = 0;
-            this.el.style.left = this.x + 'px';
-            this.el.style.bottom = this.jumpHeight + 'px';
-            this.el.style.transform = 'scaleY(1) scaleX(1)';
-            this.el.className = 'jamble-player jamble-player-idle';
-        }
-        setNormal() { this.el.className = 'jamble-player jamble-normal'; }
-        setFrozenStart() { this.frozenStart = true; this.el.className = 'jamble-player jamble-player-idle'; }
-        setPrestart() { this.frozenStart = true; this.el.className = 'jamble-player jamble-player-prestart'; }
-        clearFrozenStart() { this.frozenStart = false; this.setNormal(); }
-        setFrozenDeath() { this.frozenDeath = true; this.el.className = 'jamble-player jamble-frozen-death'; }
-        getCollisionShape() {
-            if (this.isInvincible)
-                return null;
-            const rect = this.el.getBoundingClientRect();
-            const centerX = rect.x + rect.width / 2;
-            const centerY = rect.y + rect.height / 2;
-            const radius = Math.min(rect.width, rect.height) / 2 * 0.8;
-            return Jamble.CollisionManager.createCircleShape(centerX, centerY, radius, 'player');
-        }
-        idle() {
-            this.isJumping = false;
-            this.endDash();
-            this.velocity = 0;
-            if (!this.isHovering) {
-                this.jumpHeight = 0;
-                this.el.style.bottom = '0px';
-            }
-            this.el.style.transform = 'scaleY(1) scaleX(1)';
-            this.setFrozenStart();
-        }
-        getRight(_gameWidth) { return this.x + this.el.offsetWidth; }
-        snapRight(gameWidth) {
-            this.x = gameWidth - this.el.offsetWidth - Jamble.Settings.current.playerStartOffset;
-            this.el.style.left = this.x + 'px';
-        }
-        jump() {
-            if (this.isJumping || this.frozenDeath)
-                return;
-            this.isJumping = true;
-            this.velocity = 7;
-        }
-        startDash(durationOverrideMs, invincible) {
-            if (this.frozenStart || this.frozenDeath || !this.isJumping)
-                return false;
-            if (this.isDashing || !this.dashAvailable)
-                return false;
-            this.isDashing = true;
-            this.isInvincible = invincible !== null && invincible !== void 0 ? invincible : false;
-            this.dashRemainingMs = durationOverrideMs !== null && durationOverrideMs !== void 0 ? durationOverrideMs : 220;
-            this.dashAvailable = false;
-            this.updateDashVisualState();
-            return true;
-        }
-        updateDashVisualState() {
-            this.el.classList.toggle('jamble-dashing', this.isDashing);
-            this.el.classList.toggle('jamble-invincible', this.isDashing && this.isInvincible);
-        }
-        updateDash(deltaMs) {
-            if (!this.isDashing)
-                return;
-            this.dashRemainingMs -= deltaMs;
-            if (this.dashRemainingMs <= 0)
-                this.endDash();
-        }
-        endDash() {
-            if (!this.isDashing)
-                return;
-            this.isDashing = false;
-            this.isInvincible = false;
-            this.dashRemainingMs = 0;
-            if (this.velocity > 0)
-                this.velocity = -0.1;
-            this.updateDashVisualState();
-        }
-        update(dt60) {
-            if (this.isDashing)
-                return;
-            if (this.isHovering) {
-                this.updateHoverPhysics(dt60);
-                return;
-            }
-            if (!this.frozenDeath && this.isJumping) {
-                this.jumpHeight += this.velocity * dt60;
-                if (this.velocity > 2)
-                    this.velocity -= Jamble.Settings.current.gravityUp * dt60;
-                else if (this.velocity > -2)
-                    this.velocity -= Jamble.Settings.current.gravityMid * dt60;
-                else
-                    this.velocity -= Jamble.Settings.current.gravityDown * dt60;
-                if (this.jumpHeight <= 0) {
-                    this.jumpHeight = 0;
-                    this.isJumping = false;
-                    this.endDash();
-                    this.dashAvailable = true;
-                    if (Jamble.Settings.current.squashEnabled) {
-                        const sy = Jamble.Settings.current.landScaleY;
-                        const sx = Jamble.Settings.current.landScaleX;
-                        this.el.style.transition = 'transform 0ms linear';
-                        this.el.style.transform = 'scaleY(' + sy + ') scaleX(' + sx + ')';
-                        const dur = Math.max(0, Jamble.Settings.current.landSquashDurationMs);
-                        window.setTimeout(() => {
-                            const ease = Math.max(0, Jamble.Settings.current.landEaseMs);
-                            this.el.style.transition = 'transform ' + ease + 'ms ease-out';
-                            this.el.style.transform = 'scaleY(1) scaleX(1)';
-                        }, dur);
-                    }
-                    else {
-                        this.el.style.transform = 'scaleY(1) scaleX(1)';
-                    }
-                }
-                else {
-                    if (Jamble.Settings.current.squashEnabled) {
-                        const v = Math.max(0, this.velocity);
-                        const stretch = 1 + v * Jamble.Settings.current.stretchFactor;
-                        const squash = 1 - v * Jamble.Settings.current.squashFactor;
-                        const airMs = Math.max(0, Jamble.Settings.current.airTransformSmoothingMs);
-                        this.el.style.transition = 'transform ' + airMs + 'ms ease-out';
-                        this.el.style.transform = 'scaleY(' + stretch + ') scaleX(' + squash + ')';
-                    }
-                    else {
-                        this.el.style.transform = 'scaleY(1) scaleX(1)';
-                    }
-                }
-                this.el.style.bottom = this.jumpHeight + 'px';
-            }
-        }
-        setHoverMode(enabled) {
-            this.isHovering = enabled;
-            if (enabled) {
-                this.isJumping = true;
-                this.velocity = 0;
-            }
-            else {
-                if (this.jumpHeight > 0) {
-                    this.isJumping = true;
-                    this.velocity = -1;
-                }
-                else {
-                    this.isJumping = false;
-                }
-            }
-        }
-        setHoverTarget(targetHeight, liftSpeed, fallSpeed) {
-            this.hoverTargetHeight = targetHeight;
-            this.hoverLiftSpeed = liftSpeed;
-            this.hoverFallSpeed = fallSpeed;
-        }
-        updateHoverPhysics(dt60) {
-            if (!this.isHovering)
-                return;
-            const deltaHeight = this.hoverTargetHeight - this.jumpHeight;
-            const threshold = 2;
-            if (Math.abs(deltaHeight) < threshold) {
-                this.jumpHeight = this.hoverTargetHeight;
-                this.velocity = 0;
-            }
-            else {
-                const speed = deltaHeight > 0 ? this.hoverLiftSpeed : this.hoverFallSpeed;
-                const direction = deltaHeight > 0 ? 1 : -1;
-                const maxMove = speed * (dt60 / 60);
-                const actualMove = Math.min(Math.abs(deltaHeight), maxMove) * direction;
-                this.jumpHeight += actualMove;
-                this.velocity = actualMove / (dt60 / 60);
-            }
-            this.el.style.bottom = this.jumpHeight + 'px';
-        }
-        moveX(dx) { this.x += dx; this.el.style.left = this.x + 'px'; }
-        setX(x) { this.x = x; this.el.style.left = this.x + 'px'; }
-    }
-    Jamble.Player = Player;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
@@ -2644,24 +2834,10 @@ var Jamble;
                 return;
             if (this.player.frozenStart && this.getWaitGroundForStart())
                 return;
-            const grounded = this.isGrounded();
+            const grounded = Jamble.SkillContextBuilder.groundedFrom(this.player);
             const intent = grounded ? Jamble.InputIntent.Tap : Jamble.InputIntent.AirTap;
-            const ctx = this.createSkillContext(grounded);
+            const ctx = Jamble.SkillContextBuilder.build(this.player);
             this.skills.handleInput(intent, ctx);
-        }
-        isGrounded() {
-            return this.player.jumpHeight === 0 && !this.player.isJumping && !this.player.isHovering;
-        }
-        createSkillContext(grounded) {
-            return {
-                nowMs: performance.now(),
-                grounded,
-                velocityY: this.player.velocity,
-                isDashing: this.player.isDashing,
-                jumpHeight: this.player.jumpHeight,
-                dashAvailable: !this.player.isDashing,
-                isHovering: this.player.isHovering
-            };
         }
     }
     Jamble.InputController = InputController;
@@ -2847,77 +3023,6 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
-    class MovementSystem {
-        constructor(gameEl) {
-            this.gameEl = gameEl;
-            this.impulses = [];
-        }
-        tick(deltaMs, deltaSec, player, direction, skills) {
-            if (player.frozenStart || player.frozenDeath) {
-                return { hit: false };
-            }
-            if (skills.isEquipped('move')) {
-                const base = Jamble.Settings.current.playerSpeed;
-                const dx = base * deltaSec * direction;
-                player.moveX(dx);
-            }
-            this.processImpulses(deltaMs, deltaSec, direction, player);
-            return this.checkBoundaries(player, direction);
-        }
-        addImpulse(speed, durationMs) {
-            this.impulses.push({ speed, remainingMs: Math.max(0, durationMs) });
-        }
-        clearImpulses() {
-            this.impulses.length = 0;
-        }
-        getActiveImpulses() {
-            return this.impulses;
-        }
-        processImpulses(deltaMs, deltaSec, direction, player) {
-            if (this.impulses.length === 0)
-                return;
-            let totalSpeed = 0;
-            for (const imp of this.impulses) {
-                totalSpeed += Math.max(0, imp.speed);
-            }
-            if (totalSpeed > 0) {
-                const dxImp = totalSpeed * deltaSec * direction;
-                player.moveX(dxImp);
-            }
-            for (const imp of this.impulses) {
-                imp.remainingMs -= deltaMs;
-            }
-            this.impulses = this.impulses.filter(i => i.remainingMs > 0);
-        }
-        checkBoundaries(player, direction) {
-            if (direction === 1 && this.reachedRight(player)) {
-                return {
-                    hit: true,
-                    newDirection: -1,
-                    alignmentFn: () => player.snapRight(this.gameEl.offsetWidth)
-                };
-            }
-            if (direction === -1 && this.reachedLeft(player)) {
-                return {
-                    hit: true,
-                    newDirection: 1,
-                    alignmentFn: () => player.setX(Jamble.Settings.current.playerStartOffset)
-                };
-            }
-            return { hit: false };
-        }
-        reachedRight(player) {
-            const rightLimit = this.gameEl.offsetWidth - Jamble.Settings.current.playerStartOffset;
-            return player.getRight(this.gameEl.offsetWidth) >= rightLimit;
-        }
-        reachedLeft(player) {
-            return player.x <= Jamble.Settings.current.playerStartOffset;
-        }
-    }
-    Jamble.MovementSystem = MovementSystem;
-})(Jamble || (Jamble = {}));
-var Jamble;
-(function (Jamble) {
     class Game {
         constructor(root) {
             var _a;
@@ -2973,7 +3078,7 @@ var Jamble;
                 elementHand: elementHandEl,
                 levelLabel: levelEl
             });
-            this.wiggle = new Jamble.Wiggle(this.player.el);
+            this.wiggle = new Jamble.Wiggle(this.player.el, () => this.player.getConfig().deathWiggleDistance);
             this.emojiReaction = new Jamble.EmojiReaction(this.gameEl);
             this.handleWindowResize = () => { this.rebuildSlots(); };
             this.applyElementHand();
@@ -2981,28 +3086,11 @@ var Jamble;
             this.reset = this.reset.bind(this);
             this.loop = this.loop.bind(this);
             this.movementSystem = new Jamble.MovementSystem(this.gameEl);
-            const caps = {
-                requestJump: (strength) => {
-                    if (this.player.isJumping || this.player.frozenDeath)
-                        return false;
-                    this.player.jump();
-                    if (typeof strength === 'number')
-                        this.player.velocity = strength;
-                    return true;
-                },
-                startDash: (_speed, durationMs, invincible) => {
-                    return this.player.startDash(durationMs, invincible);
-                },
-                addHorizontalImpulse: (speed, durationMs) => {
-                    this.movementSystem.addImpulse(speed, durationMs);
-                },
-                setVerticalVelocity: (vy) => { this.player.velocity = vy; },
-                onLand: (cb) => { this.landCbs.push(cb); },
-                setHoverMode: (enabled) => { this.player.setHoverMode(enabled); },
-                setHoverTarget: (targetHeight, liftSpeed, fallSpeed) => {
-                    this.player.setHoverTarget(targetHeight, liftSpeed, fallSpeed);
-                }
-            };
+            const caps = Jamble.CapabilityProvider.create({
+                player: this.player,
+                movement: this.movementSystem,
+                onLandRegister: (cb) => { this.landCbs.push(cb); }
+            });
             this.skillBank = new Jamble.SkillBankManager();
             this.skills = new Jamble.SkillManager(caps, { movement: this.skillBank.getSlotLimit() });
             this.skills.registerFromRegistry();
@@ -3030,6 +3118,8 @@ var Jamble;
         }
         getSkillManager() { return this.skills; }
         getSkillBank() { return this.skillBank; }
+        getPlayerConfig() { return this.player.getConfig(); }
+        updatePlayerConfig(patch) { this.player.updateConfig(patch); }
         start() {
             this.ensureSlotResizeMonitoring();
             this.rebuildSlots();
@@ -3240,7 +3330,7 @@ var Jamble;
             const deltaMs = deltaSec * 1000;
             const dt60 = deltaSec * 60;
             this.lastTime = ts;
-            const cx = this.player.x + this.player.el.offsetWidth / 2;
+            const cx = this.player.x;
             const cy = this.player.jumpHeight + this.player.el.offsetHeight + 10;
             this.countdown.updatePosition(cx, cy);
             if (Jamble.Settings.current.mode === 'pingpong' && this.player.frozenStart && !this.inCountdown && !this.player.frozenDeath) {
@@ -3258,16 +3348,8 @@ var Jamble;
             this.levelElements.tick(deltaMs);
             this.player.update(dt60);
             this.player.updateDash(deltaMs);
-            const grounded = this.player.jumpHeight === 0 && !this.player.isJumping && !this.player.isHovering;
-            const sctx = {
-                nowMs: performance.now(),
-                grounded,
-                velocityY: this.player.velocity,
-                isDashing: this.player.isDashing,
-                jumpHeight: this.player.jumpHeight,
-                dashAvailable: !this.player.isDashing,
-                isHovering: this.player.isHovering
-            };
+            const sctx = Jamble.SkillContextBuilder.build(this.player);
+            const grounded = sctx.grounded;
             this.skills.tick(sctx);
             if (!this.wasGrounded && grounded) {
                 this.skills.onLand(sctx);
@@ -3298,7 +3380,7 @@ var Jamble;
                 this.wiggle.start(this.player.x);
                 this.deathWiggleTimer = window.setTimeout(() => {
                     this.wiggle.stop();
-                    this.player.el.style.left = this.player.x + 'px';
+                    this.player.el.style.setProperty('--wiggle-offset', '0px');
                     this.deathWiggleTimer = null;
                 }, Jamble.Settings.current.deathFreezeTime);
                 this.showResetTimer = window.setTimeout(() => {

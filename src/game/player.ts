@@ -1,4 +1,15 @@
 namespace Jamble {
+  export interface PlayerConfig {
+    squashEnabled: boolean;
+    stretchFactor: number;
+    squashFactor: number;
+    landSquashDurationMs: number;
+    landScaleY: number;
+    landScaleX: number;
+    airTransformSmoothingMs: number;
+    landEaseMs: number;
+    deathWiggleDistance: number;
+  }
   export class Player {
     public el: HTMLElement;
     private visualEl: HTMLElement;
@@ -21,6 +32,18 @@ namespace Jamble {
     // Visual scale state (decoupled from position)
     private scaleX: number = 1;
     private scaleY: number = 1;
+    private static defaultConfig: PlayerConfig = {
+      squashEnabled: true,
+      stretchFactor: 0.05,
+      squashFactor: 0.02,
+      landSquashDurationMs: 150,
+      landScaleY: 0.6,
+      landScaleX: 1.4,
+      airTransformSmoothingMs: 100,
+      landEaseMs: 100,
+      deathWiggleDistance: 1
+    };
+    private config: PlayerConfig = { ...Player.defaultConfig };
 
     constructor(el: HTMLElement){
       this.el = el;
@@ -34,6 +57,11 @@ namespace Jamble {
       }
       this.visualEl = inner;
       this.reset();
+    }
+
+    public getConfig(): Readonly<PlayerConfig> { return this.config; }
+    public updateConfig(patch: Partial<PlayerConfig>): void {
+      this.config = { ...this.config, ...(patch || {}) };
     }
 
     reset(): void {
@@ -98,7 +126,7 @@ namespace Jamble {
       if (!this.isHovering) {
         this.jumpHeight = 0;
       }
-      this.setScale(1, 1, Jamble.Settings.current.airTransformSmoothingMs);
+      this.setScale(1, 1, this.config.airTransformSmoothingMs);
       this.applyTransform();
       this.setFrozenStart();
     }
@@ -179,29 +207,29 @@ namespace Jamble {
           // Touching ground resets dash availability
           this.endDash();
           this.dashAvailable = true;
-          if (Jamble.Settings.current.squashEnabled){
-            const sy = Jamble.Settings.current.landScaleY;
-            const sx = Jamble.Settings.current.landScaleX;
+          if (this.config.squashEnabled){
+            const sy = this.config.landScaleY;
+            const sx = this.config.landScaleX;
             // Snap to landing squash instantly, then ease back after duration
             this.visualEl.style.transition = 'transform 0ms linear';
             this.setScale(sx, sy);
             this.applyTransform();
-            const dur = Math.max(0, Jamble.Settings.current.landSquashDurationMs);
+            const dur = Math.max(0, this.config.landSquashDurationMs);
             window.setTimeout(() => {
-              const ease = Math.max(0, Jamble.Settings.current.landEaseMs);
+              const ease = Math.max(0, this.config.landEaseMs);
               this.visualEl.style.transition = 'transform ' + ease + 'ms ease-out';
               this.setScale(1, 1);
               this.applyTransform();
             }, dur);
           } else {
-            this.setScale(1, 1, Jamble.Settings.current.airTransformSmoothingMs);
+            this.setScale(1, 1, this.config.airTransformSmoothingMs);
             this.applyTransform();
           }
         } else {
-          if (Jamble.Settings.current.squashEnabled){
+          if (this.config.squashEnabled){
             const v = Math.max(0, this.velocity);
-            const stretch = 1 + v * Jamble.Settings.current.stretchFactor;
-            const squash = 1 - v * Jamble.Settings.current.squashFactor;
+            const stretch = 1 + v * this.config.stretchFactor;
+            const squash = 1 - v * this.config.squashFactor;
             // Avoid animating translate (position) while in-air; only adjust scale values.
             // We cannot independently transition scale without affecting translate using a single transform property.
             // To preserve movement feel, do not set a non-zero transition here.

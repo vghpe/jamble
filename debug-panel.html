@@ -194,38 +194,6 @@
         </div>
       </div>
 
-      <div class="debug-section skill">
-        <div class="section-header" onclick="toggleSection(this)">
-          <span>Skill: Jump</span>
-          <span class="toggle-indicator">▼</span>
-        </div>
-        <div class="section-content">
-          <div class="form-grid">
-            <label for="sk-jumpStrength">Strength</label>
-            <input id="sk-jumpStrength" type="number" step="0.1" min="1" max="30">
-            <label for="sk-jumpCd">Cooldown (ms)</label>
-            <input id="sk-jumpCd" type="number" step="10" min="0" max="2000">
-          </div>
-        </div>
-      </div>
-
-      <div class="debug-section skill">
-        <div class="section-header" onclick="toggleSection(this)">
-          <span>Skill: Dash</span>
-          <span class="toggle-indicator">▼</span>
-        </div>
-        <div class="section-content">
-          <div class="form-grid">
-            <label for="sk-dashSpeed">Speed</label>
-            <input id="sk-dashSpeed" type="number" step="5" min="0" max="1000">
-            <label for="sk-dashDur">Duration (ms)</label>
-            <input id="sk-dashDur" type="number" step="10" min="0" max="2000">
-            <label for="sk-dashCd">Cooldown (ms)</label>
-            <input id="sk-dashCd" type="number" step="10" min="0" max="2000">
-          </div>
-        </div>
-      </div>
-
       <!-- Game Settings Section -->
       <div class="debug-section">
         <div class="section-header" onclick="toggleSection(this)">
@@ -240,10 +208,6 @@
             <input id="dbg-squash" type="checkbox">
             <label for="dbg-colliders">Show colliders</label>
             <input id="dbg-colliders" type="checkbox">
-            <label for="dbg-shuffleEnabled">Idle shuffle</label>
-            <input id="dbg-shuffleEnabled" type="checkbox">
-            <label for="dbg-shuffleLimit">Shuffles per idle</label>
-            <input id="dbg-shuffleLimit" type="number" step="1" min="0" max="10">
           </div>
         </div>
       </div>
@@ -322,10 +286,6 @@
             <input id="dbg-startOffset" type="number" step="1" min="0" max="200">
             <label for="dbg-wiggleDist">Death wiggle (px)</label>
             <input id="dbg-wiggleDist" type="number" step="0.5" min="0" max="10">
-            <label for="dbg-treeMargin">Tree edge margin (%)</label>
-            <input id="dbg-treeMargin" type="number" step="1" min="0" max="50">
-            <label for="dbg-treeGap">Tree gap (%)</label>
-            <input id="dbg-treeGap" type="number" step="1" min="0" max="50">
           </div>
         </div>
       </div>
@@ -434,16 +394,13 @@
 
         // Get references to parent window objects
         var game = window.parent.__game;
-        var settings = window.parent.Jamble.Settings;
+  var settings = window.parent.Jamble.Settings;
+  var getPlayerCfg = function(){ return game.getPlayerConfig ? game.getPlayerConfig() : {}; };
         var skillManager = game.getSkillManager();
 
         var controls = {
           moveSpeed: document.getElementById('sk-moveSpeed'),
-          jumpStrength: document.getElementById('sk-jumpStrength'),
-          jumpCooldown: document.getElementById('sk-jumpCd'),
-          dashSpeed: document.getElementById('sk-dashSpeed'),
-          dashDuration: document.getElementById('sk-dashDur'),
-          dashCooldown: document.getElementById('sk-dashCd'),
+          // Jump/Dash controls removed for now
           mode: document.getElementById('dbg-mode'),
           squashToggle: document.getElementById('dbg-squash'),
           showColliders: document.getElementById('dbg-colliders'),
@@ -462,10 +419,8 @@
           resetDelay: document.getElementById('dbg-resetDelay'),
           startOffset: document.getElementById('dbg-startOffset'),
           wiggleDist: document.getElementById('dbg-wiggleDist'),
-          treeMargin: document.getElementById('dbg-treeMargin'),
-          treeGap: document.getElementById('dbg-treeGap'),
-          shuffleEnabled: document.getElementById('dbg-shuffleEnabled'),
-          shuffleLimit: document.getElementById('dbg-shuffleLimit'),
+          treeMargin: document.getElementById('dbg-treeMargin'), // deprecated
+          treeGap: document.getElementById('dbg-treeGap'), // deprecated
           // Knob controls
           knobLength: document.getElementById('knob-length'),
           knobSegments: document.getElementById('knob-segments'),
@@ -512,14 +467,15 @@
           var s = settings.current;
           if (controls.moveSpeed) controls.moveSpeed.value = String(s.playerSpeed);
           if (controls.mode) controls.mode.checked = (s.mode === 'pingpong');
-          if (controls.squashToggle) controls.squashToggle.checked = !!s.squashEnabled;
-          if (controls.stretch) controls.stretch.value = String(s.stretchFactor);
-          if (controls.squashFactor) controls.squashFactor.value = String(s.squashFactor);
-          if (controls.airMs) controls.airMs.value = String(s.airTransformSmoothingMs);
-          if (controls.landMs) controls.landMs.value = String(s.landSquashDurationMs);
-          if (controls.landSY) controls.landSY.value = String(s.landScaleY);
-          if (controls.landSX) controls.landSX.value = String(s.landScaleX);
-          if (controls.landEase) controls.landEase.value = String(s.landEaseMs);
+          var pc = getPlayerCfg();
+          if (controls.squashToggle) controls.squashToggle.checked = !!pc.squashEnabled;
+          if (controls.stretch) controls.stretch.value = String(pc.stretchFactor ?? '');
+          if (controls.squashFactor) controls.squashFactor.value = String(pc.squashFactor ?? '');
+          if (controls.airMs) controls.airMs.value = String(pc.airTransformSmoothingMs ?? '');
+          if (controls.landMs) controls.landMs.value = String(pc.landSquashDurationMs ?? '');
+          if (controls.landSY) controls.landSY.value = String(pc.landScaleY ?? '');
+          if (controls.landSX) controls.landSX.value = String(pc.landScaleX ?? '');
+          if (controls.landEase) controls.landEase.value = String(pc.landEaseMs ?? '');
           if (controls.gUp) controls.gUp.value = String(s.gravityUp);
           if (controls.gMid) controls.gMid.value = String(s.gravityMid);
           if (controls.gDown) controls.gDown.value = String(s.gravityDown);
@@ -527,12 +483,9 @@
           if (controls.deathFreeze) controls.deathFreeze.value = String(s.deathFreezeTime);
           if (controls.resetDelay) controls.resetDelay.value = String(s.showResetDelayMs);
           if (controls.startOffset) controls.startOffset.value = String(s.playerStartOffset);
-          if (controls.wiggleDist) controls.wiggleDist.value = String(s.deathWiggleDistance);
-          if (controls.treeMargin) controls.treeMargin.value = String(s.treeEdgeMarginPct);
-          if (controls.treeGap) controls.treeGap.value = String(s.treeMinGapPct);
+          if (controls.wiggleDist) controls.wiggleDist.value = String(pc.deathWiggleDistance ?? '');
+          // Deprecated tree controls left for UI compatibility; no-op
           if (controls.showColliders) controls.showColliders.checked = !!(window.parent && window.parent.__showColliders);
-          if (controls.shuffleEnabled) controls.shuffleEnabled.checked = !!s.shuffleEnabled;
-          if (controls.shuffleLimit) controls.shuffleLimit.value = String(s.shuffleLimit);
 
           // Knob settings
           var knobDefaults = {
@@ -555,16 +508,7 @@
           if (controls.knobShowPoints) controls.knobShowPoints.checked = !!kc.showPoints;
 
           // Read actual skill values from skill manager using registry defaults only
-          var jumpCfg = skillManager.getConfig('jump') || {};
-          var jumpDefaults = window.Jamble.getCoreSkillDefinition('jump')?.defaults || {};
-          if (controls.jumpStrength) controls.jumpStrength.value = String(jumpCfg.strength ?? jumpDefaults.strength);
-          if (controls.jumpCooldown) controls.jumpCooldown.value = String(jumpCfg.cooldownMs ?? 0);
-          
-          var dashCfg = skillManager.getConfig('dash') || {};
-          var dashDefaults = window.Jamble.getCoreSkillDefinition('dash')?.defaults || {};
-          if (controls.dashSpeed) controls.dashSpeed.value = String(dashCfg.speed ?? dashDefaults.speed);
-          if (controls.dashDuration) controls.dashDuration.value = String(dashCfg.durationMs ?? dashDefaults.durationMs);
-          if (controls.dashCooldown) controls.dashCooldown.value = String(dashCfg.cooldownMs ?? dashDefaults.cooldownMs);
+          // Jump/Dash config UI removed
 
           renderDeckList();
         }
@@ -585,15 +529,15 @@
         // Bind all the controls
         if (controls.moveSpeed) bindNumber(controls.moveSpeed, function(){ return settings.current.playerSpeed; }, function(value){ settings.update({ playerSpeed: value }); });
         if (controls.mode) controls.mode.addEventListener('change', function(){ settings.update({ mode: controls.mode.checked ? 'pingpong' : 'idle' }); });
-        if (controls.squashToggle) controls.squashToggle.addEventListener('change', function(){ settings.update({ squashEnabled: controls.squashToggle.checked }); });
-        
-        bindNumber(controls.stretch, function(){ return settings.current.stretchFactor; }, function(value){ settings.update({ stretchFactor: value }); });
-        bindNumber(controls.squashFactor, function(){ return settings.current.squashFactor; }, function(value){ settings.update({ squashFactor: value }); });
-        bindNumber(controls.airMs, function(){ return settings.current.airTransformSmoothingMs; }, function(value){ settings.update({ airTransformSmoothingMs: value }); });
-        bindNumber(controls.landMs, function(){ return settings.current.landSquashDurationMs; }, function(value){ settings.update({ landSquashDurationMs: value }); });
-        bindNumber(controls.landSY, function(){ return settings.current.landScaleY; }, function(value){ settings.update({ landScaleY: value }); });
-        bindNumber(controls.landSX, function(){ return settings.current.landScaleX; }, function(value){ settings.update({ landScaleX: value }); });
-        bindNumber(controls.landEase, function(){ return settings.current.landEaseMs; }, function(value){ settings.update({ landEaseMs: value }); });
+  if (controls.squashToggle) controls.squashToggle.addEventListener('change', function(){ game.updatePlayerConfig && game.updatePlayerConfig({ squashEnabled: controls.squashToggle.checked }); });
+
+  bindNumber(controls.stretch, function(){ return getPlayerCfg().stretchFactor; }, function(value){ game.updatePlayerConfig && game.updatePlayerConfig({ stretchFactor: value }); });
+  bindNumber(controls.squashFactor, function(){ return getPlayerCfg().squashFactor; }, function(value){ game.updatePlayerConfig && game.updatePlayerConfig({ squashFactor: value }); });
+  bindNumber(controls.airMs, function(){ return getPlayerCfg().airTransformSmoothingMs; }, function(value){ game.updatePlayerConfig && game.updatePlayerConfig({ airTransformSmoothingMs: value }); });
+  bindNumber(controls.landMs, function(){ return getPlayerCfg().landSquashDurationMs; }, function(value){ game.updatePlayerConfig && game.updatePlayerConfig({ landSquashDurationMs: value }); });
+  bindNumber(controls.landSY, function(){ return getPlayerCfg().landScaleY; }, function(value){ game.updatePlayerConfig && game.updatePlayerConfig({ landScaleY: value }); });
+  bindNumber(controls.landSX, function(){ return getPlayerCfg().landScaleX; }, function(value){ game.updatePlayerConfig && game.updatePlayerConfig({ landScaleX: value }); });
+  bindNumber(controls.landEase, function(){ return getPlayerCfg().landEaseMs; }, function(value){ game.updatePlayerConfig && game.updatePlayerConfig({ landEaseMs: value }); });
         bindNumber(controls.gUp, function(){ return settings.current.gravityUp; }, function(value){ settings.update({ gravityUp: value }); });
         bindNumber(controls.gMid, function(){ return settings.current.gravityMid; }, function(value){ settings.update({ gravityMid: value }); });
         bindNumber(controls.gDown, function(){ return settings.current.gravityDown; }, function(value){ settings.update({ gravityDown: value }); });
@@ -602,11 +546,8 @@
         bindNumber(controls.resetDelay, function(){ return settings.current.showResetDelayMs; }, function(value){ settings.update({ showResetDelayMs: value }); });
         bindNumber(controls.startOffset, function(){ return settings.current.playerStartOffset; }, function(value){ settings.update({ playerStartOffset: value }); });
   if (controls.showColliders) controls.showColliders.addEventListener('change', function(){ if (window.parent) window.parent.__showColliders = !!controls.showColliders.checked; });
-        bindNumber(controls.wiggleDist, function(){ return settings.current.deathWiggleDistance; }, function(value){ settings.update({ deathWiggleDistance: value }); });
-        bindNumber(controls.treeMargin, function(){ return settings.current.treeEdgeMarginPct; }, function(value){ settings.update({ treeEdgeMarginPct: value }); });
-        bindNumber(controls.treeGap, function(){ return settings.current.treeMinGapPct; }, function(value){ settings.update({ treeMinGapPct: value }); });
-        if (controls.shuffleEnabled) controls.shuffleEnabled.addEventListener('change', function(){ settings.update({ shuffleEnabled: controls.shuffleEnabled.checked }); });
-        bindNumber(controls.shuffleLimit, function(){ return settings.current.shuffleLimit; }, function(value){ settings.update({ shuffleLimit: value }); });
+  bindNumber(controls.wiggleDist, function(){ return getPlayerCfg().deathWiggleDistance; }, function(value){ game.updatePlayerConfig && game.updatePlayerConfig({ deathWiggleDistance: value }); });
+  // Deprecated tree/shuffle controls intentionally not bound
 
         // Apply skills from actual skill bank manager
         function applySkillsFromSettings(){
@@ -618,41 +559,7 @@
           });
         }
 
-        function getJumpRegistryDefault() {
-          var jumpDef = window.Jamble.getCoreSkillDefinition('jump');
-          return jumpDef ? jumpDef.defaults.strength : 7;
-        }
-        
-        bindNumber(controls.jumpStrength, function(){ 
-          return skillManager.getConfig('jump')?.strength ?? getJumpRegistryDefault();
-        }, function(value){
-          skillManager.setConfig('jump', { ...(skillManager.getConfig('jump') || {}), strength: value });
-        });
-        bindNumber(controls.jumpCooldown, function(){ 
-          return skillManager.getConfig('jump')?.cooldownMs ?? 0;
-        }, function(value){
-          skillManager.setConfig('jump', { ...(skillManager.getConfig('jump') || {}), cooldownMs: value });
-        });
-        function getDashRegistryDefaults() {
-          var dashDef = window.Jamble.getCoreSkillDefinition('dash');
-          return dashDef ? dashDef.defaults : { speed: 280, durationMs: 220, cooldownMs: 150 };
-        }
-        
-        bindNumber(controls.dashSpeed, function(){ 
-          return skillManager.getConfig('dash')?.speed ?? getDashRegistryDefaults().speed;
-        }, function(value){
-          skillManager.setConfig('dash', { ...(skillManager.getConfig('dash') || {}), speed: value });
-        });
-        bindNumber(controls.dashDuration, function(){ 
-          return skillManager.getConfig('dash')?.durationMs ?? getDashRegistryDefaults().durationMs;
-        }, function(value){
-          skillManager.setConfig('dash', { ...(skillManager.getConfig('dash') || {}), durationMs: value });
-        });
-        bindNumber(controls.dashCooldown, function(){ 
-          return skillManager.getConfig('dash')?.cooldownMs ?? getDashRegistryDefaults().cooldownMs;
-        }, function(value){
-          skillManager.setConfig('dash', { ...(skillManager.getConfig('dash') || {}), cooldownMs: value });
-        });
+        // Jump/Dash bindings removed
 
         // Knob controls
         function updateAllKnobs() {

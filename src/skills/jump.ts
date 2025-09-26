@@ -19,6 +19,7 @@ namespace Jamble {
       const ok = caps.requestJump(this.cfg.strength);
       if (ok && this.cd) this.cd.tryConsume(now);
       return ok;
+
     }
   }
 }
