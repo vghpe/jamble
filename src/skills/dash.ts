@@ -5,8 +5,8 @@ namespace Jamble {
     readonly id: string; readonly name: string = 'Dash'; readonly slot: SkillSlot = 'movement'; readonly priority: number;
     private cd: CooldownTimer;
     private usedThisAir: boolean = false;
-    private cfg: { speed: number; durationMs: number; cooldownMs: number };
-    constructor(id: string = 'dash', priority = 20, cfg: { speed: number; durationMs: number; cooldownMs: number }){
+    private cfg: DashConfig;
+    constructor(id: string = 'dash', priority = 20, cfg: DashConfig){
       this.id = id; this.priority = priority; this.cfg = cfg; this.cd = new CooldownTimer(cfg.cooldownMs);
     }
     onEquip(caps: PlayerCapabilities): void { /* no-op for now */ }
@@ -18,7 +18,7 @@ namespace Jamble {
       const now = ctx.nowMs;
       if (!this.cd.isReady(now)) return false;
       // Start dash (vertical freeze + state), and apply horizontal impulse independent of Move
-      const ok = caps.startDash(this.cfg.speed, this.cfg.durationMs);
+      const ok = caps.startDash(this.cfg.speed, this.cfg.durationMs, this.cfg.invincible);
       if (ok){
         caps.addHorizontalImpulse(this.cfg.speed, this.cfg.durationMs);
         this.cd.tryConsume(now);

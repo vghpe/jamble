@@ -21,10 +21,17 @@ namespace Jamble {
   // Restricted facade exposed to skills
   export interface PlayerCapabilities {
     requestJump(strength?: number): boolean;
-    startDash(speed: number, durationMs: number): boolean;
+    startDash(speed: number, durationMs: number, invincible?: boolean): boolean;
     addHorizontalImpulse(speed: number, durationMs: number): void;
     setVerticalVelocity(vy: number): void;
     onLand(cb: () => void): void; // unsubscribe handled by manager in future phase
+  }
+
+  export interface DashConfig {
+    speed: number;
+    durationMs: number;
+    cooldownMs: number;
+    invincible?: boolean;
   }
 
   export interface SkillConfig {

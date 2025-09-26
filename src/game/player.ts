@@ -9,6 +9,7 @@ namespace Jamble {
     public frozenStart: boolean = true;
     public frozenDeath: boolean = false;
     public isDashing: boolean = false;
+    public isInvincible: boolean = false; // For phase dash - can pass through objects
     private dashRemainingMs: number = 0;
     private dashAvailable: boolean = true;
 
@@ -26,6 +27,7 @@ namespace Jamble {
       this.frozenStart = true;
       this.frozenDeath = false;
       this.isDashing = false;
+      this.isInvincible = false;
       this.dashRemainingMs = 0;
       this.dashAvailable = true;
       this.el.style.left = this.x + 'px';
@@ -42,7 +44,10 @@ namespace Jamble {
     setFrozenDeath(): void { this.frozenDeath = true; this.el.className = 'jamble-player jamble-frozen-death'; }
 
     // Collision shape for more forgiving gameplay
-    getCollisionShape(): CollisionShape {
+    getCollisionShape(): CollisionShape | null {
+      // No collision when invincible (phase dash)
+      if (this.isInvincible) return null;
+      
       const rect = this.el.getBoundingClientRect();
       const centerX = rect.x + rect.width / 2;
       const centerY = rect.y + rect.height / 2;
@@ -80,14 +85,20 @@ namespace Jamble {
     }
 
     // Dash: launch horizontally for a brief time. Only mid-air and once per airtime.
-    startDash(durationOverrideMs?: number): boolean {
+    startDash(durationOverrideMs?: number, invincible?: boolean): boolean {
       if (this.frozenStart || this.frozenDeath || !this.isJumping) return false;
       if (this.isDashing || !this.dashAvailable) return false;
       this.isDashing = true;
+      this.isInvincible = invincible ?? false;
       this.dashRemainingMs = durationOverrideMs ?? 220; // Skills should provide duration
       this.dashAvailable = false;
-      this.el.classList.add('jamble-dashing');
+      this.updateDashVisualState();
       return true;
+    }
+
+    private updateDashVisualState(): void {
+      this.el.classList.toggle('jamble-dashing', this.isDashing);
+      this.el.classList.toggle('jamble-invincible', this.isDashing && this.isInvincible);
     }
     updateDash(deltaMs: number): void {
       if (!this.isDashing) return;
@@ -97,11 +108,12 @@ namespace Jamble {
     endDash(): void {
       if (!this.isDashing) return;
       this.isDashing = false;
+      this.isInvincible = false;
       this.dashRemainingMs = 0;
       // After dashing, immediately transition to downward motion
       // If we were moving upward, flip to a slight downward velocity
       if (this.velocity > 0) this.velocity = -0.1;
-      this.el.classList.remove('jamble-dashing');
+      this.updateDashVisualState();
     }
 
     // Update vertical motion and apply squash/stretch

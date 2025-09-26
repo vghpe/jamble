@@ -121,8 +121,8 @@ namespace Jamble {
           if (typeof strength === 'number') this.player.velocity = strength;
           return true;
         },
-        startDash: (_speed: number, durationMs: number) => {
-          return this.player.startDash(durationMs);
+        startDash: (_speed: number, durationMs: number, invincible?: boolean) => {
+          return this.player.startDash(durationMs, invincible);
         },
         addHorizontalImpulse: (speed: number, durationMs: number) => {
           this.movementSystem.addImpulse(speed, durationMs);
@@ -329,6 +329,8 @@ namespace Jamble {
       if (this.player.getCollisionShape && ob.getCollisionShape) {
         const playerShape = this.player.getCollisionShape();
         const elementShape = ob.getCollisionShape();
+        // No collision if player is invincible (returns null shape)
+        if (!playerShape) return false;
         return CollisionManager.checkCollision(playerShape, elementShape);
       }
       
@@ -450,7 +452,7 @@ namespace Jamble {
         // Player
         try {
           const pShape = this.player.getCollisionShape();
-          this.debugDraw.drawShape(pShape);
+          if (pShape) this.debugDraw.drawShape(pShape);
         } catch(_e){}
         // Elements
         this.levelElements.forEach(el => {

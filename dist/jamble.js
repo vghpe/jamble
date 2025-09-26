@@ -126,7 +126,7 @@ var Jamble;
             const now = ctx.nowMs;
             if (!this.cd.isReady(now))
                 return false;
-            const ok = caps.startDash(this.cfg.speed, this.cfg.durationMs);
+            const ok = caps.startDash(this.cfg.speed, this.cfg.durationMs, this.cfg.invincible);
             if (ok) {
                 caps.addHorizontalImpulse(this.cfg.speed, this.cfg.durationMs);
                 this.cd.tryConsume(now);
@@ -195,6 +195,21 @@ var Jamble;
                 cooldownMs: 150
             },
             create: (cfg) => new Jamble.DashSkill('dash', 20, cfg)
+        },
+        {
+            id: 'dash.phase',
+            name: 'Phase Dash',
+            symbol: 'D+',
+            type: 'dash',
+            slot: 'movement',
+            priority: 20,
+            defaults: {
+                speed: 280,
+                durationMs: 220,
+                cooldownMs: 200,
+                invincible: true
+            },
+            create: (cfg) => new Jamble.DashSkill('dash.phase', 20, cfg)
         }
     ];
     function registerCoreSkills(manager) {
@@ -1995,6 +2010,7 @@ var Jamble;
             this.frozenStart = true;
             this.frozenDeath = false;
             this.isDashing = false;
+            this.isInvincible = false;
             this.dashRemainingMs = 0;
             this.dashAvailable = true;
             this.el = el;
@@ -2009,6 +2025,7 @@ var Jamble;
             this.frozenStart = true;
             this.frozenDeath = false;
             this.isDashing = false;
+            this.isInvincible = false;
             this.dashRemainingMs = 0;
             this.dashAvailable = true;
             this.el.style.left = this.x + 'px';
@@ -2022,6 +2039,8 @@ var Jamble;
         clearFrozenStart() { this.frozenStart = false; this.setNormal(); }
         setFrozenDeath() { this.frozenDeath = true; this.el.className = 'jamble-player jamble-frozen-death'; }
         getCollisionShape() {
+            if (this.isInvincible)
+                return null;
             const rect = this.el.getBoundingClientRect();
             const centerX = rect.x + rect.width / 2;
             const centerY = rect.y + rect.height / 2;
@@ -2048,16 +2067,21 @@ var Jamble;
             this.isJumping = true;
             this.velocity = 7;
         }
-        startDash(durationOverrideMs) {
+        startDash(durationOverrideMs, invincible) {
             if (this.frozenStart || this.frozenDeath || !this.isJumping)
                 return false;
             if (this.isDashing || !this.dashAvailable)
                 return false;
             this.isDashing = true;
+            this.isInvincible = invincible !== null && invincible !== void 0 ? invincible : false;
             this.dashRemainingMs = durationOverrideMs !== null && durationOverrideMs !== void 0 ? durationOverrideMs : 220;
             this.dashAvailable = false;
-            this.el.classList.add('jamble-dashing');
+            this.updateDashVisualState();
             return true;
+        }
+        updateDashVisualState() {
+            this.el.classList.toggle('jamble-dashing', this.isDashing);
+            this.el.classList.toggle('jamble-invincible', this.isDashing && this.isInvincible);
         }
         updateDash(deltaMs) {
             if (!this.isDashing)
@@ -2070,10 +2094,11 @@ var Jamble;
             if (!this.isDashing)
                 return;
             this.isDashing = false;
+            this.isInvincible = false;
             this.dashRemainingMs = 0;
             if (this.velocity > 0)
                 this.velocity = -0.1;
-            this.el.classList.remove('jamble-dashing');
+            this.updateDashVisualState();
         }
         update(dt60) {
             if (this.isDashing)
@@ -2526,10 +2551,10 @@ var Jamble;
 var Jamble;
 (function (Jamble) {
     Jamble.CoreSkillDeckConfig = {
-        limits: { movement: 4, utility: 2, ultimate: 1 },
+        limits: { movement: 5, utility: 2, ultimate: 1 },
         defaultLoadout: []
     };
-    const HAND_SLOTS = 4;
+    const HAND_SLOTS = 5;
     function generateSlotId(index) {
         return 'skill-slot-' + index;
     }
@@ -2847,8 +2872,8 @@ var Jamble;
                         this.player.velocity = strength;
                     return true;
                 },
-                startDash: (_speed, durationMs) => {
-                    return this.player.startDash(durationMs);
+                startDash: (_speed, durationMs, invincible) => {
+                    return this.player.startDash(durationMs, invincible);
                 },
                 addHorizontalImpulse: (speed, durationMs) => {
                     this.movementSystem.addImpulse(speed, durationMs);
@@ -3052,6 +3077,8 @@ var Jamble;
             if (this.player.getCollisionShape && ob.getCollisionShape) {
                 const playerShape = this.player.getCollisionShape();
                 const elementShape = ob.getCollisionShape();
+                if (!playerShape)
+                    return false;
                 return Jamble.CollisionManager.checkCollision(playerShape, elementShape);
             }
             const pr = this.player.el.getBoundingClientRect();
@@ -3164,7 +3191,8 @@ var Jamble;
                 this.debugDraw.beginFrame();
                 try {
                     const pShape = this.player.getCollisionShape();
-                    this.debugDraw.drawShape(pShape);
+                    if (pShape)
+                        this.debugDraw.drawShape(pShape);
                 }
                 catch (_e) { }
                 this.levelElements.forEach(el => {

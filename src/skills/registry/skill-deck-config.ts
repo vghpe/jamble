@@ -32,11 +32,11 @@ namespace Jamble {
   }
 
   export const CoreSkillDeckConfig: SkillDeckConfig = {
-    limits: { movement: 4, utility: 2, ultimate: 1 },
+    limits: { movement: 5, utility: 2, ultimate: 1 },
     defaultLoadout: [] // Start with no skills selected - user must choose
   };
 
-  const HAND_SLOTS = 4; // Max skills in movement slot for now
+  const HAND_SLOTS = 5; // Max skills in movement slot for now
 
   function generateSlotId(index: number): string {
     return 'skill-slot-' + index;

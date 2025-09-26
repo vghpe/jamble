@@ -53,6 +53,21 @@ namespace Jamble {
         cooldownMs: 150
       },
       create: (cfg) => new DashSkill('dash', 20, cfg)
+    },
+    {
+      id: 'dash.phase',
+      name: 'Phase Dash',
+      symbol: 'D+',
+      type: 'dash',
+      slot: 'movement',
+      priority: 20,
+      defaults: { 
+        speed: 280,
+        durationMs: 220,
+        cooldownMs: 200, // Slightly longer cooldown for the more powerful variant
+        invincible: true // New property to indicate collision immunity
+      },
+      create: (cfg) => new DashSkill('dash.phase', 20, cfg)
     }
   ];
 
