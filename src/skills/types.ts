@@ -16,6 +16,7 @@ namespace Jamble {
     isDashing: boolean;
     jumpHeight: number;
     dashAvailable: boolean;
+    isHovering: boolean;
   }
 
   // Restricted facade exposed to skills
@@ -25,6 +26,8 @@ namespace Jamble {
     addHorizontalImpulse(speed: number, durationMs: number): void;
     setVerticalVelocity(vy: number): void;
     onLand(cb: () => void): void; // unsubscribe handled by manager in future phase
+    setHoverMode(enabled: boolean): void;
+    setHoverTarget(targetHeight: number, liftSpeed: number, fallSpeed: number): void;
   }
 
   export interface DashConfig {

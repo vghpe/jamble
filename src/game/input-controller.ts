@@ -71,7 +71,7 @@ namespace Jamble {
     }
 
     private isGrounded(): boolean {
-      return this.player.jumpHeight === 0 && !this.player.isJumping;
+      return this.player.jumpHeight === 0 && !this.player.isJumping && !this.player.isHovering;
     }
 
     private createSkillContext(grounded: boolean): SkillContext {
@@ -81,7 +81,8 @@ namespace Jamble {
         velocityY: this.player.velocity,
         isDashing: this.player.isDashing,
         jumpHeight: this.player.jumpHeight,
-        dashAvailable: !this.player.isDashing
+        dashAvailable: !this.player.isDashing,
+        isHovering: this.player.isHovering
       };
     }
   }

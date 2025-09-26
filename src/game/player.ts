@@ -12,6 +12,10 @@ namespace Jamble {
     public isInvincible: boolean = false; // For phase dash - can pass through objects
     private dashRemainingMs: number = 0;
     private dashAvailable: boolean = true;
+    public isHovering: boolean = false;
+    private hoverTargetHeight: number = 0;
+    private hoverLiftSpeed: number = 200; // px/s
+    private hoverFallSpeed: number = 300; // px/s
 
     constructor(el: HTMLElement){
       this.el = el;
@@ -30,6 +34,8 @@ namespace Jamble {
       this.isInvincible = false;
       this.dashRemainingMs = 0;
       this.dashAvailable = true;
+      this.isHovering = false;
+      this.hoverTargetHeight = 0;
       this.el.style.left = this.x + 'px';
       this.el.style.bottom = this.jumpHeight + 'px';
       this.el.style.transform = 'scaleY(1) scaleX(1)';
@@ -62,8 +68,10 @@ namespace Jamble {
       this.isJumping = false;
       this.endDash();
       this.velocity = 0;
-      this.jumpHeight = 0;
-      this.el.style.bottom = '0px';
+      if (!this.isHovering) {
+        this.jumpHeight = 0;
+        this.el.style.bottom = '0px';
+      }
       this.el.style.transform = 'scaleY(1) scaleX(1)';
       this.setFrozenStart();
     }
@@ -120,6 +128,13 @@ namespace Jamble {
     update(dt60: number): void {
       // While dashing, freeze vertical motion (no gravity)
       if (this.isDashing) return;
+      
+      // Handle hover physics first
+      if (this.isHovering) {
+        this.updateHoverPhysics(dt60);
+        return;
+      }
+      
       if (!this.frozenDeath && this.isJumping){
         this.jumpHeight += this.velocity * dt60;
         if (this.velocity > 2) this.velocity -= Jamble.Settings.current.gravityUp * dt60;
@@ -161,6 +176,55 @@ namespace Jamble {
         }
         this.el.style.bottom = this.jumpHeight + 'px';
       }
+    }
+
+    // Hover system
+    setHoverMode(enabled: boolean): void {
+      this.isHovering = enabled;
+      if (enabled) {
+        // When entering hover, we are no longer grounded and stop normal jumping physics
+        this.isJumping = true; // Prevents grounded state checks
+        this.velocity = 0; // Stop any current vertical motion
+      } else {
+        // When disabling hover, start falling
+        if (this.jumpHeight > 0) {
+          this.isJumping = true;
+          this.velocity = -1; // Start falling
+        } else {
+          this.isJumping = false;
+        }
+      }
+    }
+
+    setHoverTarget(targetHeight: number, liftSpeed: number, fallSpeed: number): void {
+      this.hoverTargetHeight = targetHeight;
+      this.hoverLiftSpeed = liftSpeed;
+      this.hoverFallSpeed = fallSpeed;
+    }
+
+    private updateHoverPhysics(dt60: number): void {
+      if (!this.isHovering) return;
+
+      const deltaHeight = this.hoverTargetHeight - this.jumpHeight;
+      const threshold = 2; // px - close enough to target
+      
+      if (Math.abs(deltaHeight) < threshold) {
+        // Close enough to target, maintain position
+        this.jumpHeight = this.hoverTargetHeight;
+        this.velocity = 0;
+      } else {
+        // Move towards target
+        const speed = deltaHeight > 0 ? this.hoverLiftSpeed : this.hoverFallSpeed;
+        const direction = deltaHeight > 0 ? 1 : -1;
+        const maxMove = speed * (dt60 / 60); // Convert to 60fps-normalized movement
+        const actualMove = Math.min(Math.abs(deltaHeight), maxMove) * direction;
+        
+        this.jumpHeight += actualMove;
+        this.velocity = actualMove / (dt60 / 60); // Set velocity for visual effects
+      }
+
+      // Update visual position
+      this.el.style.bottom = this.jumpHeight + 'px';
     }
 
     // Horizontal movement helpers

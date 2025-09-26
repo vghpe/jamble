@@ -128,7 +128,11 @@ namespace Jamble {
           this.movementSystem.addImpulse(speed, durationMs);
         },
         setVerticalVelocity: (vy: number) => { this.player.velocity = vy; },
-        onLand: (cb: () => void) => { this.landCbs.push(cb); }
+        onLand: (cb: () => void) => { this.landCbs.push(cb); },
+        setHoverMode: (enabled: boolean) => { this.player.setHoverMode(enabled); },
+        setHoverTarget: (targetHeight: number, liftSpeed: number, fallSpeed: number) => { 
+          this.player.setHoverTarget(targetHeight, liftSpeed, fallSpeed); 
+        }
       };
 
       // Skill system - registry driven
@@ -400,14 +404,15 @@ namespace Jamble {
       this.player.updateDash(deltaMs);
 
       // Skills tick + land detection
-      const grounded = this.player.jumpHeight === 0 && !this.player.isJumping;
+      const grounded = this.player.jumpHeight === 0 && !this.player.isJumping && !this.player.isHovering;
       const sctx: SkillContext = {
         nowMs: performance.now(),
         grounded,
         velocityY: this.player.velocity,
         isDashing: this.player.isDashing,
         jumpHeight: this.player.jumpHeight,
-        dashAvailable: !this.player.isDashing
+        dashAvailable: !this.player.isDashing,
+        isHovering: this.player.isHovering
       };
       this.skills.tick(sctx);
       if (!this.wasGrounded && grounded){
@@ -417,8 +422,8 @@ namespace Jamble {
       }
       this.wasGrounded = grounded;
 
-      // If we reached a side while airborne, wait to grant start until grounded
-      if (Jamble.Settings.current.mode === 'idle' && this.waitGroundForStart && this.player.jumpHeight === 0 && !this.player.isJumping){
+      // If we reached a side while airborne, wait to grant start until grounded or hovering stabilizes
+      if (Jamble.Settings.current.mode === 'idle' && this.waitGroundForStart && ((this.player.jumpHeight === 0 && !this.player.isJumping) || this.player.isHovering)){
         this.waitGroundForStart = false;
       this.awaitingStartTap = true;
       this.showIdleControls();

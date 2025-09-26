@@ -12,6 +12,8 @@ namespace Jamble {
     onInput(intent: InputIntent, ctx: SkillContext, caps: PlayerCapabilities): boolean {
       if (intent !== InputIntent.Tap && intent !== InputIntent.AirTap) return false;
       if (!ctx.grounded && intent !== InputIntent.AirTap) return false; // default Jump handles ground tap
+      // Block jumping when hovering (not grounded)
+      if (ctx.isHovering) return false;
       const now = ctx.nowMs;
       if (this.cd && !this.cd.isReady(now)) return false;
       const ok = caps.requestJump(this.cfg.strength);

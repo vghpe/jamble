@@ -91,6 +91,8 @@ var Jamble;
                 return false;
             if (!ctx.grounded && intent !== Jamble.InputIntent.AirTap)
                 return false;
+            if (ctx.isHovering)
+                return false;
             const now = ctx.nowMs;
             if (this.cd && !this.cd.isReady(now))
                 return false;
@@ -148,6 +150,53 @@ var Jamble;
         }
     }
     Jamble.MoveSkill = MoveSkill;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class HoverSkill {
+        constructor(id = 'hover', priority = 15, cfg) {
+            this.name = 'Hover';
+            this.slot = 'movement';
+            this.caps = null;
+            this.isActive = false;
+            this.bobStartMs = 0;
+            this.id = id;
+            this.priority = priority;
+            this.cfg = cfg;
+        }
+        onEquip(caps, cfg) {
+            this.caps = caps;
+            this.isActive = true;
+            this.bobStartMs = performance.now();
+            this.caps.setHoverMode(true);
+        }
+        onUnequip() {
+            this.isActive = false;
+            if (this.caps) {
+                this.caps.setHoverMode(false);
+            }
+            this.caps = null;
+        }
+        onTick(ctx, caps) {
+            if (!this.isActive)
+                return;
+            const now = ctx.nowMs;
+            const elapsed = now - this.bobStartMs;
+            const bobCycle = (elapsed % this.cfg.bobPeriodMs) / this.cfg.bobPeriodMs;
+            const bobOffset = Math.sin(bobCycle * 2 * Math.PI) * this.cfg.bobAmplitude;
+            const targetHeight = this.cfg.targetHeight + bobOffset;
+            caps.setHoverTarget(targetHeight, this.cfg.liftSpeed, this.cfg.fallSpeed);
+        }
+        onInput(intent, ctx, caps) {
+            if (!this.isActive)
+                return false;
+            if (intent === Jamble.InputIntent.Tap) {
+                return true;
+            }
+            return false;
+        }
+    }
+    Jamble.HoverSkill = HoverSkill;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
@@ -210,6 +259,22 @@ var Jamble;
                 invincible: true
             },
             create: (cfg) => new Jamble.DashSkill('dash.phase', 20, cfg)
+        },
+        {
+            id: 'hover',
+            name: 'Hover',
+            symbol: 'H~',
+            type: 'hover',
+            slot: 'movement',
+            priority: 15,
+            defaults: {
+                targetHeight: 40,
+                bobAmplitude: 8,
+                bobPeriodMs: 2000,
+                liftSpeed: 200,
+                fallSpeed: 300
+            },
+            create: (cfg) => new Jamble.HoverSkill('hover', 15, cfg)
         }
     ];
     function registerCoreSkills(manager) {
@@ -2013,6 +2078,10 @@ var Jamble;
             this.isInvincible = false;
             this.dashRemainingMs = 0;
             this.dashAvailable = true;
+            this.isHovering = false;
+            this.hoverTargetHeight = 0;
+            this.hoverLiftSpeed = 200;
+            this.hoverFallSpeed = 300;
             this.el = el;
             this.reset();
         }
@@ -2028,6 +2097,8 @@ var Jamble;
             this.isInvincible = false;
             this.dashRemainingMs = 0;
             this.dashAvailable = true;
+            this.isHovering = false;
+            this.hoverTargetHeight = 0;
             this.el.style.left = this.x + 'px';
             this.el.style.bottom = this.jumpHeight + 'px';
             this.el.style.transform = 'scaleY(1) scaleX(1)';
@@ -2051,8 +2122,10 @@ var Jamble;
             this.isJumping = false;
             this.endDash();
             this.velocity = 0;
-            this.jumpHeight = 0;
-            this.el.style.bottom = '0px';
+            if (!this.isHovering) {
+                this.jumpHeight = 0;
+                this.el.style.bottom = '0px';
+            }
             this.el.style.transform = 'scaleY(1) scaleX(1)';
             this.setFrozenStart();
         }
@@ -2103,6 +2176,10 @@ var Jamble;
         update(dt60) {
             if (this.isDashing)
                 return;
+            if (this.isHovering) {
+                this.updateHoverPhysics(dt60);
+                return;
+            }
             if (!this.frozenDeath && this.isJumping) {
                 this.jumpHeight += this.velocity * dt60;
                 if (this.velocity > 2)
@@ -2147,6 +2224,46 @@ var Jamble;
                 }
                 this.el.style.bottom = this.jumpHeight + 'px';
             }
+        }
+        setHoverMode(enabled) {
+            this.isHovering = enabled;
+            if (enabled) {
+                this.isJumping = true;
+                this.velocity = 0;
+            }
+            else {
+                if (this.jumpHeight > 0) {
+                    this.isJumping = true;
+                    this.velocity = -1;
+                }
+                else {
+                    this.isJumping = false;
+                }
+            }
+        }
+        setHoverTarget(targetHeight, liftSpeed, fallSpeed) {
+            this.hoverTargetHeight = targetHeight;
+            this.hoverLiftSpeed = liftSpeed;
+            this.hoverFallSpeed = fallSpeed;
+        }
+        updateHoverPhysics(dt60) {
+            if (!this.isHovering)
+                return;
+            const deltaHeight = this.hoverTargetHeight - this.jumpHeight;
+            const threshold = 2;
+            if (Math.abs(deltaHeight) < threshold) {
+                this.jumpHeight = this.hoverTargetHeight;
+                this.velocity = 0;
+            }
+            else {
+                const speed = deltaHeight > 0 ? this.hoverLiftSpeed : this.hoverFallSpeed;
+                const direction = deltaHeight > 0 ? 1 : -1;
+                const maxMove = speed * (dt60 / 60);
+                const actualMove = Math.min(Math.abs(deltaHeight), maxMove) * direction;
+                this.jumpHeight += actualMove;
+                this.velocity = actualMove / (dt60 / 60);
+            }
+            this.el.style.bottom = this.jumpHeight + 'px';
         }
         moveX(dx) { this.x += dx; this.el.style.left = this.x + 'px'; }
         setX(x) { this.x = x; this.el.style.left = this.x + 'px'; }
@@ -2533,7 +2650,7 @@ var Jamble;
             this.skills.handleInput(intent, ctx);
         }
         isGrounded() {
-            return this.player.jumpHeight === 0 && !this.player.isJumping;
+            return this.player.jumpHeight === 0 && !this.player.isJumping && !this.player.isHovering;
         }
         createSkillContext(grounded) {
             return {
@@ -2542,7 +2659,8 @@ var Jamble;
                 velocityY: this.player.velocity,
                 isDashing: this.player.isDashing,
                 jumpHeight: this.player.jumpHeight,
-                dashAvailable: !this.player.isDashing
+                dashAvailable: !this.player.isDashing,
+                isHovering: this.player.isHovering
             };
         }
     }
@@ -2551,10 +2669,10 @@ var Jamble;
 var Jamble;
 (function (Jamble) {
     Jamble.CoreSkillDeckConfig = {
-        limits: { movement: 5, utility: 2, ultimate: 1 },
+        limits: { movement: 6, utility: 2, ultimate: 1 },
         defaultLoadout: []
     };
-    const HAND_SLOTS = 5;
+    const HAND_SLOTS = 8;
     function generateSlotId(index) {
         return 'skill-slot-' + index;
     }
@@ -2879,7 +2997,11 @@ var Jamble;
                     this.movementSystem.addImpulse(speed, durationMs);
                 },
                 setVerticalVelocity: (vy) => { this.player.velocity = vy; },
-                onLand: (cb) => { this.landCbs.push(cb); }
+                onLand: (cb) => { this.landCbs.push(cb); },
+                setHoverMode: (enabled) => { this.player.setHoverMode(enabled); },
+                setHoverTarget: (targetHeight, liftSpeed, fallSpeed) => {
+                    this.player.setHoverTarget(targetHeight, liftSpeed, fallSpeed);
+                }
             };
             this.skillBank = new Jamble.SkillBankManager();
             this.skills = new Jamble.SkillManager(caps, { movement: this.skillBank.getSlotLimit() });
@@ -3136,14 +3258,15 @@ var Jamble;
             this.levelElements.tick(deltaMs);
             this.player.update(dt60);
             this.player.updateDash(deltaMs);
-            const grounded = this.player.jumpHeight === 0 && !this.player.isJumping;
+            const grounded = this.player.jumpHeight === 0 && !this.player.isJumping && !this.player.isHovering;
             const sctx = {
                 nowMs: performance.now(),
                 grounded,
                 velocityY: this.player.velocity,
                 isDashing: this.player.isDashing,
                 jumpHeight: this.player.jumpHeight,
-                dashAvailable: !this.player.isDashing
+                dashAvailable: !this.player.isDashing,
+                isHovering: this.player.isHovering
             };
             this.skills.tick(sctx);
             if (!this.wasGrounded && grounded) {
@@ -3156,7 +3279,7 @@ var Jamble;
                 catch (_e) { } });
             }
             this.wasGrounded = grounded;
-            if (Jamble.Settings.current.mode === 'idle' && this.waitGroundForStart && this.player.jumpHeight === 0 && !this.player.isJumping) {
+            if (Jamble.Settings.current.mode === 'idle' && this.waitGroundForStart && ((this.player.jumpHeight === 0 && !this.player.isJumping) || this.player.isHovering)) {
                 this.waitGroundForStart = false;
                 this.awaitingStartTap = true;
                 this.showIdleControls();

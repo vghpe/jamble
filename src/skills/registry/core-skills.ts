@@ -2,6 +2,7 @@
 /// <reference path="../jump.ts" />
 /// <reference path="../dash.ts" />
 /// <reference path="../move.ts" />
+/// <reference path="../hover.ts" />
 
 namespace Jamble {
   type CoreSkillDescriptor<TCfg = any> = SkillDescriptor & {
@@ -68,6 +69,22 @@ namespace Jamble {
         invincible: true // New property to indicate collision immunity
       },
       create: (cfg) => new DashSkill('dash.phase', 20, cfg)
+    },
+    {
+      id: 'hover',
+      name: 'Hover',
+      symbol: 'H~',
+      type: 'hover',
+      slot: 'movement',
+      priority: 15,
+      defaults: {
+        targetHeight: 40,     // Hover at 120px above ground
+        bobAmplitude: 8,       // 8px up/down bobbing
+        bobPeriodMs: 2000,     // 2 second bob cycle
+        liftSpeed: 200,        // Lift speed in px/s
+        fallSpeed: 300         // Fall speed in px/s when hover disabled
+      },
+      create: (cfg) => new HoverSkill('hover', 15, cfg)
     }
   ];
 
