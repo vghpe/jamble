@@ -113,16 +113,10 @@
           <div class="jamble-section">
             <h3 class="jamble-section-heading">Skill Loadout</h3>
             <div class="jamble-skill-slots" id="skill-slots">
-              <div class="jamble-skill-slot"></div>
-              <div class="jamble-skill-slot"></div>
-              <div class="jamble-skill-slot"></div>
-              <div class="jamble-skill-slot"></div>
+              <!-- Slots will be generated dynamically from registry -->
             </div>
             <div class="jamble-skill-menu" id="skill-menu">
-              <div class="jamble-skill-btn" data-skill="move">M</div>
-              <div class="jamble-skill-btn" data-skill="jump">J</div>
-              <div class="jamble-skill-btn" data-skill="jump.high">H</div>
-              <div class="jamble-skill-btn" data-skill="dash">D</div>
+              <!-- Skill bank will be generated dynamically from registry -->
             </div>
           </div>
           <div class="jamble-section">
@@ -150,45 +144,58 @@
         var elementHandEl = document.getElementById('element-hand');
         var skillSlots = document.getElementById('skill-slots');
         var skillMenu = document.getElementById('skill-menu');
-        var slotEls = skillSlots ? Array.from(skillSlots.querySelectorAll('.jamble-skill-slot')) : [];
-        var LETTER = { move: 'M', jump: 'J', 'jump.high': 'H', dash: 'D' };
+        var skillBank = game.getSkillBank();
+        var skillManager = game.getSkillManager();
 
-        function getLoadout(){
-          var load = settings.skills.loadout || { movement: [] };
-          return (load.movement || []).slice();
+        function renderSkillSystem(){
+          renderSkillSlots();
+          renderSkillBank();
         }
 
-        function setLoadout(arr){
-          settings.skills.loadout.movement = arr.slice(0, 4);
-          applySkillsFromSettings();
-          renderSkillSlotsAndMenu();
-        }
-
-        function applySkillsFromSettings(){
-          var jumpCfg = settings.skills.configs.jump || {};
-          var dashCfg = settings.skills.configs.dash || {};
-          skillManager.clear();
-          if (Object.keys(jumpCfg).length) skillManager.setConfig('jump', { ...jumpCfg });
-          if (Object.keys(dashCfg).length) skillManager.setConfig('dash', { ...dashCfg });
-          var lineup = getLoadout();
-          if (!lineup.length) lineup = ['move','jump','dash'];
-          lineup.forEach(function(id){ try { skillManager.equip(id); } catch(_e){} });
-        }
-
-        function renderSkillSlotsAndMenu(){
-          var load = getLoadout();
-          if (!slotEls.length && skillSlots){ slotEls = Array.from(skillSlots.querySelectorAll('.jamble-skill-slot')); }
-          slotEls.forEach(function(el, idx){
-            var id = load[idx];
-            el.textContent = id ? (LETTER[id] || id.charAt(0).toUpperCase()) : '';
+        function renderSkillSlots(){
+          if (!skillSlots) return;
+          var slotView = skillBank.getSlotView();
+          skillSlots.innerHTML = '';
+          
+          slotView.forEach(function(slot){
+            var slotEl = document.createElement('div');
+            slotEl.className = 'jamble-skill-slot';
+            slotEl.textContent = slot.symbol || '';
+            skillSlots.appendChild(slotEl);
           });
+        }
+
+        function renderSkillBank(){
           if (!skillMenu) return;
-          var btns = Array.from(skillMenu.querySelectorAll('.jamble-skill-btn'));
-          btns.forEach(function(btn){
-            var id = btn.getAttribute('data-skill');
-            if (!id || id === 'empty') return;
-            btn.classList.toggle('jamble-active', load.indexOf(id) !== -1);
+          var bankView = skillBank.getBankView();
+          skillMenu.innerHTML = '';
+          
+          bankView.forEach(function(skill){
+            var btn = document.createElement('div');
+            btn.className = 'jamble-skill-btn';
+            btn.setAttribute('data-skill', skill.id);
+            btn.textContent = skill.symbol;
+            btn.classList.toggle('jamble-active', skill.active);
+            skillMenu.appendChild(btn);
           });
+        }
+
+        function toggleSkillActive(skillId){
+          var bankView = skillBank.getBankView();
+          var skill = bankView.find(function(s){ return s.id === skillId; });
+          if (!skill) return;
+          
+          var newActive = !skill.active;
+          skillBank.setActive(skillId, newActive);
+          
+          // Update SkillManager
+          skillManager.clear();
+          var activeSkills = skillBank.getActiveSkillIds();
+          activeSkills.forEach(function(id){ 
+            try { skillManager.equip(id); } catch(_e){} 
+          });
+          
+          renderSkillSystem();
         }
 
         function iconForCard(card){
@@ -269,17 +276,9 @@
           skillMenu.addEventListener('click', function(ev){
             var target = ev.target;
             if (!target || !target.classList || !target.classList.contains('jamble-skill-btn')) return;
-            var id = target.getAttribute('data-skill');
-            if (!id || id === 'empty') return;
-            var load = getLoadout();
-            var idx = load.indexOf(id);
-            if (idx !== -1){
-              load.splice(idx,1);
-            } else {
-              if (load.length >= 4) return;
-              load.push(id);
-            }
-            setLoadout(load);
+            var skillId = target.getAttribute('data-skill');
+            if (!skillId) return;
+            toggleSkillActive(skillId);
           });
         }
 
@@ -295,8 +294,7 @@
         });
 
         // Initialize everything
-        applySkillsFromSettings();
-        renderSkillSlotsAndMenu();
+        renderSkillSystem();
         renderElementHand();
 
         console.log('🎮 Game UI initialized with skill and element management');

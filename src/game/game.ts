@@ -15,6 +15,7 @@
 /// <reference path="../level/registry/core-elements.ts" />
 /// <reference path="../skills/types.ts" />
 /// <reference path="../skills/skill-manager.ts" />
+/// <reference path="../skills/skill-bank-manager.ts" />
 /// <reference path="../skills/registry/core-skills.ts" />
 /// <reference path="../skills/jump.ts" />
 /// <reference path="../skills/dash.ts" />
@@ -56,6 +57,7 @@ namespace Jamble {
     private pendingOriginFrame: number | null = null;
     // Skills
     private skills: SkillManager;
+    private skillBank: SkillBankManager;
     private landCbs: Array<() => void> = [];
     private wasGrounded: boolean = true;
   // Debug
@@ -129,18 +131,16 @@ namespace Jamble {
         onLand: (cb: () => void) => { this.landCbs.push(cb); }
       };
 
-      // Skill manager and registry
-      this.skills = new SkillManager(caps, { movement: 4 });
-      // Register skills from registry
+      // Skill system - registry driven
+      this.skillBank = new SkillBankManager();
+      this.skills = new SkillManager(caps, { movement: this.skillBank.getSlotLimit() });
       this.skills.registerFromRegistry();
-      // Apply user configs with registry defaults as fallback
-      const sj = Jamble.Settings.skills.configs.jump;
-      if (sj) this.skills.applyConfig('jump', sj);
-      const sd = Jamble.Settings.skills.configs.dash;
-      if (sd) this.skills.applyConfig('dash', sd);
-      // Equip from loadout or fallback
-      const loadoutMoves = Jamble.Settings.skills.loadout.movement || ['move','jump.high','dash'];
-      loadoutMoves.forEach(id => { try { this.skills.equip(id); } catch(_e){} });
+      
+      // Skills use registry defaults - config changes handled directly via SkillManager
+      
+      // Equip active skills from bank
+      const activeSkills = this.skillBank.getActiveSkillIds();
+      activeSkills.forEach(id => { try { this.skills.equip(id); } catch(_e){} });
 
       this.input = new InputController({
         player: this.player,
@@ -164,6 +164,7 @@ namespace Jamble {
       }
     }
     public getSkillManager(): SkillManager { return this.skills; }
+    public getSkillBank(): SkillBankManager { return this.skillBank; }
 
     start(): void {
       this.ensureSlotResizeMonitoring();

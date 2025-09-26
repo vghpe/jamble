@@ -2,13 +2,10 @@
 var Jamble;
 (function (Jamble) {
     const embeddedDefaults = {
-        jumpStrength: 7,
         gravityUp: 0.32,
         gravityMid: 0.4,
         gravityDown: 0.65,
         playerSpeed: 130,
-        dashSpeed: 280,
-        dashDurationMs: 220,
         startFreezeTime: 3000,
         deathFreezeTime: 500,
         showResetDelayMs: 150,
@@ -28,46 +25,20 @@ var Jamble;
         airTransformSmoothingMs: 100,
         landEaseMs: 100
     };
-    function defaultSkills() {
-        return {
-            loadout: { movement: ['move', 'jump.high', 'dash'], utility: [], ultimate: [] },
-            configs: {}
-        };
-    }
     class SettingsStore {
-        constructor(initial, skills) {
-            var _a, _b, _c;
+        constructor(initial) {
             this._current = { ...embeddedDefaults, ...(initial !== null && initial !== void 0 ? initial : {}) };
-            const baseSkills = defaultSkills();
-            this._skills = {
-                loadout: {
-                    movement: ((_a = skills === null || skills === void 0 ? void 0 : skills.loadout) === null || _a === void 0 ? void 0 : _a.movement) ? skills.loadout.movement.slice() : baseSkills.loadout.movement.slice(),
-                    utility: ((_b = skills === null || skills === void 0 ? void 0 : skills.loadout) === null || _b === void 0 ? void 0 : _b.utility) ? skills.loadout.utility.slice() : baseSkills.loadout.utility.slice(),
-                    ultimate: ((_c = skills === null || skills === void 0 ? void 0 : skills.loadout) === null || _c === void 0 ? void 0 : _c.ultimate) ? skills.loadout.ultimate.slice() : baseSkills.loadout.ultimate.slice()
-                },
-                configs: { ...baseSkills.configs, ...((skills === null || skills === void 0 ? void 0 : skills.configs) || {}) }
-            };
         }
         get current() { return this._current; }
-        get skills() { return this._skills; }
         update(patch) {
             this._current = { ...this._current, ...patch };
         }
         reset() {
             this._current = { ...embeddedDefaults };
-            this._skills = defaultSkills();
         }
         toJSON() {
             return {
-                game: { ...this._current },
-                skills: {
-                    loadout: {
-                        movement: this._skills.loadout.movement.slice(),
-                        utility: this._skills.loadout.utility.slice(),
-                        ultimate: this._skills.loadout.ultimate.slice()
-                    },
-                    configs: { ...this._skills.configs }
-                }
+                game: { ...this._current }
             };
         }
     }
@@ -235,7 +206,7 @@ var Jamble;
     }
     Jamble.getCoreSkillDefinition = getCoreSkillDefinition;
     function getCoreSkillDefinitions() {
-        return CORE_SKILLS;
+        return CORE_SKILLS.slice();
     }
     Jamble.getCoreSkillDefinitions = getCoreSkillDefinitions;
 })(Jamble || (Jamble = {}));
@@ -2075,7 +2046,7 @@ var Jamble;
             if (this.isJumping || this.frozenDeath)
                 return;
             this.isJumping = true;
-            this.velocity = Jamble.Settings.current.jumpStrength;
+            this.velocity = 7;
         }
         startDash(durationOverrideMs) {
             if (this.frozenStart || this.frozenDeath || !this.isJumping)
@@ -2083,7 +2054,7 @@ var Jamble;
             if (this.isDashing || !this.dashAvailable)
                 return false;
             this.isDashing = true;
-            this.dashRemainingMs = typeof durationOverrideMs === 'number' ? durationOverrideMs : Jamble.Settings.current.dashDurationMs;
+            this.dashRemainingMs = durationOverrideMs !== null && durationOverrideMs !== void 0 ? durationOverrideMs : 220;
             this.dashAvailable = false;
             this.el.classList.add('jamble-dashing');
             return true;
@@ -2554,6 +2525,185 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
+    Jamble.CoreSkillDeckConfig = {
+        limits: { movement: 4, utility: 2, ultimate: 1 },
+        defaultLoadout: []
+    };
+    const HAND_SLOTS = 4;
+    function generateSlotId(index) {
+        return 'skill-slot-' + index;
+    }
+    function expandSkillLoadout(config) {
+        const loadout = [];
+        const allSkills = Jamble.getCoreSkillDefinitions();
+        allSkills.forEach(descriptor => {
+            const id = generateSlotId(loadout.length);
+            const isActive = config.defaultLoadout.includes(descriptor.id);
+            loadout.push({
+                id,
+                skillId: descriptor.id,
+                name: descriptor.name,
+                type: descriptor.type,
+                symbol: descriptor.symbol,
+                active: isActive
+            });
+        });
+        return loadout;
+    }
+    Jamble.expandSkillLoadout = expandSkillLoadout;
+    function deriveSkillsSettings(config) {
+        const loadout = [];
+        const defaultActiveSkills = config.defaultLoadout.slice();
+        const slotLimit = config.limits.movement || 4;
+        for (let i = 0; i < slotLimit; i++) {
+            const slotId = generateSlotId(i);
+            const skillId = defaultActiveSkills[i] || null;
+            loadout.push({
+                slotId,
+                skillId,
+                active: skillId !== null
+            });
+        }
+        return {
+            loadout,
+            configs: {}
+        };
+    }
+    Jamble.deriveSkillsSettings = deriveSkillsSettings;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class SkillBankManager {
+        constructor(config = Jamble.CoreSkillDeckConfig) {
+            this.activeSkills = new Set();
+            this.slotAssignments = new Map();
+            this.config = config;
+            this.slotLimit = config.limits.movement || 4;
+            this.initializeSlots();
+            this.applyDefaultLoadout();
+        }
+        initializeSlots() {
+            for (let i = 0; i < this.slotLimit; i++) {
+                const slotId = 'skill-slot-' + i;
+                this.slotAssignments.set(slotId, null);
+            }
+        }
+        applyDefaultLoadout() {
+            const defaultSkills = this.config.defaultLoadout.slice(0, this.slotLimit);
+            const slotIds = Array.from(this.slotAssignments.keys());
+            defaultSkills.forEach((skillId, index) => {
+                if (index < slotIds.length) {
+                    const slotId = slotIds[index];
+                    this.slotAssignments.set(slotId, skillId);
+                    this.activeSkills.add(skillId);
+                }
+            });
+        }
+        getBankView() {
+            const allSkills = Jamble.getCoreSkillDefinitions();
+            return allSkills.map(desc => ({
+                id: desc.id,
+                name: desc.name,
+                type: desc.type,
+                symbol: desc.symbol,
+                active: this.activeSkills.has(desc.id)
+            }));
+        }
+        getSlotView() {
+            const result = [];
+            const allSkills = Jamble.getCoreSkillDefinitions();
+            const skillMap = new Map(allSkills.map(s => [s.id, s]));
+            for (const [slotId, skillId] of this.slotAssignments) {
+                const skill = skillId ? skillMap.get(skillId) : null;
+                result.push({
+                    slotId,
+                    skillId,
+                    name: skill === null || skill === void 0 ? void 0 : skill.name,
+                    symbol: skill === null || skill === void 0 ? void 0 : skill.symbol,
+                    active: skillId !== null
+                });
+            }
+            return result.sort((a, b) => a.slotId.localeCompare(b.slotId));
+        }
+        setActive(skillId, active) {
+            const skill = Jamble.getCoreSkillDefinition(skillId);
+            if (!skill)
+                return false;
+            if (active) {
+                return this.addSkillToSlot(skillId);
+            }
+            else {
+                return this.removeSkillFromSlot(skillId);
+            }
+        }
+        addSkillToSlot(skillId) {
+            if (this.activeSkills.has(skillId))
+                return true;
+            if (this.activeSkills.size >= this.slotLimit)
+                return false;
+            for (const [slotId, currentSkillId] of this.slotAssignments) {
+                if (currentSkillId === null) {
+                    this.slotAssignments.set(slotId, skillId);
+                    this.activeSkills.add(skillId);
+                    return true;
+                }
+            }
+            return false;
+        }
+        removeSkillFromSlot(skillId) {
+            if (!this.activeSkills.has(skillId))
+                return true;
+            for (const [slotId, currentSkillId] of this.slotAssignments) {
+                if (currentSkillId === skillId) {
+                    this.slotAssignments.set(slotId, null);
+                    this.activeSkills.delete(skillId);
+                    return true;
+                }
+            }
+            return false;
+        }
+        getActiveSkillIds() {
+            return Array.from(this.activeSkills);
+        }
+        getSlotLimit() {
+            return this.slotLimit;
+        }
+        clearAllSkills() {
+            this.activeSkills.clear();
+            for (const slotId of this.slotAssignments.keys()) {
+                this.slotAssignments.set(slotId, null);
+            }
+        }
+        toSettingsFormat() {
+            const loadout = [];
+            for (const [slotId, skillId] of this.slotAssignments) {
+                loadout.push({
+                    slotId,
+                    skillId,
+                    active: skillId !== null
+                });
+            }
+            return { loadout };
+        }
+        fromSettingsFormat(settings) {
+            if (!settings.loadout)
+                return;
+            this.activeSkills.clear();
+            for (const slotId of this.slotAssignments.keys()) {
+                this.slotAssignments.set(slotId, null);
+            }
+            settings.loadout.forEach(config => {
+                if (config.active && config.skillId) {
+                    this.slotAssignments.set(config.slotId, config.skillId);
+                    this.activeSkills.add(config.skillId);
+                }
+            });
+        }
+    }
+    Jamble.SkillBankManager = SkillBankManager;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
     class MovementSystem {
         constructor(gameEl) {
             this.gameEl = gameEl;
@@ -2706,16 +2856,11 @@ var Jamble;
                 setVerticalVelocity: (vy) => { this.player.velocity = vy; },
                 onLand: (cb) => { this.landCbs.push(cb); }
             };
-            this.skills = new Jamble.SkillManager(caps, { movement: 4 });
+            this.skillBank = new Jamble.SkillBankManager();
+            this.skills = new Jamble.SkillManager(caps, { movement: this.skillBank.getSlotLimit() });
             this.skills.registerFromRegistry();
-            const sj = Jamble.Settings.skills.configs.jump;
-            if (sj)
-                this.skills.applyConfig('jump', sj);
-            const sd = Jamble.Settings.skills.configs.dash;
-            if (sd)
-                this.skills.applyConfig('dash', sd);
-            const loadoutMoves = Jamble.Settings.skills.loadout.movement || ['move', 'jump.high', 'dash'];
-            loadoutMoves.forEach(id => { try {
+            const activeSkills = this.skillBank.getActiveSkillIds();
+            activeSkills.forEach(id => { try {
                 this.skills.equip(id);
             }
             catch (_e) { } });
@@ -2737,6 +2882,7 @@ var Jamble;
             }
         }
         getSkillManager() { return this.skills; }
+        getSkillBank() { return this.skillBank; }
         start() {
             this.ensureSlotResizeMonitoring();
             this.rebuildSlots();

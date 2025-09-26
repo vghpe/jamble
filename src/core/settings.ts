@@ -2,13 +2,10 @@ namespace Jamble {
   export type Mode = 'idle' | 'pingpong';
 
   export interface SettingsShape {
-    jumpStrength: number;
     gravityUp: number;
     gravityMid: number;
     gravityDown: number;
     playerSpeed: number;
-    dashSpeed: number;
-    dashDurationMs: number;
     startFreezeTime: number;
     deathFreezeTime: number;
     showResetDelayMs: number;
@@ -29,19 +26,11 @@ namespace Jamble {
     landEaseMs: number;
   }
 
-  export interface SkillsProfile {
-    loadout: { movement: string[]; utility: string[]; ultimate: string[] };
-    configs: { [skillId: string]: any };
-  }
-
   const embeddedDefaults: SettingsShape = {
-    jumpStrength: 7,
     gravityUp: 0.32,
     gravityMid: 0.4,
     gravityDown: 0.65,
     playerSpeed: 130,
-    dashSpeed: 280,
-    dashDurationMs: 220,
     startFreezeTime: 3000,
     deathFreezeTime: 500,
     showResetDelayMs: 150,
@@ -62,32 +51,14 @@ namespace Jamble {
     landEaseMs: 100
   };
 
-  function defaultSkills(): SkillsProfile {
-    return {
-      loadout: { movement: ['move','jump.high','dash'], utility: [], ultimate: [] },
-      configs: {} // Registry now provides defaults, this only stores user overrides
-    };
-  }
-
   export class SettingsStore {
     private _current: SettingsShape;
-    private _skills: SkillsProfile;
 
-    constructor(initial?: Partial<SettingsShape>, skills?: Partial<SkillsProfile>){
+    constructor(initial?: Partial<SettingsShape>){
       this._current = { ...embeddedDefaults, ...(initial ?? {}) };
-      const baseSkills = defaultSkills();
-      this._skills = {
-        loadout: {
-          movement: skills?.loadout?.movement ? skills.loadout.movement.slice() : baseSkills.loadout.movement.slice(),
-          utility: skills?.loadout?.utility ? skills.loadout.utility.slice() : baseSkills.loadout.utility.slice(),
-          ultimate: skills?.loadout?.ultimate ? skills.loadout.ultimate.slice() : baseSkills.loadout.ultimate.slice()
-        },
-        configs: { ...baseSkills.configs, ...(skills?.configs || {}) }
-      };
     }
 
     get current(): SettingsShape { return this._current; }
-    get skills(): SkillsProfile { return this._skills; }
 
     update(patch: Partial<SettingsShape>): void {
       this._current = { ...this._current, ...patch };
@@ -95,20 +66,11 @@ namespace Jamble {
 
     reset(): void {
       this._current = { ...embeddedDefaults };
-      this._skills = defaultSkills();
     }
 
     toJSON(): any {
       return {
-        game: { ...this._current },
-        skills: {
-          loadout: {
-            movement: this._skills.loadout.movement.slice(),
-            utility: this._skills.loadout.utility.slice(),
-            ultimate: this._skills.loadout.ultimate.slice()
-          },
-          configs: { ...this._skills.configs }
-        }
+        game: { ...this._current }
       };
     }
   }

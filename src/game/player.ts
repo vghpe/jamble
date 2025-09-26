@@ -71,11 +71,12 @@ namespace Jamble {
       this.el.style.left = this.x + 'px';
     }
 
-    // Begin a jump if allowed
+    // Begin a jump if allowed (strength should be provided via PlayerCapabilities)
     jump(): void {
       if (this.isJumping || this.frozenDeath) return;
       this.isJumping = true;
-      this.velocity = Jamble.Settings.current.jumpStrength;
+      // Note: velocity should be set by PlayerCapabilities.requestJump() after calling this
+      this.velocity = 7; // Default fallback, skills should override this
     }
 
     // Dash: launch horizontally for a brief time. Only mid-air and once per airtime.
@@ -83,7 +84,7 @@ namespace Jamble {
       if (this.frozenStart || this.frozenDeath || !this.isJumping) return false;
       if (this.isDashing || !this.dashAvailable) return false;
       this.isDashing = true;
-      this.dashRemainingMs = typeof durationOverrideMs === 'number' ? durationOverrideMs : Jamble.Settings.current.dashDurationMs;
+      this.dashRemainingMs = durationOverrideMs ?? 220; // Skills should provide duration
       this.dashAvailable = false;
       this.el.classList.add('jamble-dashing');
       return true;

@@ -554,13 +554,17 @@
           if (controls.knobVisualOffsetY) controls.knobVisualOffsetY.value = String(kc.visualOffsetY);
           if (controls.knobShowPoints) controls.knobShowPoints.checked = !!kc.showPoints;
 
-          var jumpCfg = settings.skills.configs.jump || {};
-          if (controls.jumpStrength) controls.jumpStrength.value = String(jumpCfg.strength ?? s.jumpStrength);
+          // Read actual skill values from skill manager using registry defaults only
+          var jumpCfg = skillManager.getConfig('jump') || {};
+          var jumpDefaults = window.Jamble.getCoreSkillDefinition('jump')?.defaults || {};
+          if (controls.jumpStrength) controls.jumpStrength.value = String(jumpCfg.strength ?? jumpDefaults.strength);
           if (controls.jumpCooldown) controls.jumpCooldown.value = String(jumpCfg.cooldownMs ?? 0);
-          var dashCfg = settings.skills.configs.dash || {};
-          if (controls.dashSpeed) controls.dashSpeed.value = String(dashCfg.speed ?? s.dashSpeed);
-          if (controls.dashDuration) controls.dashDuration.value = String(dashCfg.durationMs ?? s.dashDurationMs);
-          if (controls.dashCooldown) controls.dashCooldown.value = String(dashCfg.cooldownMs ?? 150);
+          
+          var dashCfg = skillManager.getConfig('dash') || {};
+          var dashDefaults = window.Jamble.getCoreSkillDefinition('dash')?.defaults || {};
+          if (controls.dashSpeed) controls.dashSpeed.value = String(dashCfg.speed ?? dashDefaults.speed);
+          if (controls.dashDuration) controls.dashDuration.value = String(dashCfg.durationMs ?? dashDefaults.durationMs);
+          if (controls.dashCooldown) controls.dashCooldown.value = String(dashCfg.cooldownMs ?? dashDefaults.cooldownMs);
 
           renderDeckList();
         }
@@ -604,39 +608,50 @@
         if (controls.shuffleEnabled) controls.shuffleEnabled.addEventListener('change', function(){ settings.update({ shuffleEnabled: controls.shuffleEnabled.checked }); });
         bindNumber(controls.shuffleLimit, function(){ return settings.current.shuffleLimit; }, function(value){ settings.update({ shuffleLimit: value }); });
 
-        // Skill controls with proper config updates
+        // Apply skills from actual skill bank manager
         function applySkillsFromSettings(){
-          var jumpCfg = settings.skills.configs.jump || {};
-          var dashCfg = settings.skills.configs.dash || {};
           skillManager.clear();
-          if (Object.keys(jumpCfg).length) skillManager.setConfig('jump', { ...jumpCfg });
-          if (Object.keys(dashCfg).length) skillManager.setConfig('dash', { ...dashCfg });
-          var lineup = ['move','jump','dash']; // simplified for debug panel
-          lineup.forEach(function(id){ try { skillManager.equip(id); } catch(_e){} });
+          // Get active skills from the game's skill bank
+          var activeSkills = game.getSkillBank().getActiveSkillIds();
+          activeSkills.forEach(function(id){ 
+            try { skillManager.equip(id); } catch(_e){} 
+          });
         }
 
-        bindNumber(controls.jumpStrength, function(){ return settings.skills.configs.jump?.strength ?? settings.current.jumpStrength; }, function(value){
-          settings.update({ jumpStrength: value });
-          settings.skills.configs.jump = { ...(settings.skills.configs.jump || {}), strength: value };
-          applySkillsFromSettings();
+        function getJumpRegistryDefault() {
+          var jumpDef = window.Jamble.getCoreSkillDefinition('jump');
+          return jumpDef ? jumpDef.defaults.strength : 7;
+        }
+        
+        bindNumber(controls.jumpStrength, function(){ 
+          return skillManager.getConfig('jump')?.strength ?? getJumpRegistryDefault();
+        }, function(value){
+          skillManager.setConfig('jump', { ...(skillManager.getConfig('jump') || {}), strength: value });
         });
-        bindNumber(controls.jumpCooldown, function(){ return settings.skills.configs.jump?.cooldownMs ?? 0; }, function(value){
-          settings.skills.configs.jump = { ...(settings.skills.configs.jump || {}), cooldownMs: value };
-          applySkillsFromSettings();
+        bindNumber(controls.jumpCooldown, function(){ 
+          return skillManager.getConfig('jump')?.cooldownMs ?? 0;
+        }, function(value){
+          skillManager.setConfig('jump', { ...(skillManager.getConfig('jump') || {}), cooldownMs: value });
         });
-        bindNumber(controls.dashSpeed, function(){ return settings.skills.configs.dash?.speed ?? settings.current.dashSpeed; }, function(value){
-          settings.update({ dashSpeed: value });
-          settings.skills.configs.dash = { ...(settings.skills.configs.dash || {}), speed: value };
-          applySkillsFromSettings();
+        function getDashRegistryDefaults() {
+          var dashDef = window.Jamble.getCoreSkillDefinition('dash');
+          return dashDef ? dashDef.defaults : { speed: 280, durationMs: 220, cooldownMs: 150 };
+        }
+        
+        bindNumber(controls.dashSpeed, function(){ 
+          return skillManager.getConfig('dash')?.speed ?? getDashRegistryDefaults().speed;
+        }, function(value){
+          skillManager.setConfig('dash', { ...(skillManager.getConfig('dash') || {}), speed: value });
         });
-        bindNumber(controls.dashDuration, function(){ return settings.skills.configs.dash?.durationMs ?? settings.current.dashDurationMs; }, function(value){
-          settings.update({ dashDurationMs: value });
-          settings.skills.configs.dash = { ...(settings.skills.configs.dash || {}), durationMs: value };
-          applySkillsFromSettings();
+        bindNumber(controls.dashDuration, function(){ 
+          return skillManager.getConfig('dash')?.durationMs ?? getDashRegistryDefaults().durationMs;
+        }, function(value){
+          skillManager.setConfig('dash', { ...(skillManager.getConfig('dash') || {}), durationMs: value });
         });
-        bindNumber(controls.dashCooldown, function(){ return settings.skills.configs.dash?.cooldownMs ?? 150; }, function(value){
-          settings.skills.configs.dash = { ...(settings.skills.configs.dash || {}), cooldownMs: value };
-          applySkillsFromSettings();
+        bindNumber(controls.dashCooldown, function(){ 
+          return skillManager.getConfig('dash')?.cooldownMs ?? getDashRegistryDefaults().cooldownMs;
+        }, function(value){
+          skillManager.setConfig('dash', { ...(skillManager.getConfig('dash') || {}), cooldownMs: value });
         });
 
         // Knob controls

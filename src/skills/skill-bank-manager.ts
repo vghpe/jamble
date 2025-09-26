@@ -135,6 +135,14 @@ namespace Jamble {
       return this.slotLimit;
     }
 
+    // Clear all active skills (for testing no-skills scenario)
+    clearAllSkills(): void {
+      this.activeSkills.clear();
+      for (const slotId of this.slotAssignments.keys()) {
+        this.slotAssignments.set(slotId, null);
+      }
+    }
+
     // Convert current state to settings format for persistence
     toSettingsFormat(): { loadout: SkillSlotConfig[] } {
       const loadout: SkillSlotConfig[] = [];

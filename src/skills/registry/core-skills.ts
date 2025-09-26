@@ -6,7 +6,7 @@
 namespace Jamble {
   type CoreSkillDescriptor<TCfg = any> = SkillDescriptor & {
     symbol: string;
-    type: string; // for exclusivity like 'jump', 'dash', 'move'
+    type: string;
   };
 
   const CORE_SKILLS: CoreSkillDescriptor[] = [
@@ -27,7 +27,7 @@ namespace Jamble {
       type: 'jump',
       slot: 'movement',
       priority: 10,
-      defaults: { strength: 7 }, // Default from embeddedDefaults in settings
+      defaults: { strength: 7 },
       create: (cfg) => new JumpSkill('jump', 10, cfg)
     },
     {
@@ -37,7 +37,7 @@ namespace Jamble {
       type: 'jump',
       slot: 'movement',
       priority: 10,
-      defaults: { strength: 10 }, // Higher jump strength
+      defaults: { strength: 10 },
       create: (cfg) => new JumpSkill('jump.high', 10, cfg)
     },
     {
@@ -48,9 +48,9 @@ namespace Jamble {
       slot: 'movement',
       priority: 20,
       defaults: { 
-        speed: 280,      // Default from embeddedDefaults in settings
-        durationMs: 220, // Default from embeddedDefaults in settings
-        cooldownMs: 150  // Default that was hardcoded in game.ts
+        speed: 280,
+        durationMs: 220,
+        cooldownMs: 150
       },
       create: (cfg) => new DashSkill('dash', 20, cfg)
     }
@@ -64,7 +64,7 @@ namespace Jamble {
     return CORE_SKILLS.find(def => def.id === id);
   }
 
-  export function getCoreSkillDefinitions(): ReadonlyArray<CoreSkillDescriptor> {
-    return CORE_SKILLS;
+  export function getCoreSkillDefinitions(): CoreSkillDescriptor[] {
+    return CORE_SKILLS.slice();
   }
 }
