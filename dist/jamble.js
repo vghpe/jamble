@@ -30,11 +30,8 @@ var Jamble;
     };
     function defaultSkills() {
         return {
-            loadout: { movement: ['move', 'jump', 'dash'], utility: [], ultimate: [] },
-            configs: {
-                jump: { strength: embeddedDefaults.jumpStrength },
-                dash: { speed: embeddedDefaults.dashSpeed, durationMs: embeddedDefaults.dashDurationMs, cooldownMs: 150 }
-            }
+            loadout: { movement: ['move', 'jump.high', 'dash'], utility: [], ultimate: [] },
+            configs: {}
         };
     }
     class SettingsStore {
@@ -105,6 +102,142 @@ var Jamble;
         }
     }
     Jamble.CooldownTimer = CooldownTimer;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class JumpSkill {
+        constructor(id = 'jump', priority = 10, cfg = { strength: 7 }) {
+            this.name = 'Jump';
+            this.slot = 'movement';
+            this.cd = null;
+            this.id = id;
+            this.priority = priority;
+            this.cfg = { strength: cfg.strength };
+            this.cd = cfg.cooldownMs && cfg.cooldownMs > 0 ? new Jamble.CooldownTimer(cfg.cooldownMs) : null;
+        }
+        onInput(intent, ctx, caps) {
+            if (intent !== Jamble.InputIntent.Tap && intent !== Jamble.InputIntent.AirTap)
+                return false;
+            if (!ctx.grounded && intent !== Jamble.InputIntent.AirTap)
+                return false;
+            const now = ctx.nowMs;
+            if (this.cd && !this.cd.isReady(now))
+                return false;
+            const ok = caps.requestJump(this.cfg.strength);
+            if (ok && this.cd)
+                this.cd.tryConsume(now);
+            return ok;
+        }
+    }
+    Jamble.JumpSkill = JumpSkill;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class DashSkill {
+        constructor(id = 'dash', priority = 20, cfg) {
+            this.name = 'Dash';
+            this.slot = 'movement';
+            this.usedThisAir = false;
+            this.id = id;
+            this.priority = priority;
+            this.cfg = cfg;
+            this.cd = new Jamble.CooldownTimer(cfg.cooldownMs);
+        }
+        onEquip(caps) { }
+        onLand(_ctx, _caps) { this.usedThisAir = false; }
+        onInput(intent, ctx, caps) {
+            if (intent !== Jamble.InputIntent.AirTap)
+                return false;
+            if (ctx.grounded)
+                return false;
+            if (this.usedThisAir)
+                return false;
+            const now = ctx.nowMs;
+            if (!this.cd.isReady(now))
+                return false;
+            const ok = caps.startDash(this.cfg.speed, this.cfg.durationMs);
+            if (ok) {
+                caps.addHorizontalImpulse(this.cfg.speed, this.cfg.durationMs);
+                this.cd.tryConsume(now);
+                this.usedThisAir = true;
+            }
+            return ok;
+        }
+    }
+    Jamble.DashSkill = DashSkill;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class MoveSkill {
+        constructor(id = 'move', priority = 5) {
+            this.name = 'Move';
+            this.slot = 'movement';
+            this.id = id;
+            this.priority = priority;
+        }
+    }
+    Jamble.MoveSkill = MoveSkill;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    const CORE_SKILLS = [
+        {
+            id: 'move',
+            name: 'Move',
+            symbol: 'M',
+            type: 'move',
+            slot: 'movement',
+            priority: 5,
+            defaults: {},
+            create: (_cfg) => new Jamble.MoveSkill('move', 5)
+        },
+        {
+            id: 'jump',
+            name: 'Jump',
+            symbol: 'J',
+            type: 'jump',
+            slot: 'movement',
+            priority: 10,
+            defaults: { strength: 7 },
+            create: (cfg) => new Jamble.JumpSkill('jump', 10, cfg)
+        },
+        {
+            id: 'jump.high',
+            name: 'Jump High',
+            symbol: 'H',
+            type: 'jump',
+            slot: 'movement',
+            priority: 10,
+            defaults: { strength: 10 },
+            create: (cfg) => new Jamble.JumpSkill('jump.high', 10, cfg)
+        },
+        {
+            id: 'dash',
+            name: 'Dash',
+            symbol: 'D',
+            type: 'dash',
+            slot: 'movement',
+            priority: 20,
+            defaults: {
+                speed: 280,
+                durationMs: 220,
+                cooldownMs: 150
+            },
+            create: (cfg) => new Jamble.DashSkill('dash', 20, cfg)
+        }
+    ];
+    function registerCoreSkills(manager) {
+        CORE_SKILLS.forEach(desc => manager.register(desc));
+    }
+    Jamble.registerCoreSkills = registerCoreSkills;
+    function getCoreSkillDefinition(id) {
+        return CORE_SKILLS.find(def => def.id === id);
+    }
+    Jamble.getCoreSkillDefinition = getCoreSkillDefinition;
+    function getCoreSkillDefinitions() {
+        return CORE_SKILLS;
+    }
+    Jamble.getCoreSkillDefinitions = getCoreSkillDefinitions;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
@@ -194,6 +327,16 @@ var Jamble;
         onLand(ctx) { for (const s of this.equipped.values())
             if (s.onLand)
                 s.onLand(ctx, this.caps); }
+        registerFromRegistry() {
+            Jamble.registerCoreSkills(this);
+        }
+        applyConfig(id, userConfig) {
+            const desc = this.registry.get(id);
+            if (!desc)
+                return;
+            const finalConfig = { ...desc.defaults, ...userConfig };
+            this.setConfig(id, finalConfig);
+        }
         getConfig(id) { return this.configs.get(id); }
         setConfig(id, cfg) { this.configs.set(id, cfg); }
         patchConfig(id, patch) {
@@ -202,81 +345,6 @@ var Jamble;
         }
     }
     Jamble.SkillManager = SkillManager;
-})(Jamble || (Jamble = {}));
-var Jamble;
-(function (Jamble) {
-    class MoveSkill {
-        constructor(id = 'move', priority = 5) {
-            this.name = 'Move';
-            this.slot = 'movement';
-            this.id = id;
-            this.priority = priority;
-        }
-    }
-    Jamble.MoveSkill = MoveSkill;
-})(Jamble || (Jamble = {}));
-var Jamble;
-(function (Jamble) {
-    class JumpSkill {
-        constructor(id = 'jump', priority = 10, cfg = { strength: 7 }) {
-            this.name = 'Jump';
-            this.slot = 'movement';
-            this.cd = null;
-            this.id = id;
-            this.priority = priority;
-            this.cfg = { strength: cfg.strength };
-            this.cd = cfg.cooldownMs && cfg.cooldownMs > 0 ? new Jamble.CooldownTimer(cfg.cooldownMs) : null;
-        }
-        onInput(intent, ctx, caps) {
-            if (intent !== Jamble.InputIntent.Tap && intent !== Jamble.InputIntent.AirTap)
-                return false;
-            if (!ctx.grounded && intent !== Jamble.InputIntent.AirTap)
-                return false;
-            const now = ctx.nowMs;
-            if (this.cd && !this.cd.isReady(now))
-                return false;
-            const ok = caps.requestJump(this.cfg.strength);
-            if (ok && this.cd)
-                this.cd.tryConsume(now);
-            return ok;
-        }
-    }
-    Jamble.JumpSkill = JumpSkill;
-})(Jamble || (Jamble = {}));
-var Jamble;
-(function (Jamble) {
-    class DashSkill {
-        constructor(id = 'dash', priority = 20, cfg) {
-            this.name = 'Dash';
-            this.slot = 'movement';
-            this.usedThisAir = false;
-            this.id = id;
-            this.priority = priority;
-            this.cfg = cfg;
-            this.cd = new Jamble.CooldownTimer(cfg.cooldownMs);
-        }
-        onEquip(caps) { }
-        onLand(_ctx, _caps) { this.usedThisAir = false; }
-        onInput(intent, ctx, caps) {
-            if (intent !== Jamble.InputIntent.AirTap)
-                return false;
-            if (ctx.grounded)
-                return false;
-            if (this.usedThisAir)
-                return false;
-            const now = ctx.nowMs;
-            if (!this.cd.isReady(now))
-                return false;
-            const ok = caps.startDash(this.cfg.speed, this.cfg.durationMs);
-            if (ok) {
-                caps.addHorizontalImpulse(this.cfg.speed, this.cfg.durationMs);
-                this.cd.tryConsume(now);
-                this.usedThisAir = true;
-            }
-            return ok;
-        }
-    }
-    Jamble.DashSkill = DashSkill;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
@@ -371,17 +439,19 @@ var Jamble;
             const distance = Math.sqrt(dx * dx + dy * dy);
             return distance < circle.radius;
         }
-        static createRectShape(bounds) {
+        static createRectShape(bounds, category) {
             return {
                 type: 'rect',
-                bounds: bounds
+                bounds: bounds,
+                category
             };
         }
-        static createCircleShape(centerX, centerY, radius) {
+        static createCircleShape(centerX, centerY, radius, category) {
             return {
                 type: 'circle',
                 bounds: new DOMRect(centerX - radius, centerY - radius, radius * 2, radius * 2),
-                radius: radius
+                radius: radius,
+                category
             };
         }
     }
@@ -986,7 +1056,7 @@ var Jamble;
             const offsetX = (visualRect.width - collisionWidth) / 2;
             const offsetY = (visualRect.height - collisionHeight) / 2;
             const collisionBounds = new DOMRect(visualRect.x + offsetX, visualRect.y + offsetY, collisionWidth, collisionHeight);
-            return Jamble.CollisionManager.createRectShape(collisionBounds);
+            return Jamble.CollisionManager.createRectShape(collisionBounds, 'deadly');
         }
         setLeftPct(pct) {
             const n = Math.max(0, Math.min(100, pct));
@@ -1055,7 +1125,7 @@ var Jamble;
             const centerX = rect.x + rect.width / 2;
             const centerY = rect.y + rect.height / 2;
             const radius = Math.min(rect.width, rect.height) / 2 * 0.7;
-            return Jamble.CollisionManager.createCircleShape(centerX, centerY, radius);
+            return Jamble.CollisionManager.createCircleShape(centerX, centerY, radius, 'deadly');
         }
         resolveHost() {
             return this.el.offsetParent || this.el.parentElement;
@@ -1288,7 +1358,7 @@ var Jamble;
             const centerX = rect.x + rect.width / 2;
             const centerY = rect.y + rect.height / 2;
             const radius = Math.min(rect.width, rect.height) / 2 * 0.6;
-            return Jamble.CollisionManager.createCircleShape(centerX, centerY, radius);
+            return Jamble.CollisionManager.createCircleShape(centerX, centerY, radius, 'neutral');
         }
         setLeftPct(pct) {
             const n = Math.max(0, Math.min(100, pct));
@@ -1839,6 +1909,111 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
+    const CATEGORY_COLORS = {
+        player: '#7F00FF',
+        deadly: '#ef4444',
+        neutral: '#ffcc02',
+        environment: '#60a5fa'
+    };
+    class DebugDraw {
+        constructor(container) {
+            this.container = container;
+            this.dpr = window.devicePixelRatio || 1;
+            this.originLeft = 0;
+            this.originTop = 0;
+            this.visible = false;
+            this.canvas = document.createElement('canvas');
+            this.canvas.className = 'jamble-debug-canvas';
+            Object.assign(this.canvas.style, {
+                position: 'absolute',
+                left: '0',
+                top: '0',
+                width: '100%',
+                height: '100%',
+                pointerEvents: 'none',
+                zIndex: '9999',
+                display: 'none'
+            });
+            const ctx = this.canvas.getContext('2d');
+            if (!ctx)
+                throw new Error('DebugDraw: 2D context unavailable');
+            this.ctx = ctx;
+            this.container.appendChild(this.canvas);
+            this.resize();
+            window.addEventListener('resize', () => this.resize());
+        }
+        setOrigin(rect) {
+            this.originLeft = rect.left;
+            this.originTop = rect.top;
+        }
+        resize() {
+            const { clientWidth, clientHeight } = this.container;
+            this.canvas.width = Math.max(1, Math.floor(clientWidth * this.dpr));
+            this.canvas.height = Math.max(1, Math.floor(clientHeight * this.dpr));
+            this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+        }
+        beginFrame() {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        }
+        clear() {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        }
+        setVisible(v) {
+            if (this.visible === v)
+                return;
+            this.visible = v;
+            this.canvas.style.display = v ? 'block' : 'none';
+            if (!v)
+                this.clear();
+        }
+        isVisible() { return this.visible; }
+        colorFor(shape, fallback = '#22d3ee') {
+            if (shape.category && CATEGORY_COLORS[shape.category])
+                return CATEGORY_COLORS[shape.category];
+            return fallback;
+        }
+        drawShape(shape, opts) {
+            var _a, _b;
+            const color = (opts === null || opts === void 0 ? void 0 : opts.color) || this.colorFor(shape);
+            const lineWidth = (_a = opts === null || opts === void 0 ? void 0 : opts.lineWidth) !== null && _a !== void 0 ? _a : 2;
+            this.ctx.save();
+            this.ctx.lineWidth = lineWidth;
+            this.ctx.strokeStyle = color;
+            this.ctx.globalAlpha = 0.95;
+            if (shape.type === 'rect') {
+                const r = shape.bounds;
+                const x = r.left - this.originLeft;
+                const y = r.top - this.originTop;
+                this.ctx.strokeRect(x, y, r.width, r.height);
+            }
+            else if (shape.type === 'circle') {
+                const r = shape.bounds;
+                const cx = r.x + r.width / 2 - this.originLeft;
+                const cy = r.y + r.height / 2 - this.originTop;
+                const radius = (_b = shape.radius) !== null && _b !== void 0 ? _b : r.width / 2;
+                this.ctx.beginPath();
+                this.ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                this.ctx.stroke();
+                this.ctx.beginPath();
+                this.ctx.moveTo(cx - 3, cy);
+                this.ctx.lineTo(cx + 3, cy);
+                this.ctx.moveTo(cx, cy - 3);
+                this.ctx.lineTo(cx, cy + 3);
+                this.ctx.stroke();
+            }
+            this.ctx.restore();
+        }
+        drawPair(a, b, collided) {
+            const colorA = collided ? '#ef4444' : this.colorFor(a);
+            const colorB = collided ? '#ef4444' : this.colorFor(b);
+            this.drawShape(a, { color: colorA });
+            this.drawShape(b, { color: colorB });
+        }
+    }
+    Jamble.DebugDraw = DebugDraw;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
     class Player {
         constructor(el) {
             this.isJumping = false;
@@ -1880,7 +2055,7 @@ var Jamble;
             const centerX = rect.x + rect.width / 2;
             const centerY = rect.y + rect.height / 2;
             const radius = Math.min(rect.width, rect.height) / 2 * 0.8;
-            return Jamble.CollisionManager.createCircleShape(centerX, centerY, radius);
+            return Jamble.CollisionManager.createCircleShape(centerX, centerY, radius, 'player');
         }
         idle() {
             this.isJumping = false;
@@ -2452,7 +2627,7 @@ var Jamble;
 (function (Jamble) {
     class Game {
         constructor(root) {
-            var _a, _b, _c, _d, _f, _g, _h, _j;
+            var _a;
             this.lastTime = null;
             this.rafId = null;
             this.awaitingStartTap = false;
@@ -2472,6 +2647,7 @@ var Jamble;
             this.pendingOriginFrame = null;
             this.landCbs = [];
             this.wasGrounded = true;
+            this.debugDraw = null;
             this.root = root;
             const gameEl = root.querySelector('.jamble-game');
             const playerEl = root.querySelector('.jamble-player');
@@ -2531,16 +2707,14 @@ var Jamble;
                 onLand: (cb) => { this.landCbs.push(cb); }
             };
             this.skills = new Jamble.SkillManager(caps, { movement: 4 });
-            this.skills.register({ id: 'move', name: 'Move', slot: 'movement', priority: 5, defaults: {}, create: (_cfg) => new Jamble.MoveSkill('move', 5) });
-            this.skills.register({ id: 'jump', name: 'Jump', slot: 'movement', priority: 10, defaults: { strength: (_b = (_a = Jamble.Settings.skills.configs.jump) === null || _a === void 0 ? void 0 : _a.strength) !== null && _b !== void 0 ? _b : Jamble.Settings.current.jumpStrength }, create: (cfg) => new Jamble.JumpSkill('jump', 10, cfg) });
-            this.skills.register({ id: 'dash', name: 'Dash', slot: 'movement', priority: 20, defaults: { speed: (_d = (_c = Jamble.Settings.skills.configs.dash) === null || _c === void 0 ? void 0 : _c.speed) !== null && _d !== void 0 ? _d : Jamble.Settings.current.dashSpeed, durationMs: (_g = (_f = Jamble.Settings.skills.configs.dash) === null || _f === void 0 ? void 0 : _f.durationMs) !== null && _g !== void 0 ? _g : Jamble.Settings.current.dashDurationMs, cooldownMs: (_j = (_h = Jamble.Settings.skills.configs.dash) === null || _h === void 0 ? void 0 : _h.cooldownMs) !== null && _j !== void 0 ? _j : 150 }, create: (cfg) => new Jamble.DashSkill('dash', 20, cfg) });
+            this.skills.registerFromRegistry();
             const sj = Jamble.Settings.skills.configs.jump;
             if (sj)
-                this.skills.setConfig('jump', sj);
+                this.skills.applyConfig('jump', sj);
             const sd = Jamble.Settings.skills.configs.dash;
             if (sd)
-                this.skills.setConfig('dash', sd);
-            const loadoutMoves = Jamble.Settings.skills.loadout.movement || ['move', 'jump', 'dash'];
+                this.skills.applyConfig('dash', sd);
+            const loadoutMoves = Jamble.Settings.skills.loadout.movement || ['move', 'jump.high', 'dash'];
             loadoutMoves.forEach(id => { try {
                 this.skills.equip(id);
             }
@@ -2553,6 +2727,14 @@ var Jamble;
                 getWaitGroundForStart: () => this.waitGroundForStart
             });
             window.__game = this;
+            window.__showColliders = (_a = window.__showColliders) !== null && _a !== void 0 ? _a : false;
+            try {
+                this.debugDraw = new Jamble.DebugDraw(this.gameEl);
+                this.debugDraw.setOrigin(this.gameEl.getBoundingClientRect());
+            }
+            catch (_e) {
+                this.debugDraw = null;
+            }
         }
         getSkillManager() { return this.skills; }
         start() {
@@ -2827,6 +3009,27 @@ var Jamble;
                     this.ui.setResetVisible(true);
                     this.showResetTimer = null;
                 }, Jamble.Settings.current.showResetDelayMs);
+            }
+            const showColliders = !!window.__showColliders;
+            if (this.debugDraw)
+                this.debugDraw.setVisible(showColliders);
+            if (showColliders && this.debugDraw) {
+                this.debugDraw.setOrigin(this.gameEl.getBoundingClientRect());
+                this.debugDraw.beginFrame();
+                try {
+                    const pShape = this.player.getCollisionShape();
+                    this.debugDraw.drawShape(pShape);
+                }
+                catch (_e) { }
+                this.levelElements.forEach(el => {
+                    if (!el.collidable || typeof el.getCollisionShape !== 'function')
+                        return;
+                    try {
+                        const shape = el.getCollisionShape();
+                        this.debugDraw.drawShape(shape);
+                    }
+                    catch (_err) { }
+                });
             }
             this.rafId = window.requestAnimationFrame(this.loop);
         }

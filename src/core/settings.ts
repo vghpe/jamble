@@ -64,11 +64,8 @@ namespace Jamble {
 
   function defaultSkills(): SkillsProfile {
     return {
-      loadout: { movement: ['move','jump','dash'], utility: [], ultimate: [] },
-      configs: {
-        jump: { strength: embeddedDefaults.jumpStrength },
-        dash: { speed: embeddedDefaults.dashSpeed, durationMs: embeddedDefaults.dashDurationMs, cooldownMs: 150 }
-      }
+      loadout: { movement: ['move','jump.high','dash'], utility: [], ultimate: [] },
+      configs: {} // Registry now provides defaults, this only stores user overrides
     };
   }
 

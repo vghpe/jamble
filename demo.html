@@ -121,8 +121,8 @@
             <div class="jamble-skill-menu" id="skill-menu">
               <div class="jamble-skill-btn" data-skill="move">M</div>
               <div class="jamble-skill-btn" data-skill="jump">J</div>
+              <div class="jamble-skill-btn" data-skill="jump.high">H</div>
               <div class="jamble-skill-btn" data-skill="dash">D</div>
-              <div class="jamble-skill-btn" data-skill="empty"></div>
             </div>
           </div>
           <div class="jamble-section">
@@ -151,7 +151,7 @@
         var skillSlots = document.getElementById('skill-slots');
         var skillMenu = document.getElementById('skill-menu');
         var slotEls = skillSlots ? Array.from(skillSlots.querySelectorAll('.jamble-skill-slot')) : [];
-        var LETTER = { move: 'M', jump: 'J', dash: 'D' };
+        var LETTER = { move: 'M', jump: 'J', 'jump.high': 'H', dash: 'D' };
 
         function getLoadout(){
           var load = settings.skills.loadout || { movement: [] };

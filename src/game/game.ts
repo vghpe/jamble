@@ -15,6 +15,7 @@
 /// <reference path="../level/registry/core-elements.ts" />
 /// <reference path="../skills/types.ts" />
 /// <reference path="../skills/skill-manager.ts" />
+/// <reference path="../skills/registry/core-skills.ts" />
 /// <reference path="../skills/jump.ts" />
 /// <reference path="../skills/dash.ts" />
 /// <reference path="./movement-system.ts" />
@@ -128,17 +129,17 @@ namespace Jamble {
         onLand: (cb: () => void) => { this.landCbs.push(cb); }
       };
 
-      // Skill manager and default registry/loadout
+      // Skill manager and registry
       this.skills = new SkillManager(caps, { movement: 4 });
-      // Register skills with defaults
-      this.skills.register({ id: 'move', name: 'Move', slot: 'movement', priority: 5, defaults: {}, create: (_cfg) => new MoveSkill('move', 5) });
-      this.skills.register({ id: 'jump', name: 'Jump', slot: 'movement', priority: 10, defaults: { strength: Jamble.Settings.skills.configs.jump?.strength ?? Jamble.Settings.current.jumpStrength }, create: (cfg) => new JumpSkill('jump', 10, cfg) });
-      this.skills.register({ id: 'dash', name: 'Dash', slot: 'movement', priority: 20, defaults: { speed: Jamble.Settings.skills.configs.dash?.speed ?? Jamble.Settings.current.dashSpeed, durationMs: Jamble.Settings.skills.configs.dash?.durationMs ?? Jamble.Settings.current.dashDurationMs, cooldownMs: Jamble.Settings.skills.configs.dash?.cooldownMs ?? 150 }, create: (cfg) => new DashSkill('dash', 20, cfg) });
-      // Initialize configs from loaded skills profile if present
-      const sj = Jamble.Settings.skills.configs.jump; if (sj) this.skills.setConfig('jump', sj);
-      const sd = Jamble.Settings.skills.configs.dash; if (sd) this.skills.setConfig('dash', sd);
+      // Register skills from registry
+      this.skills.registerFromRegistry();
+      // Apply user configs with registry defaults as fallback
+      const sj = Jamble.Settings.skills.configs.jump;
+      if (sj) this.skills.applyConfig('jump', sj);
+      const sd = Jamble.Settings.skills.configs.dash;
+      if (sd) this.skills.applyConfig('dash', sd);
       // Equip from loadout or fallback
-      const loadoutMoves = Jamble.Settings.skills.loadout.movement || ['move','jump','dash'];
+      const loadoutMoves = Jamble.Settings.skills.loadout.movement || ['move','jump.high','dash'];
       loadoutMoves.forEach(id => { try { this.skills.equip(id); } catch(_e){} });
 
       this.input = new InputController({

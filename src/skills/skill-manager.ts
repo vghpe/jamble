@@ -1,4 +1,5 @@
 /// <reference path="./types.ts" />
+/// <reference path="./registry/core-skills.ts" />
 namespace Jamble {
   export interface SkillDescriptor {
     id: string;
@@ -84,6 +85,20 @@ namespace Jamble {
 
     tick(ctx: SkillContext): void { for (const s of this.equipped.values()) if (s.onTick) s.onTick(ctx, this.caps); }
     onLand(ctx: SkillContext): void { for (const s of this.equipped.values()) if (s.onLand) s.onLand(ctx, this.caps); }
+
+    // Helper to register skills from the registry system
+    registerFromRegistry(): void {
+      registerCoreSkills(this);
+    }
+
+    // Apply configs with registry defaults fallback
+    applyConfig(id: string, userConfig?: any): void {
+      const desc = this.registry.get(id);
+      if (!desc) return;
+      
+      const finalConfig = { ...desc.defaults, ...userConfig };
+      this.setConfig(id, finalConfig);
+    }
 
     // Config helpers (scaffolding for per-skill configs)
     getConfig<T = any>(id: string): T | undefined { return this.configs.get(id); }
