@@ -57,11 +57,13 @@ var Jamble;
             this.dashRemainingMs = 0;
             this.dashAvailable = true;
             this.isHovering = false;
+            this.gravityInverted = false;
             this.hoverTargetHeight = 0;
             this.hoverLiftSpeed = 200;
             this.hoverFallSpeed = 300;
             this.scaleX = 1;
             this.scaleY = 1;
+            this.hoverPrevOuterTransition = null;
             this.config = { ...Player.defaultConfig };
             this.el = el;
             let inner = this.el.querySelector('.jamble-player-inner');
@@ -94,6 +96,7 @@ var Jamble;
             this.dashAvailable = true;
             this.isHovering = false;
             this.hoverTargetHeight = 0;
+            this.gravityInverted = false;
             this.scaleX = 1;
             this.scaleY = 1;
             this.visualEl.style.setProperty('--wiggle-offset', '0px');
@@ -188,18 +191,48 @@ var Jamble;
             }
             if (!this.frozenDeath && this.isJumping) {
                 this.jumpHeight += this.velocity * dt60;
+                let gravityMagnitude;
                 if (this.velocity > 2)
-                    this.velocity -= Jamble.Settings.current.gravityUp * dt60;
+                    gravityMagnitude = Jamble.Settings.current.gravityUp;
                 else if (this.velocity > -2)
-                    this.velocity -= Jamble.Settings.current.gravityMid * dt60;
+                    gravityMagnitude = Jamble.Settings.current.gravityMid;
                 else
-                    this.velocity -= Jamble.Settings.current.gravityDown * dt60;
-                if (this.jumpHeight <= 0) {
-                    this.jumpHeight = 0;
+                    gravityMagnitude = Jamble.Settings.current.gravityDown;
+                if (this.gravityInverted) {
+                    this.velocity += gravityMagnitude * dt60;
+                }
+                else {
+                    this.velocity -= gravityMagnitude * dt60;
+                }
+                const gameEl = this.el.parentElement;
+                const gameHeight = gameEl ? gameEl.offsetHeight : 0;
+                const playerHeight = this.el.offsetHeight;
+                let hasLanded = false;
+                if (this.gravityInverted) {
+                    const borderOffset = 4;
+                    const ceilingJumpHeight = gameHeight - playerHeight - borderOffset;
+                    if (this.jumpHeight >= ceilingJumpHeight) {
+                        this.jumpHeight = ceilingJumpHeight;
+                        hasLanded = true;
+                    }
+                }
+                else {
+                    if (this.jumpHeight <= 0) {
+                        this.jumpHeight = 0;
+                        hasLanded = true;
+                    }
+                }
+                if (hasLanded) {
                     this.isJumping = false;
                     this.endDash();
                     this.dashAvailable = true;
                     if (this.config.squashEnabled) {
+                        if (this.gravityInverted) {
+                            this.visualEl.style.transformOrigin = 'center top';
+                        }
+                        else {
+                            this.visualEl.style.transformOrigin = 'center bottom';
+                        }
                         const sy = this.config.landScaleY;
                         const sx = this.config.landScaleX;
                         this.visualEl.style.transition = 'transform 0ms linear';
@@ -211,6 +244,9 @@ var Jamble;
                             this.visualEl.style.transition = 'transform ' + ease + 'ms ease-out';
                             this.setScale(1, 1);
                             this.applyTransform();
+                            window.setTimeout(() => {
+                                this.visualEl.style.transformOrigin = '';
+                            }, ease);
                         }, dur);
                     }
                     else {
@@ -240,6 +276,8 @@ var Jamble;
             if (enabled) {
                 this.isJumping = true;
                 this.velocity = 0;
+                this.hoverPrevOuterTransition = this.el.style.transition || '';
+                this.el.style.transition = 'transform 0ms linear';
             }
             else {
                 if (this.jumpHeight > 0) {
@@ -249,6 +287,11 @@ var Jamble;
                 else {
                     this.isJumping = false;
                 }
+                if (this.hoverPrevOuterTransition !== null) {
+                    this.el.style.transition = this.hoverPrevOuterTransition;
+                    this.hoverPrevOuterTransition = null;
+                }
+                this.applyTransform();
             }
         }
         setHoverTarget(targetHeight, liftSpeed, fallSpeed) {
@@ -273,7 +316,16 @@ var Jamble;
                 this.jumpHeight += actualMove;
                 this.velocity = actualMove / (dt60 / 60);
             }
+            if (this.jumpHeight < 0)
+                this.jumpHeight = 0;
             this.applyTransform();
+        }
+        flipGravity() {
+            this.gravityInverted = !this.gravityInverted;
+            const baseFlipVelocity = 1;
+            this.velocity = this.gravityInverted ? baseFlipVelocity : -baseFlipVelocity;
+            this.el.classList.toggle('gravity-inverted', this.gravityInverted);
+            this.isJumping = true;
         }
         moveX(dx) { this.x += dx; this.applyTransform(); }
         setX(x) { this.x = x; this.applyTransform(); }
@@ -444,6 +496,49 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
+    class CooldownTimer {
+        constructor(durationMs) {
+            this.readyAt = 0;
+            this.durationMs = Math.max(0, durationMs);
+        }
+        reset() { this.readyAt = 0; }
+        isReady(nowMs) { return nowMs >= this.readyAt; }
+        tryConsume(nowMs) {
+            if (!this.isReady(nowMs))
+                return false;
+            this.readyAt = nowMs + this.durationMs;
+            return true;
+        }
+    }
+    Jamble.CooldownTimer = CooldownTimer;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class GravityFlipSkill {
+        constructor(id = 'gravity-flip', priority = 25, cfg = {}) {
+            this.name = 'Gravity Flip';
+            this.slot = 'movement';
+            this.cd = null;
+            this.id = id;
+            this.priority = priority;
+            this.cd = cfg.cooldownMs && cfg.cooldownMs > 0 ? new Jamble.CooldownTimer(cfg.cooldownMs) : null;
+        }
+        onInput(intent, ctx, caps) {
+            if (intent !== Jamble.InputIntent.Tap && intent !== Jamble.InputIntent.AirTap)
+                return false;
+            const now = ctx.nowMs;
+            if (this.cd && !this.cd.isReady(now))
+                return false;
+            caps.flipGravity();
+            if (this.cd)
+                this.cd.tryConsume(now);
+            return true;
+        }
+    }
+    Jamble.GravityFlipSkill = GravityFlipSkill;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
     const CORE_SKILLS = [
         {
             id: 'move',
@@ -519,6 +614,18 @@ var Jamble;
                 fallSpeed: 300
             },
             create: (cfg) => new Jamble.HoverSkill('hover', 15, cfg)
+        },
+        {
+            id: 'gravity-flip',
+            name: 'Gravity Flip',
+            symbol: 'G↕',
+            type: 'gravity-flip',
+            slot: 'movement',
+            priority: 25,
+            defaults: {
+                cooldownMs: 100
+            },
+            create: (cfg) => new Jamble.GravityFlipSkill('gravity-flip', 25, cfg)
         }
     ];
     function registerCoreSkills(manager) {
@@ -738,6 +845,9 @@ var Jamble;
                 setHoverMode: (enabled) => { player.setHoverMode(enabled); },
                 setHoverTarget: (targetHeight, liftSpeed, fallSpeed) => {
                     player.setHoverTarget(targetHeight, liftSpeed, fallSpeed);
+                },
+                flipGravity: () => {
+                    player.flipGravity();
                 }
             };
             return caps;
@@ -765,24 +875,6 @@ var Jamble;
         }
     }
     Jamble.SkillContextBuilder = SkillContextBuilder;
-})(Jamble || (Jamble = {}));
-var Jamble;
-(function (Jamble) {
-    class CooldownTimer {
-        constructor(durationMs) {
-            this.readyAt = 0;
-            this.durationMs = Math.max(0, durationMs);
-        }
-        reset() { this.readyAt = 0; }
-        isReady(nowMs) { return nowMs >= this.readyAt; }
-        tryConsume(nowMs) {
-            if (!this.isReady(nowMs))
-                return false;
-            this.readyAt = nowMs + this.durationMs;
-            return true;
-        }
-    }
-    Jamble.CooldownTimer = CooldownTimer;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {

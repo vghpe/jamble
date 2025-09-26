@@ -26,7 +26,8 @@ namespace Jamble {
     private dashRemainingMs: number = 0;
     private dashAvailable: boolean = true;
     public isHovering: boolean = false;
-    public gravityInverted: boolean = false; // VVVVVV-style gravity flip
+    /** VVVVVV-style gravity flip state - when true, ceiling becomes ground */
+    public gravityInverted: boolean = false;
     private hoverTargetHeight: number = 0;
     private hoverLiftSpeed: number = 200; // px/s
     private hoverFallSpeed: number = 300; // px/s
@@ -201,42 +202,38 @@ namespace Jamble {
       if (!this.frozenDeath && this.isJumping){
         this.jumpHeight += this.velocity * dt60;
         
-        // Apply gravity in the direction toward current ground
+        // Apply tiered gravity magnitude based on current velocity
         let gravityMagnitude: number;
         if (this.velocity > 2) gravityMagnitude = Jamble.Settings.current.gravityUp;
         else if (this.velocity > -2) gravityMagnitude = Jamble.Settings.current.gravityMid;
         else gravityMagnitude = Jamble.Settings.current.gravityDown;
         
-        // When gravity is inverted, we accelerate toward ceiling (positive direction)
-        // When normal, we accelerate toward floor (negative direction)
+        // Apply gravity toward current ground (floor or ceiling)
         if (this.gravityInverted) {
-          this.velocity += gravityMagnitude * dt60;
+          this.velocity += gravityMagnitude * dt60; // Accelerate toward ceiling
         } else {
-          this.velocity -= gravityMagnitude * dt60;
+          this.velocity -= gravityMagnitude * dt60; // Accelerate toward floor
         }
 
-        // Check for landing on current ground
+        // Check for landing on current ground (floor or ceiling)
         const gameEl = this.el.parentElement;
         const gameHeight = gameEl ? gameEl.offsetHeight : 0;
         const playerHeight = this.el.offsetHeight;
         
         let hasLanded = false;
         if (this.gravityInverted) {
-          // When inverted, land on ceiling
-          // Need to account for the 2px border to match floor positioning
-          const borderOffset = 4; // 2px top + 2px bottom border
+          // Landing on ceiling - account for border thickness to match floor behavior
+          const borderOffset = 4; // 2px top + 2px bottom border from CSS
           const ceilingJumpHeight = gameHeight - playerHeight - borderOffset;
           if (this.jumpHeight >= ceilingJumpHeight) {
             this.jumpHeight = ceilingJumpHeight;
             hasLanded = true;
-            console.log(`[Player] Landed on ceiling - jumpHeight: ${this.jumpHeight}, offset: ${borderOffset}`);
           }
         } else {
           // When normal, land on floor (zero jump height)
           if (this.jumpHeight <= 0) {
             this.jumpHeight = 0;
             hasLanded = true;
-            console.log(`[Player] Landed on floor - jumpHeight: ${this.jumpHeight}`);
           }
         }
         
@@ -250,11 +247,9 @@ namespace Jamble {
             if (this.gravityInverted) {
               // Landing on ceiling - scale from TOP (head touches ceiling)
               this.visualEl.style.transformOrigin = 'center top';
-              console.log(`[Player] Landing squash on CEILING - origin: top`);
             } else {
               // Landing on floor - scale from BOTTOM (feet touch floor)
               this.visualEl.style.transformOrigin = 'center bottom';
-              console.log(`[Player] Landing squash on FLOOR - origin: bottom`);
             }
             
             // Use same squash values for both - the transform origin handles the direction
@@ -363,34 +358,21 @@ namespace Jamble {
     }
 
     // Gravity flip methods
+    /**
+     * VVVVVV-style gravity flip: toggles gravity direction and preserves world position.
+     * When inverted, the ceiling becomes ground and player falls upward.
+     * Velocity is reset to prevent runaway acceleration on repeated flips.
+     */
     flipGravity(): void {
-      console.log(`[Player] Flipping gravity from ${this.gravityInverted ? 'inverted' : 'normal'} to ${!this.gravityInverted ? 'inverted' : 'normal'}`);
-      console.log(`[Player] Before flip - jumpHeight: ${this.jumpHeight}, velocity: ${this.velocity}`);
-      
-      // Invert gravity state
       this.gravityInverted = !this.gravityInverted;
       
-      // Reset velocity to a small value toward the new ground
-      // This prevents velocity buildup and gives consistent flip behavior
-      const baseFlipVelocity = 1; // Small initial velocity toward new ground
+      // Reset velocity to small value toward new ground to prevent buildup
+      const baseFlipVelocity = 1;
+      this.velocity = this.gravityInverted ? baseFlipVelocity : -baseFlipVelocity;
       
-      if (this.gravityInverted) {
-        // Moving toward ceiling (positive direction)
-        this.velocity = baseFlipVelocity;
-      } else {
-        // Moving toward floor (negative direction)  
-        this.velocity = -baseFlipVelocity;
-      }
-      
-      // Add visual indication of gravity state
+      // Visual indication and ensure physics continue
       this.el.classList.toggle('gravity-inverted', this.gravityInverted);
-      
-      // Make sure player is in jumping state so physics continue to apply
-      if (!this.isJumping) {
-        this.isJumping = true;
-      }
-      
-      console.log(`[Player] After flip - jumpHeight: ${this.jumpHeight}, velocity: ${this.velocity} (reset), inverted: ${this.gravityInverted}`);
+      this.isJumping = true;
     }
 
     // Horizontal movement helpers
