@@ -3,6 +3,7 @@
 /// <reference path="../dash.ts" />
 /// <reference path="../move.ts" />
 /// <reference path="../hover.ts" />
+/// <reference path="../gravity-flip.ts" />
 
 namespace Jamble {
   type CoreSkillDescriptor<TCfg = any> = SkillDescriptor & {
@@ -85,6 +86,30 @@ namespace Jamble {
         fallSpeed: 300         // Fall speed in px/s when hover disabled
       },
       create: (cfg) => new HoverSkill('hover', 15, cfg)
+    },
+    {
+      id: 'gravity-flip',
+      name: 'Gravity Flip',
+      symbol: 'G↕',
+      type: 'gravity-flip',
+      slot: 'movement',
+      priority: 25,
+      defaults: {
+        cooldownMs: 100  // Short cooldown to prevent spam
+      },
+      create: (cfg) => new GravityFlipSkill('gravity-flip', 25, cfg)
+    },
+    {
+      id: 'gravity-flip',
+      name: 'Gravity Flip',
+      symbol: 'G⟳',
+      type: 'gravity-flip',
+      slot: 'movement',
+      priority: 25,
+      defaults: {
+        cooldownMs: 300
+      },
+      create: (cfg) => new GravityFlipSkill('gravity-flip', 25, cfg)
     }
   ];
 

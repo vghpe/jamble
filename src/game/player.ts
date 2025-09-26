@@ -26,6 +26,7 @@ namespace Jamble {
     private dashRemainingMs: number = 0;
     private dashAvailable: boolean = true;
     public isHovering: boolean = false;
+    public gravityInverted: boolean = false; // VVVVVV-style gravity flip
     private hoverTargetHeight: number = 0;
     private hoverLiftSpeed: number = 200; // px/s
     private hoverFallSpeed: number = 300; // px/s
@@ -80,6 +81,7 @@ namespace Jamble {
       this.dashAvailable = true;
       this.isHovering = false;
       this.hoverTargetHeight = 0;
+      this.gravityInverted = false;
       this.scaleX = 1; this.scaleY = 1;
       // Clear any wiggle offset (visual-only)
       this.visualEl.style.setProperty('--wiggle-offset', '0px');
@@ -198,14 +200,43 @@ namespace Jamble {
       
       if (!this.frozenDeath && this.isJumping){
         this.jumpHeight += this.velocity * dt60;
-        if (this.velocity > 2) this.velocity -= Jamble.Settings.current.gravityUp * dt60;
-        else if (this.velocity > -2) this.velocity -= Jamble.Settings.current.gravityMid * dt60;
-        else this.velocity -= Jamble.Settings.current.gravityDown * dt60;
+        
+        // Apply gravity in the direction toward current ground
+        let gravityMagnitude: number;
+        if (this.velocity > 2) gravityMagnitude = Jamble.Settings.current.gravityUp;
+        else if (this.velocity > -2) gravityMagnitude = Jamble.Settings.current.gravityMid;
+        else gravityMagnitude = Jamble.Settings.current.gravityDown;
+        
+        // When gravity is inverted, we accelerate toward ceiling (positive direction)
+        // When normal, we accelerate toward floor (negative direction)
+        if (this.gravityInverted) {
+          this.velocity += gravityMagnitude * dt60;
+        } else {
+          this.velocity -= gravityMagnitude * dt60;
+        }
 
-        if (this.jumpHeight <= 0){
-          this.jumpHeight = 0;
+        // Check for landing on current ground
+        const gameEl = this.el.parentElement;
+        const maxJumpHeight = gameEl ? gameEl.offsetHeight - this.el.offsetHeight : 0;
+        
+        let hasLanded = false;
+        if (this.gravityInverted) {
+          // When inverted, land on ceiling (max jump height)
+          if (this.jumpHeight >= maxJumpHeight) {
+            this.jumpHeight = maxJumpHeight;
+            hasLanded = true;
+          }
+        } else {
+          // When normal, land on floor (zero jump height)
+          if (this.jumpHeight <= 0) {
+            this.jumpHeight = 0;
+            hasLanded = true;
+          }
+        }
+        
+        if (hasLanded) {
           this.isJumping = false;
-          // Touching ground resets dash availability
+          // Touching current ground resets dash availability
           this.endDash();
           this.dashAvailable = true;
           if (this.config.squashEnabled){
@@ -305,6 +336,41 @@ namespace Jamble {
       if (this.jumpHeight < 0) this.jumpHeight = 0;
 
       // Update visual position
+      this.applyTransform();
+    }
+
+    // Gravity flip methods
+    flipGravity(): void {
+      console.log(`[Player] Flipping gravity from ${this.gravityInverted ? 'inverted' : 'normal'} to ${!this.gravityInverted ? 'inverted' : 'normal'}`);
+      console.log(`[Player] Before flip - jumpHeight: ${this.jumpHeight}, velocity: ${this.velocity}`);
+      
+      const gameEl = this.el.parentElement;
+      const maxY = gameEl ? gameEl.offsetHeight - this.el.offsetHeight : 0;
+      
+      // Preserve world Y position by transforming jumpHeight
+      const clampedHeight = Math.max(0, Math.min(this.jumpHeight, maxY));
+      const newJumpHeight = maxY - clampedHeight;
+      
+      // Invert velocity direction  
+      const newVelocity = -this.velocity;
+      
+      // Apply the transformation
+      this.jumpHeight = newJumpHeight;
+      this.velocity = newVelocity;
+      this.gravityInverted = !this.gravityInverted;
+      
+      // Add visual indication of gravity state
+      this.el.classList.toggle('gravity-inverted', this.gravityInverted);
+      
+      // If we're now at the "ground", we should be grounded
+      if ((this.gravityInverted && this.jumpHeight >= maxY) || (!this.gravityInverted && this.jumpHeight <= 0)) {
+        this.isJumping = false;
+        console.log(`[Player] Grounded on ${this.gravityInverted ? 'ceiling' : 'floor'} after flip`);
+      } else {
+        this.isJumping = true;
+      }
+      
+      console.log(`[Player] After flip - jumpHeight: ${this.jumpHeight}, velocity: ${this.velocity}, maxY: ${maxY}`);
       this.applyTransform();
     }
 

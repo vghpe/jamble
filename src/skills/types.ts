@@ -28,6 +28,7 @@ namespace Jamble {
     onLand(cb: () => void): void; // unsubscribe handled by manager in future phase
     setHoverMode(enabled: boolean): void;
     setHoverTarget(targetHeight: number, liftSpeed: number, fallSpeed: number): void;
+    flipGravity(): void;
   }
 
   export interface DashConfig {

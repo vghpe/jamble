@@ -29,6 +29,9 @@ namespace Jamble {
         setHoverMode: (enabled: boolean) => { player.setHoverMode(enabled); },
         setHoverTarget: (targetHeight: number, liftSpeed: number, fallSpeed: number) => {
           player.setHoverTarget(targetHeight, liftSpeed, fallSpeed);
+        },
+        flipGravity: () => {
+          player.flipGravity();
         }
       };
       return caps;
