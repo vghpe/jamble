@@ -30,6 +30,7 @@
     "src/level/registry/deck-config.ts",
     "src/game/animations/wiggle.ts",
     "src/game/animations/emoji-reaction.ts",
+    "src/debug/debug-draw.ts",
     "src/game/player.ts",
     "src/game/game.ts",
     "src/game/boot.ts"

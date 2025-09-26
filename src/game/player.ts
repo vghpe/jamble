@@ -48,8 +48,8 @@ namespace Jamble {
       const centerY = rect.y + rect.height / 2;
       // Use 80% of the smaller dimension for more forgiving collision
       const radius = Math.min(rect.width, rect.height) / 2 * 0.8;
-      
-      return CollisionManager.createCircleShape(centerX, centerY, radius);
+
+      return CollisionManager.createCircleShape(centerX, centerY, radius, 'player');
     }
 
     // Idle at current x

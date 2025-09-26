@@ -3,6 +3,8 @@ namespace Jamble {
     type: 'rect' | 'circle';
     bounds: DOMRect;           // For rect: actual bounds. For circle: bounding box containing the circle
     radius?: number;           // For circles only
+    // Optional category for debug/semantic coloring
+    category?: 'player' | 'deadly' | 'neutral' | 'environment';
   }
 
   export class CollisionManager {
@@ -77,21 +79,23 @@ namespace Jamble {
     /**
      * Helper to create a rectangular collision shape
      */
-    static createRectShape(bounds: DOMRect): CollisionShape {
+    static createRectShape(bounds: DOMRect, category?: CollisionShape['category']): CollisionShape {
       return {
         type: 'rect',
-        bounds: bounds
+        bounds: bounds,
+        category
       };
     }
 
     /**
      * Helper to create a circular collision shape
      */
-    static createCircleShape(centerX: number, centerY: number, radius: number): CollisionShape {
+    static createCircleShape(centerX: number, centerY: number, radius: number, category?: CollisionShape['category']): CollisionShape {
       return {
         type: 'circle',
         bounds: new DOMRect(centerX - radius, centerY - radius, radius * 2, radius * 2),
-        radius: radius
+        radius: radius,
+        category
       };
     }
   }

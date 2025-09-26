@@ -238,6 +238,8 @@
             <input id="dbg-mode" type="checkbox">
             <label for="dbg-squash">Squash animation</label>
             <input id="dbg-squash" type="checkbox">
+            <label for="dbg-colliders">Show colliders</label>
+            <input id="dbg-colliders" type="checkbox">
             <label for="dbg-shuffleEnabled">Idle shuffle</label>
             <input id="dbg-shuffleEnabled" type="checkbox">
             <label for="dbg-shuffleLimit">Shuffles per idle</label>
@@ -444,6 +446,7 @@
           dashCooldown: document.getElementById('sk-dashCd'),
           mode: document.getElementById('dbg-mode'),
           squashToggle: document.getElementById('dbg-squash'),
+          showColliders: document.getElementById('dbg-colliders'),
           stretch: document.getElementById('dbg-stretch'),
           squashFactor: document.getElementById('dbg-squashFactor'),
           airMs: document.getElementById('dbg-airMs'),
@@ -527,6 +530,7 @@
           if (controls.wiggleDist) controls.wiggleDist.value = String(s.deathWiggleDistance);
           if (controls.treeMargin) controls.treeMargin.value = String(s.treeEdgeMarginPct);
           if (controls.treeGap) controls.treeGap.value = String(s.treeMinGapPct);
+          if (controls.showColliders) controls.showColliders.checked = !!(window.parent && window.parent.__showColliders);
           if (controls.shuffleEnabled) controls.shuffleEnabled.checked = !!s.shuffleEnabled;
           if (controls.shuffleLimit) controls.shuffleLimit.value = String(s.shuffleLimit);
 
@@ -593,6 +597,7 @@
         bindNumber(controls.deathFreeze, function(){ return settings.current.deathFreezeTime; }, function(value){ settings.update({ deathFreezeTime: value }); });
         bindNumber(controls.resetDelay, function(){ return settings.current.showResetDelayMs; }, function(value){ settings.update({ showResetDelayMs: value }); });
         bindNumber(controls.startOffset, function(){ return settings.current.playerStartOffset; }, function(value){ settings.update({ playerStartOffset: value }); });
+  if (controls.showColliders) controls.showColliders.addEventListener('change', function(){ if (window.parent) window.parent.__showColliders = !!controls.showColliders.checked; });
         bindNumber(controls.wiggleDist, function(){ return settings.current.deathWiggleDistance; }, function(value){ settings.update({ deathWiggleDistance: value }); });
         bindNumber(controls.treeMargin, function(){ return settings.current.treeEdgeMarginPct; }, function(value){ settings.update({ treeEdgeMarginPct: value }); });
         bindNumber(controls.treeGap, function(){ return settings.current.treeMinGapPct; }, function(value){ settings.update({ treeMinGapPct: value }); });

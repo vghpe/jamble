@@ -41,7 +41,7 @@ namespace Jamble {
         collisionHeight
       );
       
-      return CollisionManager.createRectShape(collisionBounds);
+      return CollisionManager.createRectShape(collisionBounds, 'deadly');
     }
 
     setLeftPct(pct: number): void {

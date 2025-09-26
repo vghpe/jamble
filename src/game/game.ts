@@ -18,6 +18,7 @@
 /// <reference path="../skills/jump.ts" />
 /// <reference path="../skills/dash.ts" />
 /// <reference path="./movement-system.ts" />
+/// <reference path="../debug/debug-draw.ts" />
 namespace Jamble {
   export class Game {
     private movementSystem: MovementSystem;
@@ -56,6 +57,8 @@ namespace Jamble {
     private skills: SkillManager;
     private landCbs: Array<() => void> = [];
     private wasGrounded: boolean = true;
+  // Debug
+  private debugDraw: DebugDraw | null = null;
 
     constructor(root: HTMLElement){
       this.root = root;
@@ -148,6 +151,16 @@ namespace Jamble {
 
       // Register global instance for element-triggered animations
       (window as any).__game = this;
+      // Debug toggle default
+      (window as any).__showColliders = (window as any).__showColliders ?? false;
+      // Lazy create debug drawer (overlay) now so it resizes with game element
+      try {
+        this.debugDraw = new DebugDraw(this.gameEl);
+        // Align to viewport origin of game element
+        this.debugDraw.setOrigin(this.gameEl.getBoundingClientRect());
+      } catch(_e) {
+        this.debugDraw = null;
+      }
     }
     public getSkillManager(): SkillManager { return this.skills; }
 
@@ -423,6 +436,28 @@ namespace Jamble {
         this.ui.setResetVisible(true);
           this.showResetTimer = null;
         }, Jamble.Settings.current.showResetDelayMs);
+      }
+
+      // Debug collider drawing
+      const showColliders = !!(window as any).__showColliders;
+      if (this.debugDraw) this.debugDraw.setVisible(showColliders);
+      if (showColliders && this.debugDraw){
+        // Keep origin aligned in case of layout shift
+        this.debugDraw.setOrigin(this.gameEl.getBoundingClientRect());
+        this.debugDraw.beginFrame();
+        // Player
+        try {
+          const pShape = this.player.getCollisionShape();
+          this.debugDraw.drawShape(pShape);
+        } catch(_e){}
+        // Elements
+        this.levelElements.forEach(el => {
+          if (!el.collidable || typeof (el as any).getCollisionShape !== 'function') return;
+          try {
+            const shape = (el as any).getCollisionShape() as CollisionShape;
+            this.debugDraw!.drawShape(shape);
+          } catch(_err){}
+        });
       }
 
       this.rafId = window.requestAnimationFrame(this.loop);

@@ -111,7 +111,7 @@ namespace Jamble {
       // Use 60% of the element size for more forgiving collision
       const radius = Math.min(rect.width, rect.height) / 2 * 0.6;
       
-      return CollisionManager.createCircleShape(centerX, centerY, radius);
+      return CollisionManager.createCircleShape(centerX, centerY, radius, 'neutral');
     }
 
     setLeftPct(pct: number): void {
