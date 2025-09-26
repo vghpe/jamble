@@ -32,6 +32,7 @@ namespace Jamble {
     // Visual scale state (decoupled from position)
     private scaleX: number = 1;
     private scaleY: number = 1;
+  private hoverPrevOuterTransition: string | null = null;
     private static defaultConfig: PlayerConfig = {
       squashEnabled: true,
       stretchFactor: 0.05,
@@ -252,6 +253,9 @@ namespace Jamble {
         // When entering hover, we are no longer grounded and stop normal jumping physics
         this.isJumping = true; // Prevents grounded state checks
         this.velocity = 0; // Stop any current vertical motion
+        // Disable outer transition so vertical translate doesn't tween during hover control
+        this.hoverPrevOuterTransition = this.el.style.transition || '';
+        this.el.style.transition = 'transform 0ms linear';
       } else {
         // When disabling hover, start falling
         if (this.jumpHeight > 0) {
@@ -260,6 +264,13 @@ namespace Jamble {
         } else {
           this.isJumping = false;
         }
+        // Restore previous outer transition
+        if (this.hoverPrevOuterTransition !== null) {
+          this.el.style.transition = this.hoverPrevOuterTransition;
+          this.hoverPrevOuterTransition = null;
+        }
+        // Apply updated state immediately
+        this.applyTransform();
       }
     }
 
@@ -289,6 +300,9 @@ namespace Jamble {
         this.jumpHeight += actualMove;
         this.velocity = actualMove / (dt60 / 60); // Set velocity for visual effects
       }
+
+      // Prevent going below ground
+      if (this.jumpHeight < 0) this.jumpHeight = 0;
 
       // Update visual position
       this.applyTransform();
