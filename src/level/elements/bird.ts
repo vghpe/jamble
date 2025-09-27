@@ -7,7 +7,7 @@ namespace Jamble {
     direction?: 1 | -1;
   }
 
-  export class BirdElement implements LevelElement {
+  export class BirdElement implements LevelElement, TransformLevelElement {
     readonly id: string;
     readonly type: LevelElementType = 'bird';
     readonly el: HTMLElement;
@@ -19,6 +19,10 @@ namespace Jamble {
     private direction: 1 | -1;
     private speedPxPerSec: number;
     private assignedSlot: SlotDefinition | null = null;
+    
+    // Transform-based properties
+    private transform: ElementTransform;
+    private collisionConfig: CollisionConfig;
 
     constructor(id: string, el: HTMLElement, cfg?: BirdElementConfig){
       this.id = id;
@@ -27,16 +31,51 @@ namespace Jamble {
       this.el.textContent = '🐦';
       this.speedPxPerSec = Math.max(5, Math.min(400, cfg?.speed ?? 40));
       this.direction = cfg?.direction === -1 ? -1 : 1;
+      
+      // Initialize transform with logical dimensions
+      // Birds are typically emoji-sized (around 20px × 20px)
+      this.transform = {
+        x: 0, // Will be set by animation logic
+        y: 40, // Birds fly at mid-height typically
+        width: 20,
+        height: 20
+      };
+      
+      // Initialize collision config for bird collision
+      this.collisionConfig = {
+        shape: 'circle',
+        scaleX: 0.7,  // More forgiving collision (was hardcoded)
+        scaleY: 0.7,
+        offsetX: 0,
+        offsetY: 0
+      };
     }
 
     rect(): DOMRect { return this.el.getBoundingClientRect(); }
 
+    // TransformElement interface implementation
+    getTransform(): ElementTransform {
+      return { ...this.transform };
+    }
+
+    getCollisionConfig(): CollisionConfig {
+      return { ...this.collisionConfig };
+    }
+
+    syncVisualToTransform(): void {
+      // Birds are positioned by animation logic, sync is handled by movement system
+      // This method exists for interface compliance
+    }
+
+    // Hybrid collision detection - DOM for position, transform data for sizing
     getCollisionShape(): CollisionShape {
       const rect = this.el.getBoundingClientRect();
-      const centerX = rect.x + rect.width / 2;
-      const centerY = rect.y + rect.height / 2;
-      // Use 70% of the smaller dimension for more forgiving collision
-      const radius = Math.min(rect.width, rect.height) / 2 * 0.7;
+      const centerX = rect.x + rect.width / 2 + this.collisionConfig.offsetX;
+      const centerY = rect.y + rect.height / 2 + this.collisionConfig.offsetY;
+      
+      // Use transform data + collision config instead of hardcoded values
+      const baseRadius = Math.min(this.transform.width, this.transform.height) / 2;
+      const radius = baseRadius * this.collisionConfig.scaleX;
       
       return CollisionManager.createCircleShape(centerX, centerY, radius, 'deadly');
     }

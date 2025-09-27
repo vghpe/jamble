@@ -1,3 +1,5 @@
+/// <reference path="../core/transform.ts" />
+
 namespace Jamble {
   export interface PlayerConfig {
     squashEnabled: boolean;
@@ -10,7 +12,7 @@ namespace Jamble {
     landEaseMs: number;
     deathWiggleDistance: number;
   }
-  export class Player {
+  export class Player implements TransformElement {
     public el: HTMLElement;
     private visualEl: HTMLElement;
     public isJumping: boolean = false;
@@ -18,6 +20,10 @@ namespace Jamble {
     public velocity: number = 0;
   // Logical horizontal center (origin at feet center)
   public x: number = Jamble.Settings.current.playerStartOffset;
+    
+    // Transform-based properties (replacing DOM queries)
+    private transform: ElementTransform;
+    private collisionConfig: CollisionConfig;
     public won: boolean = false;
     public frozenStart: boolean = true;
     public frozenDeath: boolean = false;
@@ -59,6 +65,25 @@ namespace Jamble {
         this.el.appendChild(inner);
       }
       this.visualEl = inner;
+      
+      // Initialize transform with logical dimensions (get initial size from DOM once)
+      const rect = this.el.getBoundingClientRect();
+      this.transform = {
+        x: Jamble.Settings.current.playerStartOffset + rect.width / 2,
+        y: 0, // jumpHeight equivalent
+        width: rect.width,
+        height: rect.height
+      };
+      
+      // Initialize collision config (replaces hardcoded 0.8 scale)
+      this.collisionConfig = {
+        shape: 'circle',
+        scaleX: 0.8,  // More forgiving collision
+        scaleY: 0.8,
+        offsetX: 0,
+        offsetY: 0
+      };
+      
       this.reset();
     }
 
@@ -67,12 +92,28 @@ namespace Jamble {
       this.config = { ...this.config, ...(patch || {}) };
     }
 
+    // TransformElement interface implementation
+    getTransform(): ElementTransform {
+      return { ...this.transform };
+    }
+
+    getCollisionConfig(): CollisionConfig {
+      return { ...this.collisionConfig };
+    }
+
+    syncVisualToTransform(): void {
+      // This is what applyTransform() does - sync DOM to logical state
+      this.applyTransform();
+    }
+
     reset(): void {
       this.isJumping = false;
       this.jumpHeight = 0;
       this.velocity = 0;
-  // Initialize as center-x: left edge offset + half width
-  this.x = Jamble.Settings.current.playerStartOffset + this.el.offsetWidth / 2;
+  // Initialize as center-x: left edge offset + half width (using transform data)
+  this.x = Jamble.Settings.current.playerStartOffset + this.transform.width / 2;
+      this.transform.x = this.x;
+      this.transform.y = 0;
       this.won = false;
       this.frozenStart = true;
       this.frozenDeath = false;
@@ -108,16 +149,24 @@ namespace Jamble {
     clearFrozenStart(): void { this.frozenStart = false; this.setNormal(); }
     setFrozenDeath(): void { this.frozenDeath = true; this.visualEl.className = 'jamble-player-inner jamble-frozen-death'; }
 
-    // Collision shape for more forgiving gameplay
+    /**
+     * Get collision shape using hybrid transform approach.
+     * Position from DOM (reliable), size from transform data (configurable).
+     * 
+     * @returns CollisionShape for collision detection, or null if invincible
+     */
     getCollisionShape(): CollisionShape | null {
       // No collision when invincible (phase dash)
       if (this.isInvincible) return null;
       
+      // Hybrid approach: DOM for position (reliable), transform data for sizing (configurable)
       const rect = this.el.getBoundingClientRect();
-  const centerX = rect.x + rect.width / 2;
-  const centerY = rect.y + rect.height / 2;
-      // Use 80% of the smaller dimension for more forgiving collision
-      const radius = Math.min(rect.width, rect.height) / 2 * 0.8;
+      const centerX = rect.x + rect.width / 2 + this.collisionConfig.offsetX;
+      const centerY = rect.y + rect.height / 2 + this.collisionConfig.offsetY;
+      
+      // Calculate collision size from transform data (configurable, was hardcoded 0.8)
+      const baseRadius = Math.min(this.transform.width, this.transform.height) / 2;
+      const radius = baseRadius * this.collisionConfig.scaleX;
 
       return CollisionManager.createCircleShape(centerX, centerY, radius, 'player');
     }
@@ -136,11 +185,12 @@ namespace Jamble {
     }
 
     // Geometry helpers
-  // Right edge position from center-x
-  getRight(_gameWidth: number): number { return this.x + this.el.offsetWidth / 2; }
+  // Right edge position from center-x (using transform data)
+  getRight(_gameWidth: number): number { return this.x + this.transform.width / 2; }
     snapRight(gameWidth: number): void {
-      // Stop with the same offset as the left side; compute center-x
-      this.x = gameWidth - Jamble.Settings.current.playerStartOffset - this.el.offsetWidth / 2;
+      // Stop with the same offset as the left side; compute center-x (using transform data)
+      this.x = gameWidth - Jamble.Settings.current.playerStartOffset - this.transform.width / 2;
+      this.transform.x = this.x;
       this.applyTransform();
     }
 
@@ -218,7 +268,7 @@ namespace Jamble {
         // Check for landing on current ground (floor or ceiling)
         const gameEl = this.el.parentElement;
         const gameHeight = gameEl ? gameEl.offsetHeight : 0;
-        const playerHeight = this.el.offsetHeight;
+        const playerHeight = this.transform.height;
         
         let hasLanded = false;
         if (this.gravityInverted) {
@@ -376,8 +426,16 @@ namespace Jamble {
     }
 
     // Horizontal movement helpers
-    moveX(dx: number): void { this.x += dx; this.applyTransform(); }
-    setX(x: number): void { this.x = x; this.applyTransform(); }
+    moveX(dx: number): void { 
+      this.x += dx; 
+      this.transform.x = this.x;
+      this.applyTransform(); 
+    }
+    setX(x: number): void { 
+      this.x = x; 
+      this.transform.x = this.x;
+      this.applyTransform(); 
+    }
 
     // Visual helpers
     private setScale(sx: number, sy: number, transitionMs?: number): void {
@@ -389,8 +447,12 @@ namespace Jamble {
     }
 
     private applyTransform(): void {
-      // Outer element: world position only
-  const tx = `${this.x - this.el.offsetWidth / 2}px`;
+      // Update transform state
+      this.transform.x = this.x;
+      this.transform.y = this.jumpHeight;
+      
+      // Outer element: world position only (using transform data)
+  const tx = `${this.x - this.transform.width / 2}px`;
   const ty = `${-this.jumpHeight}px`;
   this.el.style.transform = `translate(${tx}, ${ty})`;
   // Inner element: visual-only transforms (wiggle + scale)

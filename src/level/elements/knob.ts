@@ -16,7 +16,7 @@ namespace Jamble {
     visualOffsetY: number;   // Visual Y offset in pixels (positive = down)
   }
 
-  export class KnobElement implements PositionableLevelElement {
+  export class KnobElement implements PositionableLevelElement, TransformLevelElement {
     readonly id: string;
     readonly type: LevelElementType = 'knob';
     readonly el: HTMLElement;
@@ -28,6 +28,10 @@ namespace Jamble {
     private ctx: CanvasRenderingContext2D;
     private initialized: boolean = false;
     private defaultDisplay: string = '';
+    
+    // Transform-based properties
+    private transform: ElementTransform;
+    private collisionConfig: CollisionConfig;
     
     // Spring physics state
     private theta: number = 0;           // Current angle
@@ -63,6 +67,24 @@ namespace Jamble {
       };
       
       this.config = { ...defaults, ...config };
+      
+      // Initialize transform with logical dimensions
+      // Knobs are 60px × 60px based on setupElementStyle()
+      this.transform = {
+        x: 0, // Will be set by positioning logic
+        y: 0, // Knobs are typically ground-level
+        width: 60,
+        height: 60
+      };
+      
+      // Initialize collision config for knob interaction
+      this.collisionConfig = {
+        shape: 'circle',
+        scaleX: 0.6,  // More forgiving collision (was hardcoded)
+        scaleY: 0.6,
+        offsetX: 0,
+        offsetY: 0
+      };
       
       // Create canvas for rendering the spring
       this.canvas = document.createElement('canvas');
@@ -103,13 +125,30 @@ namespace Jamble {
       return this.el.getBoundingClientRect(); 
     }
 
+    // TransformElement interface implementation
+    getTransform(): ElementTransform {
+      return { ...this.transform };
+    }
+
+    getCollisionConfig(): CollisionConfig {
+      return { ...this.collisionConfig };
+    }
+
+    syncVisualToTransform(): void {
+      // Knobs are positioned via CSS (percentage-based), so sync is handled by setLeftPct
+      // This method exists for interface compliance
+    }
+
+    // Hybrid collision detection - DOM for position, transform data for sizing
     getCollisionShape(): CollisionShape {
       const rect = this.el.getBoundingClientRect();
       // Knobs use circular collision for more natural interaction
-      const centerX = rect.x + rect.width / 2;
-      const centerY = rect.y + rect.height / 2;
-      // Use 60% of the element size for more forgiving collision
-      const radius = Math.min(rect.width, rect.height) / 2 * 0.6;
+      const centerX = rect.x + rect.width / 2 + this.collisionConfig.offsetX;
+      const centerY = rect.y + rect.height / 2 + this.collisionConfig.offsetY;
+      
+      // Use transform data + collision config instead of hardcoded values
+      const baseRadius = Math.min(this.transform.width, this.transform.height) / 2;
+      const radius = baseRadius * this.collisionConfig.scaleX;
       
       return CollisionManager.createCircleShape(centerX, centerY, radius, 'neutral');
     }

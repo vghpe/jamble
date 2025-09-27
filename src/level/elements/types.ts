@@ -1,3 +1,5 @@
+/// <reference path="../../core/transform.ts" />
+
 namespace Jamble {
   export type LevelElementType = 'tree' | 'tree_ceiling' | 'bird' | 'laps' | 'knob' | 'empty';
   export type ElementHostKind = 'tree-ground' | 'tree-ceiling' | 'bird-floating' | 'laps-control' | 'knob-interactive';
@@ -40,6 +42,12 @@ namespace Jamble {
     onCollision?(ctx: LevelElementCollisionContext): void;
     dispose?(ctx: LevelElementLifecycleContext): void;
     getOrigin?(): ElementOrigin | null;
+  }
+
+  // Transform-capable level element interface
+  export interface TransformLevelElement extends LevelElement, TransformElement {
+    // Inherits both LevelElement methods and TransformElement methods
+    // This allows elements to use hybrid transform approach
   }
 
   export interface PositionableLevelElement extends LevelElement {
