@@ -106,12 +106,19 @@ namespace Jamble {
       this.applyTransform();
     }
 
-    reset(): void {
+    reset(spawnPosition?: { x: number, y: number }): void {
       this.isJumping = false;
       this.jumpHeight = 0;
       this.velocity = 0;
-  // Initialize as center-x: left edge offset + half width (using transform data)
-  this.x = Jamble.Settings.current.playerStartOffset + this.transform.width / 2;
+      
+      if (spawnPosition) {
+        // Use provided spawn position (e.g., from home platform)
+        this.x = spawnPosition.x;
+        this.transform.y = spawnPosition.y;
+      } else {
+        // Fallback to original spawn logic
+        this.x = Jamble.Settings.current.playerStartOffset + this.transform.width / 2;
+      }
       this.transform.x = this.x;
       this.transform.y = 0;
       this.won = false;

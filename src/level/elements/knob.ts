@@ -80,10 +80,10 @@ namespace Jamble {
       // Initialize collision config for knob interaction
       this.collisionConfig = {
         shape: 'circle',
-        scaleX: 0.6,  // More forgiving collision (was hardcoded)
-        scaleY: 0.6,
+        scaleX: 0.45,  
+        scaleY: 0.45,
         offsetX: 0,
-        offsetY: 0
+        offsetY: 20
       };
       
       // Create canvas for rendering the spring
