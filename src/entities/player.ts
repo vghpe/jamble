@@ -8,6 +8,10 @@ namespace Jamble {
     public moveSpeed: number = 200; // pixels per second
     public jumpHeight: number = 300; // pixels per second
     
+    // Visual positioning offsets for fine-tuning
+    private readonly visualOffsetX: number = 0;
+    private readonly visualOffsetY: number = 0;
+    
     // Animation system
     private targetScaleX: number = 1;
     private targetScaleY: number = 1;
@@ -16,16 +20,16 @@ namespace Jamble {
     constructor(x: number = 0, y: number = 0) {
       super('player', x, y);
       
-      // Canvas rendering with rounded rectangle
+      // Canvas rendering with custom drawing for offset control
       this.render = {
         type: 'canvas',
         visible: true,
         canvas: {
           color: '#4db6ac',
-          shape: 'rectangle',
+          shape: 'custom',
           width: 20,
           height: 20,
-          borderRadius: 4
+          customDraw: this.drawPlayer.bind(this)
         },
         animation: {
           scaleX: 1,
@@ -135,6 +139,31 @@ namespace Jamble {
         this.targetScaleX = 1;
         this.targetScaleY = 1;
       }, 50);
+    }
+
+    private drawPlayer(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+      // Apply visual offsets for precise positioning
+      const drawX = x + this.visualOffsetX;
+      const drawY = y + this.visualOffsetY;
+      
+      // Draw rounded rectangle player
+      ctx.fillStyle = '#4db6ac';
+      this.drawRoundedRect(ctx, drawX, drawY, 20, 20, 4);
+    }
+
+    private drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number): void {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+      ctx.fill();
     }
   }
 }

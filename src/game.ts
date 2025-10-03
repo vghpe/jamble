@@ -56,8 +56,6 @@ namespace Jamble {
         width: ${this.gameWidth}px;
         height: ${this.gameHeight}px;
         background: #e8f5e9;
-        border: 2px solid #81c784;
-        border-radius: 6px;
         overflow: hidden;
         margin: 0 auto;
       `;

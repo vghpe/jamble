@@ -2,6 +2,12 @@
 
 namespace Jamble {
   export class Tree extends GameObject {
+    // Visual and collision offsets for fine-tuning positioning
+    private readonly visualOffsetX: number = 0;
+    private readonly visualOffsetY: number = -30; // Trunk extends up from base
+    private readonly collisionOffsetX: number = 1; // Center 8px box on 10px trunk  
+    private readonly collisionOffsetY: number = -25; // Collision box height from base
+    
     constructor(id: string, x: number = 0, y: number = 0) {
       // Keep the GameObject transform at the base position (origin point)
       super(id, x, y); 
@@ -19,25 +25,29 @@ namespace Jamble {
         }
       };
       
-      // Collision box positioned relative to the base origin
+      // Collision box positioned using offsets
       this.collisionBox = {
-        x: x - 4, // Center the 8px collision box on the 10px tree
-        y: y - 25, // Position collision box from the base up 25px  
-        width: 8,  // 8px collision width
-        height: 25, // 25px collision height
+        x: x + this.collisionOffsetX, 
+        y: y + this.collisionOffsetY,  
+        width: 8,
+        height: 25,
         category: 'environment'
       };
     }
 
     private drawTree(ctx: CanvasRenderingContext2D, x: number, y: number): void {
-      // Draw brown trunk extending upward from base position
-      ctx.fillStyle = '#8d6e63';
-      this.drawRoundedRect(ctx, x, y - 30, 10, 30, 2);
+      // Apply visual offsets for precise positioning
+      const drawX = x + this.visualOffsetX;
+      const drawY = y + this.visualOffsetY;
       
-      // Draw circular green foliage centered on trunk
+      // Draw brown trunk (30px tall, positioned above base)
+      ctx.fillStyle = '#8d6e63';
+      this.drawRoundedRect(ctx, drawX, drawY, 10, 30, 2);
+      
+      // Draw circular green foliage centered at the top of trunk
       ctx.fillStyle = '#66bb6a';
       ctx.beginPath();
-      ctx.arc(x + 5, y - 20, 10, 0, 2 * Math.PI);
+      ctx.arc(drawX + 5, drawY, 10, 0, 2 * Math.PI);
       ctx.fill();
     }
 
@@ -58,11 +68,10 @@ namespace Jamble {
 
     update(deltaTime: number): void {
       // Trees are static - no update logic needed
-      // But we still update collision box position relative to the base origin
+      // Update collision box position using offsets
       if (this.collisionBox) {
-        // Collision box is centered on the base origin and extends upward
-        this.collisionBox.x = this.transform.x + 1; // Center 8px collision box on 10px tree (offset by 1px)
-        this.collisionBox.y = this.transform.y - 25; // Position collision box 25px above the base origin
+        this.collisionBox.x = this.transform.x + this.collisionOffsetX;
+        this.collisionBox.y = this.transform.y + this.collisionOffsetY;
       }
     }
   }
