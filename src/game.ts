@@ -2,6 +2,8 @@
 /// <reference path="entities/tree.ts" />
 /// <reference path="systems/renderer.ts" />
 /// <reference path="systems/collision-renderer.ts" />
+/// <reference path="systems/state-manager.ts" />
+/// <reference path="systems/input-manager.ts" />
 /// <reference path="slots/slot-manager.ts" />
 /// <reference path="skills/skill-system.ts" />
 /// <reference path="debug/debug-system.ts" />
@@ -11,6 +13,8 @@ namespace Jamble {
     private gameElement: HTMLElement;
     private renderer: Renderer;
     private collisionRenderer: CollisionRenderer;
+    private stateManager: StateManager;
+    private inputManager: InputManager;
     private slotManager: SlotManager;
     private skillManager: SkillManager;
     private debugSystem: DebugSystem;
@@ -22,14 +26,14 @@ namespace Jamble {
     private gameWidth: number = 500;
     private gameHeight: number = 100;
 
-    private keys: Set<string> = new Set();
-
     constructor(gameElement: HTMLElement, debugContainer?: HTMLElement) {
       try {
         console.log('Initializing game...');
         this.gameElement = gameElement;
         this.renderer = new Renderer(gameElement);
         this.collisionRenderer = new CollisionRenderer(gameElement);
+        this.stateManager = new StateManager();
+        this.inputManager = new InputManager();
         this.slotManager = new SlotManager(this.gameWidth, this.gameHeight);
         this.skillManager = new SkillManager();
         
@@ -84,28 +88,21 @@ namespace Jamble {
     }
 
     private setupInput() {
-      document.addEventListener('keydown', (e) => {
-        this.keys.add(e.code);
-        
-        // Handle jump
-        if (e.code === 'Space' && this.skillManager.hasSkill('jump')) {
+      // Set up space key handler for jump
+      this.inputManager.onKeyDown('Space', () => {
+        if (this.skillManager.hasSkill('jump')) {
           this.skillManager.useSkill('jump', this.player);
-          e.preventDefault();
         }
-      });
-
-      document.addEventListener('keyup', (e) => {
-        this.keys.delete(e.code);
       });
     }
 
     private handleInput() {
       if (!this.skillManager.hasSkill('move')) return;
 
-      // Handle movement
-      if (this.keys.has('ArrowLeft') || this.keys.has('KeyA')) {
+      // Handle movement using InputManager
+      if (this.inputManager.isMovingLeft()) {
         this.player.moveLeft();
-      } else if (this.keys.has('ArrowRight') || this.keys.has('KeyD')) {
+      } else if (this.inputManager.isMovingRight()) {
         this.player.moveRight();
       } else {
         this.player.stopMoving();
