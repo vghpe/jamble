@@ -25,11 +25,11 @@ namespace Jamble {
 
     private generateSlots() {
       const layers = [
-        { type: 'ground' as SlotType, yPercent: 0, columns: 6 },
-        { type: 'air_low' as SlotType, yPercent: 25, columns: 6 },
+        { type: 'ceiling' as SlotType, yPercent: 0, columns: 6 },
+        { type: 'air_high' as SlotType, yPercent: 25, columns: 6 },
         { type: 'air_mid' as SlotType, yPercent: 50, columns: 6 },
-        { type: 'air_high' as SlotType, yPercent: 75, columns: 6 },
-        { type: 'ceiling' as SlotType, yPercent: 100, columns: 6 }
+        { type: 'air_low' as SlotType, yPercent: 75, columns: 6 },
+        { type: 'ground' as SlotType, yPercent: 100, columns: 6 }
       ];
 
       layers.forEach(layer => {

@@ -71,7 +71,7 @@ namespace Jamble {
       const groundSlots = this.slotManager.getAvailableSlots('ground');
       if (groundSlots.length > 0) {
         const slot = groundSlots[2]; // Use 3rd slot
-        const tree = new Tree('tree1', slot.x - 15, slot.y); // Place on ground level, not below it
+        const tree = new Tree('tree1', slot.x, slot.y); // Place on ground level, not below it
         this.gameObjects.push(tree);
         this.slotManager.occupySlot(slot.id, tree.id);
       } else {
