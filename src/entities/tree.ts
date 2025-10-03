@@ -4,7 +4,7 @@ namespace Jamble {
   export class Tree extends GameObject {
     constructor(id: string, x: number = 0, y: number = 0) {
       // Keep the GameObject transform at the base position (origin point)
-      super(id, x, y, 10, 30); 
+      super(id, x, y); 
       
       // Create element with old tree styling
       this.render = {

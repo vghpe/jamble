@@ -2,8 +2,6 @@ namespace Jamble {
   export interface Transform {
     x: number;
     y: number;
-    width: number;
-    height: number;
   }
 
   export interface CssShape {
@@ -42,9 +40,9 @@ namespace Jamble {
     public render: RenderInfo;
     public collisionBox?: CollisionBox;
     
-    constructor(id: string, x: number = 0, y: number = 0, width: number = 20, height: number = 20) {
+    constructor(id: string, x: number = 0, y: number = 0) {
       this.id = id;
-      this.transform = { x, y, width, height };
+      this.transform = { x, y };
       this.render = { 
         type: 'css-shape', 
         visible: true,
@@ -55,11 +53,22 @@ namespace Jamble {
     abstract update(deltaTime: number): void;
     
     getBounds() {
+      // Use collision box for bounds if available, otherwise just the position
+      if (this.collisionBox) {
+        return {
+          left: this.collisionBox.x,
+          right: this.collisionBox.x + this.collisionBox.width,
+          top: this.collisionBox.y,
+          bottom: this.collisionBox.y + this.collisionBox.height
+        };
+      }
+      
+      // Fallback to just position (no size)
       return {
         left: this.transform.x,
-        right: this.transform.x + this.transform.width,
+        right: this.transform.x,
         top: this.transform.y,
-        bottom: this.transform.y + this.transform.height
+        bottom: this.transform.y
       };
     }
 

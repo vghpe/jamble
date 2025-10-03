@@ -34,16 +34,19 @@ namespace Jamble {
           this.objectElements.set(obj.id, element);
         }
 
-        // Update position and size
+        // Update position - use top positioning to match collision coordinate system
         element.style.left = obj.transform.x + 'px';
-        element.style.bottom = (100 - obj.transform.y - obj.transform.height) + 'px';
-        element.style.width = obj.transform.width + 'px';
-        element.style.height = obj.transform.height + 'px';
+        element.style.top = obj.transform.y + 'px';
         
         // Apply visual styling based on render type
         if (obj.render.type === 'css-shape' && obj.render.cssShape) {
           element.textContent = ''; // Clear any text content
           element.innerHTML = ''; // Clear any HTML content
+          
+          // For css-shape, we need to set default size since transform no longer has it
+          element.style.width = '20px';  // Default size for css shapes
+          element.style.height = '20px';
+          
           element.style.backgroundColor = obj.render.cssShape.backgroundColor;
           element.style.borderRadius = obj.render.cssShape.borderRadius || '0';
           element.style.border = obj.render.cssShape.border || 'none';
@@ -52,10 +55,20 @@ namespace Jamble {
           element.textContent = obj.render.emoji;
           element.innerHTML = ''; // Clear any HTML content
           element.style.backgroundColor = 'transparent';
+          
+          // For emoji, use font-size to control size instead of width/height
+          element.style.fontSize = '16px'; // Default emoji size
+          element.style.width = 'auto';
+          element.style.height = 'auto';
         } else if (obj.render.type === 'element' && obj.render.element) {
           element.textContent = ''; // Clear any text content
           element.innerHTML = ''; // Clear any existing HTML
           element.style.backgroundColor = 'transparent';
+          
+          // For custom elements, let them handle their own sizing
+          element.style.width = 'auto';
+          element.style.height = 'auto';
+          
           element.appendChild(obj.render.element.cloneNode(true) as HTMLElement);
         }
         

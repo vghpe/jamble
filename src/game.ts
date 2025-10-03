@@ -107,10 +107,13 @@ namespace Jamble {
       // Update all game objects
       this.gameObjects.forEach(obj => obj.update(deltaTime));
       
-      // Keep player in bounds
-      if (this.player.transform.x > this.gameWidth - this.player.transform.width) {
-        this.player.transform.x = this.gameWidth - this.player.transform.width;
-        this.player.velocityX = 0;
+      // Keep player in bounds using collision box
+      if (this.player.collisionBox) {
+        const rightBound = this.player.collisionBox.x + this.player.collisionBox.width;
+        if (rightBound > this.gameWidth) {
+          this.player.transform.x = this.gameWidth - this.player.collisionBox.width - (this.player.collisionBox.x - this.player.transform.x);
+          this.player.velocityX = 0;
+        }
       }
 
       this.debugSystem.update();

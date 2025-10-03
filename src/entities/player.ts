@@ -9,7 +9,7 @@ namespace Jamble {
     public jumpHeight: number = 300; // pixels per second
 
     constructor(x: number = 0, y: number = 0) {
-      super('player', x, y, 20, 20);
+      super('player', x, y);
       
       // CSS shape instead of emoji
       this.render = {
@@ -25,10 +25,10 @@ namespace Jamble {
         }
       };
       
-      // Add collision box
+      // Add collision box - position it at the same location as the transform
       this.collisionBox = {
-        x: 0,
-        y: 0,
+        x: x,
+        y: y,
         width: 20,
         height: 20,
         category: 'player'
@@ -51,19 +51,23 @@ namespace Jamble {
         this.collisionBox.y = this.transform.y;
       }
 
-      // Simple ground collision (at bottom of game area)
-      if (this.transform.y + this.transform.height >= 100) {
-        const wasInAir = !this.grounded;
-        this.transform.y = 100 - this.transform.height;
-        this.velocityY = 0;
-        this.grounded = true;
-        
-        // Trigger landing animation if we just landed
-        if (wasInAir) {
-          this.onLanding();
+      // Simple ground collision (at bottom of game area) using collision box
+      if (this.collisionBox) {
+        const bottomOfPlayer = this.collisionBox.y + this.collisionBox.height;
+        if (bottomOfPlayer >= 100) {
+          const wasInAir = !this.grounded;
+          // Adjust transform position to keep collision box at ground level
+          this.transform.y = 100 - this.collisionBox.height - (this.collisionBox.y - this.transform.y);
+          this.velocityY = 0;
+          this.grounded = true;
+          
+          // Trigger landing animation if we just landed
+          if (wasInAir) {
+            this.onLanding();
+          }
+        } else {
+          this.grounded = false;
         }
-      } else {
-        this.grounded = false;
       }
 
       // Keep player in bounds horizontally
