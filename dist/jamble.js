@@ -340,7 +340,7 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
-    class CollisionRenderer {
+    class DebugRenderer {
         constructor(gameElement) {
             this.CATEGORY_COLORS = {
                 player: '#7F00FF',
@@ -361,7 +361,7 @@ var Jamble;
       `;
             const ctx = this.canvas.getContext('2d');
             if (!ctx)
-                throw new Error('CollisionRenderer: 2D context unavailable');
+                throw new Error('DebugRenderer: 2D context unavailable');
             this.ctx = ctx;
             gameElement.appendChild(this.canvas);
             setTimeout(() => this.resize(), 10);
@@ -380,9 +380,9 @@ var Jamble;
             this.canvas.style.width = width + 'px';
             this.canvas.style.height = height + 'px';
         }
-        render(gameObjects, showColliders, showOrigins = false) {
+        render(gameObjects, showColliders, showOrigins = false, showSlots = false, slots) {
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            if (!showColliders && !showOrigins)
+            if (!showColliders && !showOrigins && !showSlots)
                 return;
             if (showColliders) {
                 gameObjects.forEach(obj => {
@@ -399,36 +399,34 @@ var Jamble;
                     }
                 });
             }
+            if (showSlots && slots) {
+                this.drawSlots(slots);
+            }
         }
         drawCollisionBox(box) {
             const color = this.CATEGORY_COLORS[box.category];
             this.ctx.fillStyle = color + '30';
             this.ctx.fillRect(box.x, box.y, box.width, box.height);
             this.ctx.strokeStyle = color;
-            this.ctx.lineWidth = 2;
+            this.ctx.lineWidth = 1;
             this.ctx.strokeRect(box.x, box.y, box.width, box.height);
-            this.ctx.fillStyle = color;
-            this.ctx.font = '10px monospace';
-            this.ctx.textAlign = 'center';
-            this.ctx.fillText(box.category.toUpperCase(), box.x + box.width / 2, box.y - 5);
         }
         drawPlayAreaBoundary() {
+            const rect = this.gameElement.getBoundingClientRect();
+            const width = rect.width;
+            const height = rect.height;
             this.ctx.strokeStyle = '#ff0000';
-            this.ctx.lineWidth = 1;
-            this.ctx.setLineDash([5, 3]);
-            this.ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.lineWidth = 2;
+            this.ctx.setLineDash([5, 5]);
+            this.ctx.strokeRect(0, 0, width, height);
             this.ctx.setLineDash([]);
-            this.ctx.fillStyle = '#ff0000';
-            this.ctx.font = '10px monospace';
-            this.ctx.textAlign = 'left';
-            this.ctx.fillText('COLLISION AREA', 5, 15);
         }
         drawOrigin(obj) {
             const x = obj.transform.x;
             const y = obj.transform.y;
-            const size = 4;
+            const size = 8;
             this.ctx.strokeStyle = '#ff6b35';
-            this.ctx.lineWidth = 1;
+            this.ctx.lineWidth = 2;
             this.ctx.setLineDash([]);
             this.ctx.beginPath();
             this.ctx.moveTo(x - size, y);
@@ -447,11 +445,39 @@ var Jamble;
             this.ctx.textAlign = 'left';
             this.ctx.fillText(obj.id, x + 6, y - 6);
         }
+        drawSlots(slots) {
+            const slotSize = 4;
+            const slotColors = {
+                'ground': '#8b4513',
+                'air_low': '#87ceeb',
+                'air_mid': '#4682b4',
+                'air_high': '#1e90ff',
+                'ceiling': '#696969'
+            };
+            slots.forEach(slot => {
+                const color = slotColors[slot.type];
+                const x = slot.x;
+                const y = slot.y;
+                this.ctx.fillStyle = slot.occupied ? color + '80' : color + '40';
+                this.ctx.strokeStyle = color;
+                this.ctx.lineWidth = 1;
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, slotSize, 0, 2 * Math.PI);
+                this.ctx.fill();
+                this.ctx.stroke();
+                if (slot.occupied) {
+                    this.ctx.fillStyle = '#ff0000';
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, 1, 0, 2 * Math.PI);
+                    this.ctx.fill();
+                }
+            });
+        }
         setVisible(visible) {
             this.canvas.style.display = visible ? 'block' : 'none';
         }
     }
-    Jamble.CollisionRenderer = CollisionRenderer;
+    Jamble.DebugRenderer = DebugRenderer;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
@@ -521,6 +547,7 @@ var Jamble;
             this.debugContainer = null;
             this.showColliders = false;
             this.showOrigins = false;
+            this.showSlots = false;
             this.player = null;
             if (container) {
                 this.debugContainer = container;
@@ -566,6 +593,12 @@ var Jamble;
                   <input type="checkbox" id="toggle-origins" class="debug-checkbox">
                   <span class="checkmark"></span>
                   Show Origins
+                </label>
+                <br><br>
+                <label class="debug-checkbox-label">
+                  <input type="checkbox" id="toggle-slots" class="debug-checkbox">
+                  <span class="checkmark"></span>
+                  Show Slots
                 </label>
               </div>
             </div>
@@ -699,6 +732,17 @@ var Jamble;
                 else {
                     console.error('Could not find toggle-origins checkbox');
                 }
+                const toggleSlotsCheckbox = this.debugContainer.querySelector('#toggle-slots');
+                if (toggleSlotsCheckbox) {
+                    toggleSlotsCheckbox.onchange = () => {
+                        this.showSlots = toggleSlotsCheckbox.checked;
+                        console.log('Slots visibility changed to:', this.showSlots);
+                    };
+                    console.log('Slots toggle checkbox event attached successfully');
+                }
+                else {
+                    console.error('Could not find toggle-slots checkbox');
+                }
             }
             catch (error) {
                 console.error('Error setting up debug panel styles and events:', error);
@@ -801,8 +845,11 @@ var Jamble;
         getShowOrigins() {
             return this.showOrigins;
         }
+        getShowSlots() {
+            return this.showSlots;
+        }
     }
-    DebugSystem.BUILD_VERSION = "v2.0.005";
+    DebugSystem.BUILD_VERSION = "v2.0.011";
     Jamble.DebugSystem = DebugSystem;
 })(Jamble || (Jamble = {}));
 var Jamble;
@@ -874,7 +921,7 @@ var Jamble;
                 console.log('Initializing game...');
                 this.gameElement = gameElement;
                 this.renderer = new Jamble.Renderer(gameElement);
-                this.collisionRenderer = new Jamble.CollisionRenderer(gameElement);
+                this.debugRenderer = new Jamble.DebugRenderer(gameElement);
                 this.stateManager = new Jamble.StateManager();
                 this.inputManager = new Jamble.InputManager();
                 this.slotManager = new Jamble.SlotManager(this.gameWidth, this.gameHeight);
@@ -956,7 +1003,7 @@ var Jamble;
         }
         render() {
             this.renderer.render(this.gameObjects);
-            this.collisionRenderer.render(this.gameObjects, this.debugSystem.getShowColliders(), this.debugSystem.getShowOrigins());
+            this.debugRenderer.render(this.gameObjects, this.debugSystem.getShowColliders(), this.debugSystem.getShowOrigins(), this.debugSystem.getShowSlots(), this.slotManager.getAllSlots());
         }
         start() {
             const gameLoop = (currentTime) => {

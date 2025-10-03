@@ -1,7 +1,8 @@
 /// <reference path="../core/game-object.ts" />
+/// <reference path="../slots/slot-manager.ts" />
 
 namespace Jamble {
-  export class CollisionRenderer {
+  export class DebugRenderer {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
     private gameElement: HTMLElement;
@@ -27,7 +28,7 @@ namespace Jamble {
       `;
       
       const ctx = this.canvas.getContext('2d');
-      if (!ctx) throw new Error('CollisionRenderer: 2D context unavailable');
+      if (!ctx) throw new Error('DebugRenderer: 2D context unavailable');
       this.ctx = ctx;
       
       gameElement.appendChild(this.canvas);
@@ -60,11 +61,11 @@ namespace Jamble {
       this.canvas.style.height = height + 'px';
     }
 
-    render(gameObjects: GameObject[], showColliders: boolean, showOrigins: boolean = false) {
+    render(gameObjects: GameObject[], showColliders: boolean, showOrigins: boolean = false, showSlots: boolean = false, slots?: Slot[]) {
       // Clear canvas
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
       
-      if (!showColliders && !showOrigins) return;
+      if (!showColliders && !showOrigins && !showSlots) return;
 
       // Draw collision boxes first (underneath)
       if (showColliders) {
@@ -86,6 +87,11 @@ namespace Jamble {
           }
         });
       }
+
+      // Draw slots on top of origins
+      if (showSlots && slots) {
+        this.drawSlots(slots);
+      }
     }
 
     private drawCollisionBox(box: CollisionBox) {
@@ -98,50 +104,34 @@ namespace Jamble {
       this.ctx.fillStyle = color + '30'; // Add transparency
       this.ctx.fillRect(box.x, box.y, box.width, box.height);
       
-      // Draw colored border
+      // Draw border
       this.ctx.strokeStyle = color;
-      this.ctx.lineWidth = 2;
+      this.ctx.lineWidth = 1;
       this.ctx.strokeRect(box.x, box.y, box.width, box.height);
-      
-      // Draw category label
-      this.ctx.fillStyle = color;
-      this.ctx.font = '10px monospace';
-      this.ctx.textAlign = 'center';
-      this.ctx.fillText(
-        box.category.toUpperCase(),
-        box.x + box.width / 2,
-        box.y - 5
-      );
     }
 
     private drawPlayAreaBoundary() {
-      // Draw a thin red border around the exact collision area
-      this.ctx.strokeStyle = '#ff0000'; // Red color
-      this.ctx.lineWidth = 1;
-      this.ctx.setLineDash([5, 3]); // Dashed line to make it distinct
+      // Get canvas dimensions
+      const rect = this.gameElement.getBoundingClientRect();
+      const width = rect.width;
+      const height = rect.height;
       
-      // Draw border at the edge of the canvas (which represents the collision area)
-      this.ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
-      
-      // Reset line dash
-      this.ctx.setLineDash([]);
-      
-      // Add label
-      this.ctx.fillStyle = '#ff0000';
-      this.ctx.font = '10px monospace';
-      this.ctx.textAlign = 'left';
-      this.ctx.fillText('COLLISION AREA', 5, 15);
+      // Draw red dashed border around play area
+      this.ctx.strokeStyle = '#ff0000';
+      this.ctx.lineWidth = 2;
+      this.ctx.setLineDash([5, 5]);
+      this.ctx.strokeRect(0, 0, width, height);
+      this.ctx.setLineDash([]); // Reset to solid line
     }
 
     private drawOrigin(obj: GameObject) {
-      // Draw a small crosshair at the object's transform origin
       const x = obj.transform.x;
       const y = obj.transform.y;
-      const size = 4;
+      const size = 8;
 
-      // Draw crosshair
-      this.ctx.strokeStyle = '#ff6b35'; // Orange color for origin
-      this.ctx.lineWidth = 1;
+      // Draw orange crosshairs
+      this.ctx.strokeStyle = '#ff6b35';
+      this.ctx.lineWidth = 2;
       this.ctx.setLineDash([]); // Solid line
 
       // Horizontal line
@@ -167,6 +157,41 @@ namespace Jamble {
       this.ctx.font = '8px monospace';
       this.ctx.textAlign = 'left';
       this.ctx.fillText(obj.id, x + 6, y - 6);
+    }
+
+    private drawSlots(slots: Slot[]) {
+      const slotSize = 4; // Size of slot indicator (half the original size)
+      const slotColors = {
+        'ground': '#8b4513',    // brown
+        'air_low': '#87ceeb',   // sky blue
+        'air_mid': '#4682b4',   // steel blue
+        'air_high': '#1e90ff',  // dodger blue
+        'ceiling': '#696969'    // dim gray
+      };
+
+      slots.forEach(slot => {
+        const color = slotColors[slot.type];
+        const x = slot.x;
+        const y = slot.y;
+
+        // Draw slot circle
+        this.ctx.fillStyle = slot.occupied ? color + '80' : color + '40'; // More opaque if occupied
+        this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = 1;
+        
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, slotSize, 0, 2 * Math.PI);
+        this.ctx.fill();
+        this.ctx.stroke();
+
+        // Draw occupied indicator if needed
+        if (slot.occupied) {
+          this.ctx.fillStyle = '#ff0000';
+          this.ctx.beginPath();
+          this.ctx.arc(x, y, 1, 0, 2 * Math.PI); // Also made the red dot smaller
+          this.ctx.fill();
+        }
+      });
     }
 
     setVisible(visible: boolean) {

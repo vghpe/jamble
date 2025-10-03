@@ -1,7 +1,7 @@
 /// <reference path="entities/player.ts" />
 /// <reference path="entities/tree.ts" />
 /// <reference path="systems/renderer.ts" />
-/// <reference path="systems/collision-renderer.ts" />
+/// <reference path="systems/debug-renderer.ts" />
 /// <reference path="systems/state-manager.ts" />
 /// <reference path="systems/input-manager.ts" />
 /// <reference path="slots/slot-manager.ts" />
@@ -12,7 +12,7 @@ namespace Jamble {
   export class Game {
     private gameElement: HTMLElement;
     private renderer: Renderer;
-    private collisionRenderer: CollisionRenderer;
+    private debugRenderer: DebugRenderer;
     private stateManager: StateManager;
     private inputManager: InputManager;
     private slotManager: SlotManager;
@@ -31,7 +31,7 @@ namespace Jamble {
         console.log('Initializing game...');
         this.gameElement = gameElement;
         this.renderer = new Renderer(gameElement);
-        this.collisionRenderer = new CollisionRenderer(gameElement);
+        this.debugRenderer = new DebugRenderer(gameElement);
         this.stateManager = new StateManager();
         this.inputManager = new InputManager();
         this.slotManager = new SlotManager(this.gameWidth, this.gameHeight);
@@ -126,7 +126,13 @@ namespace Jamble {
 
     private render() {
       this.renderer.render(this.gameObjects);
-      this.collisionRenderer.render(this.gameObjects, this.debugSystem.getShowColliders(), this.debugSystem.getShowOrigins());
+      this.debugRenderer.render(
+        this.gameObjects, 
+        this.debugSystem.getShowColliders(), 
+        this.debugSystem.getShowOrigins(), 
+        this.debugSystem.getShowSlots(), 
+        this.slotManager.getAllSlots()
+      );
     }
 
     start() {

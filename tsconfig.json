@@ -16,7 +16,7 @@
     "src/entities/tree.ts",
     "src/skills/skill-system.ts",
     "src/systems/renderer.ts",
-    "src/systems/collision-renderer.ts",
+    "src/systems/debug-renderer.ts",
     "src/debug/debug-system.ts",
     "src/game.ts"
   ]

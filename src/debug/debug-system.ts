@@ -7,6 +7,7 @@ namespace Jamble {
     private debugContainer: HTMLElement | null = null;
     private showColliders: boolean = false;
     private showOrigins: boolean = false;
+    private showSlots: boolean = false;
     private player: Player | null = null;
 
     constructor(container?: HTMLElement) {
@@ -55,6 +56,12 @@ namespace Jamble {
                   <input type="checkbox" id="toggle-origins" class="debug-checkbox">
                   <span class="checkmark"></span>
                   Show Origins
+                </label>
+                <br><br>
+                <label class="debug-checkbox-label">
+                  <input type="checkbox" id="toggle-slots" class="debug-checkbox">
+                  <span class="checkmark"></span>
+                  Show Slots
                 </label>
               </div>
             </div>
@@ -191,6 +198,17 @@ namespace Jamble {
         } else {
           console.error('Could not find toggle-origins checkbox');
         }
+
+        const toggleSlotsCheckbox = this.debugContainer.querySelector('#toggle-slots') as HTMLInputElement;
+        if (toggleSlotsCheckbox) {
+          toggleSlotsCheckbox.onchange = () => {
+            this.showSlots = toggleSlotsCheckbox.checked;
+            console.log('Slots visibility changed to:', this.showSlots);
+          };
+          console.log('Slots toggle checkbox event attached successfully');
+        } else {
+          console.error('Could not find toggle-slots checkbox');
+        }
       } catch (error) {
         console.error('Error setting up debug panel styles and events:', error);
       }
@@ -300,6 +318,10 @@ namespace Jamble {
 
     getShowOrigins(): boolean {
       return this.showOrigins;
+    }
+
+    getShowSlots(): boolean {
+      return this.showSlots;
     }
   }
 }
