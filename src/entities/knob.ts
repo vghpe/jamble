@@ -2,23 +2,39 @@
 
 namespace Jamble {
   export class Knob extends GameObject {
-    // Spring physics properties
+    // Original knob configuration (from archive)
+    private config = {
+      length: 10,           // Spring length in pixels
+      segments: 6,          // Number of curve segments  
+      omega: 18.0,          // Spring frequency
+      zeta: 0.25,           // Damping coefficient
+      maxAngleDeg: 85,      // Maximum deflection angle
+      bowFactor: 0.35,      // Curve bow amount
+      lineWidth: 12,        // Stroke width
+      knobColor: '#ff968f', // Spring and knob color
+      baseRadius: 3,        // Base circle radius
+      showPoints: false,    // Debug: show control points
+      visualOffsetY: 4      // Visual offset down in pixels
+    };
+
+    // Spring physics state (original archive physics)
     private theta: number = 0;           // Current angle
-    private thetaVelocity: number = 0;   // Angular velocity  
-    private targetTheta: number = 0;     // Target angle (when deflected)
-    private springK: number = 8;         // Spring constant
-    private damping: number = 0.85;      // Damping factor
+    private thetaDot: number = 0;        // Angular velocity  
+    private thetaTarget: number = 0;     // Target angle
     
-    // Physics state
-    private restTheta: number = 0;       // Rest position angle
-    private springLength: number = 25;   // Length of spring arm
+    // Cached calculations
+    private basePos: { x: number; y: number } = { x: 0, y: 0 };
+    private springPoints: { x: number; y: number }[] = [];
     
     // Animation state
     private isDeflecting: boolean = false;
     private deflectionDirection: number = 1; // 1 for right, -1 for left
 
     constructor(id: string, x: number = 0, y: number = 0) {
-      super(id, x, y);
+      // Position the knob above ground level so it's visible
+      // Ground is at y=100, we want the knob base to be at ground level
+      // So we offset by the canvas height to position the knob above ground
+      super(id, x, y - 80);
       
       // Canvas rendering with custom knob drawing
       this.render = {
@@ -27,16 +43,16 @@ namespace Jamble {
         canvas: {
           color: '#ff6b35', // Knob color (not used directly due to custom draw)
           shape: 'custom',
-          width: 60,  // Canvas area size
-          height: 60,
+          width: 80,  // Canvas area size (increased to accommodate full swing)
+          height: 80,
           customDraw: this.drawKnob.bind(this)
         }
       };
       
-      // Collision box for knob interaction (circular area)
+      // Collision box for knob interaction (circular area around the pivot)
       this.collisionBox = {
-        x: x - 15,  // Center 30px collision box
-        y: y - 15,  // Center 30px collision box  
+        x: x - 15,  // Center 30px collision box at original ground position
+        y: y - 15,  // Center 30px collision box at original ground position
         width: 30,
         height: 30,
         category: 'environment'
@@ -49,19 +65,16 @@ namespace Jamble {
     }
 
     private updateSpringPhysics(deltaTime: number): void {
-      // Hooke's law: F = -k * displacement
-      const displacement = this.theta - this.targetTheta;
-      const springForce = -this.springK * displacement;
+      // Original archive spring physics: F = -k*x - c*v where k = omega^2, c = 2*zeta*omega
+      const acceleration = 
+        -2 * this.config.zeta * this.config.omega * this.thetaDot -
+        this.config.omega * this.config.omega * (this.theta - this.thetaTarget);
       
-      // Apply spring force and damping
-      this.thetaVelocity += springForce * deltaTime;
-      this.thetaVelocity *= this.damping;
-      this.theta += this.thetaVelocity * deltaTime;
+      this.thetaDot += acceleration * deltaTime;
+      this.theta += this.thetaDot * deltaTime;
       
-      // Gradually return to rest position when not actively deflecting
-      if (!this.isDeflecting) {
-        this.targetTheta *= 0.95;
-      }
+      // Update spring points for rendering
+      this.updateSpringPoints();
     }
 
     private updateCollisionBox(): void {
@@ -71,54 +84,99 @@ namespace Jamble {
       }
     }
 
+    private updateSpringPoints(): void {
+      // Base position: center-x, 90% down (matching original getOrigin())
+      this.basePos.x = 40; // Center of 80px canvas
+      this.basePos.y = 72; // 90% down: 0.9 * 80 = 72
+      
+      const tipX = this.basePos.x + this.config.length * Math.sin(this.theta);
+      const tipY = this.basePos.y - this.config.length * Math.cos(this.theta);
+      
+      // Create curved spring using quadratic bezier (from original)
+      const normal = { x: Math.cos(this.theta), y: Math.sin(this.theta) };
+      const midX = (this.basePos.x + tipX) / 2;
+      const midY = (this.basePos.y + tipY) / 2;
+      const bowOffset = -this.config.bowFactor * this.config.length * this.theta;
+      const controlX = midX + normal.x * bowOffset;
+      const controlY = midY + normal.y * bowOffset;
+      
+      // Generate curve points
+      const segments = Math.max(2, Math.round(this.config.segments));
+      this.springPoints = [];
+      
+      for (let i = 0; i <= segments; i++) {
+        const t = i / segments;
+        const omt = 1 - t;
+        const x = omt * omt * this.basePos.x + 2 * omt * t * controlX + t * t * tipX;
+        const y = omt * omt * this.basePos.y + 2 * omt * t * controlY + t * t * tipY;
+        this.springPoints.push({ x, y });
+      }
+    }
+
     private drawKnob(ctx: CanvasRenderingContext2D, x: number, y: number): void {
-      const centerX = x + 30; // Center of 60px canvas area
-      const centerY = y + 30;
+      // DEBUG: Draw canvas bounds
+      ctx.strokeStyle = '#ff0000';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, y, 80, 80);
       
-      // Calculate knob position using spring physics
-      const knobX = centerX + Math.cos(this.theta) * this.springLength;
-      const knobY = centerY + Math.sin(this.theta) * this.springLength;
+      // DEBUG: Draw coordinate info
+      ctx.fillStyle = '#000000';
+      ctx.font = '8px Arial';
+      ctx.fillText(`θ:${this.theta.toFixed(2)}`, x + 2, y + 10);
+      ctx.fillText(`target:${this.thetaTarget.toFixed(2)}`, x + 2, y + 20);
       
-      // Draw spring arm
-      ctx.strokeStyle = '#8d6e63';
-      ctx.lineWidth = 3;
+      // Draw spring curve (original archive style)
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = this.config.knobColor;
+      ctx.lineWidth = this.config.lineWidth;
+      
       ctx.beginPath();
-      ctx.moveTo(centerX, centerY);
-      ctx.lineTo(knobX, knobY);
+      if (this.springPoints.length > 0) {
+        // Adjust points to canvas position
+        const adjustedPoints = this.springPoints.map(p => ({
+          x: x + p.x,
+          y: y + p.y
+        }));
+        
+        ctx.moveTo(adjustedPoints[0].x, adjustedPoints[0].y);
+        
+        // Smooth curve through points (original method)
+        for (let i = 1; i < adjustedPoints.length - 1; i++) {
+          const midX = 0.5 * (adjustedPoints[i].x + adjustedPoints[i + 1].x);
+          const midY = 0.5 * (adjustedPoints[i].y + adjustedPoints[i + 1].y);
+          ctx.quadraticCurveTo(adjustedPoints[i].x, adjustedPoints[i].y, midX, midY);
+        }
+        
+        if (adjustedPoints.length > 1) {
+          const last = adjustedPoints[adjustedPoints.length - 1];
+          ctx.lineTo(last.x, last.y);
+        }
+      }
       ctx.stroke();
       
-      // Draw pivot point
-      ctx.fillStyle = '#5d4e75';
+      // Draw base knob (original style)
+      ctx.fillStyle = this.config.knobColor;
       ctx.beginPath();
-      ctx.arc(centerX, centerY, 4, 0, 2 * Math.PI);
+      ctx.arc(x + this.basePos.x, y + this.basePos.y, this.config.baseRadius, 0, Math.PI * 2);
       ctx.fill();
       
-      // Draw main knob
-      ctx.fillStyle = '#ff6b35';
-      ctx.beginPath();
-      ctx.arc(knobX, knobY, 8, 0, 2 * Math.PI);
-      ctx.fill();
-      
-      // Draw highlight
-      ctx.fillStyle = '#ffab91';
-      ctx.beginPath();
-      ctx.arc(knobX - 2, knobY - 2, 3, 0, 2 * Math.PI);
-      ctx.fill();
+      ctx.restore();
     }
 
     deflect(direction: number): void {
       this.isDeflecting = true;
       this.deflectionDirection = direction;
       
-      // Set target deflection angle (30 degrees)
-      this.targetTheta = direction * (Math.PI / 6);
-      
-      // Add impulse velocity for dynamic response
-      this.thetaVelocity += direction * 2;
+      // Set target deflection angle (use original maxAngleDeg)
+      const maxAngle = (this.config.maxAngleDeg * Math.PI) / 180;
+      this.thetaTarget = direction * maxAngle;
       
       // Stop deflecting after animation completes
       setTimeout(() => {
         this.isDeflecting = false;
+        this.thetaTarget = 0; // Return to center
       }, 200);
     }
   }
