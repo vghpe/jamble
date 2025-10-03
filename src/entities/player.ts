@@ -10,7 +10,20 @@ namespace Jamble {
 
     constructor(x: number = 0, y: number = 0) {
       super('player', x, y, 20, 20);
-      this.render.emoji = '🟦'; // Blue square for player
+      
+      // CSS shape instead of emoji
+      this.render = {
+        type: 'css-shape',
+        visible: true,
+        cssShape: {
+          backgroundColor: '#4db6ac',
+          borderRadius: '4px'
+        },
+        animation: {
+          scaleX: 1,
+          scaleY: 1
+        }
+      };
       
       // Add collision box
       this.collisionBox = {
@@ -40,9 +53,15 @@ namespace Jamble {
 
       // Simple ground collision (at bottom of game area)
       if (this.transform.y + this.transform.height >= 100) {
+        const wasInAir = !this.grounded;
         this.transform.y = 100 - this.transform.height;
         this.velocityY = 0;
         this.grounded = true;
+        
+        // Trigger landing animation if we just landed
+        if (wasInAir) {
+          this.onLanding();
+        }
       } else {
         this.grounded = false;
       }
@@ -71,6 +90,25 @@ namespace Jamble {
       if (this.grounded) {
         this.velocityY = -this.jumpHeight;
         this.grounded = false;
+      }
+    }
+
+    private onLanding() {
+      // Landing squash animation
+      if (this.render.animation) {
+        // Instant squash
+        this.render.animation.scaleX = 1.4;
+        this.render.animation.scaleY = 0.6;
+        this.render.animation.transition = 'none';
+        
+        // Ease back to normal after brief delay
+        setTimeout(() => {
+          if (this.render.animation) {
+            this.render.animation.scaleX = 1;
+            this.render.animation.scaleY = 1;
+            this.render.animation.transition = 'transform 150ms ease-out';
+          }
+        }, 50);
       }
     }
   }

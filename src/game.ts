@@ -69,11 +69,17 @@ namespace Jamble {
 
     private createSampleTree() {
       const groundSlots = this.slotManager.getAvailableSlots('ground');
+      console.log('Available ground slots:', groundSlots);
       if (groundSlots.length > 0) {
         const slot = groundSlots[2]; // Use 3rd slot
-        const tree = new Tree('tree1', slot.x - 15, slot.y - 40);
+        console.log('Using slot:', slot);
+        const tree = new Tree('tree1', slot.x - 15, slot.y); // Place on ground level, not below it
+        console.log('Created tree at position:', tree.transform.x, tree.transform.y);
+        console.log('Tree render info:', tree.render);
         this.gameObjects.push(tree);
         this.slotManager.occupySlot(slot.id, tree.id);
+      } else {
+        console.warn('No ground slots available for tree');
       }
     }
 

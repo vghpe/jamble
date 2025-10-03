@@ -6,10 +6,25 @@ namespace Jamble {
     height: number;
   }
 
+  export interface CssShape {
+    backgroundColor: string;
+    borderRadius?: string;
+    border?: string;
+    boxShadow?: string;
+  }
+
+  export interface AnimationState {
+    scaleX: number;
+    scaleY: number;
+    transition?: string;
+  }
+
   export interface RenderInfo {
-    emoji?: string;
-    color?: string;
+    type: 'css-shape' | 'emoji';
     visible: boolean;
+    cssShape?: CssShape;
+    emoji?: string;
+    animation?: AnimationState;
   }
 
   export interface CollisionBox {
@@ -29,7 +44,11 @@ namespace Jamble {
     constructor(id: string, x: number = 0, y: number = 0, width: number = 20, height: number = 20) {
       this.id = id;
       this.transform = { x, y, width, height };
-      this.render = { visible: true };
+      this.render = { 
+        type: 'css-shape', 
+        visible: true,
+        animation: { scaleX: 1, scaleY: 1 }
+      };
     }
 
     abstract update(deltaTime: number): void;

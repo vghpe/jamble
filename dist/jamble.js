@@ -5,7 +5,11 @@ var Jamble;
         constructor(id, x = 0, y = 0, width = 20, height = 20) {
             this.id = id;
             this.transform = { x, y, width, height };
-            this.render = { visible: true };
+            this.render = {
+                type: 'css-shape',
+                visible: true,
+                animation: { scaleX: 1, scaleY: 1 }
+            };
         }
         getBounds() {
             return {
@@ -92,7 +96,18 @@ var Jamble;
             this.grounded = false;
             this.moveSpeed = 200;
             this.jumpHeight = 300;
-            this.render.emoji = '🟦';
+            this.render = {
+                type: 'css-shape',
+                visible: true,
+                cssShape: {
+                    backgroundColor: '#4db6ac',
+                    borderRadius: '4px'
+                },
+                animation: {
+                    scaleX: 1,
+                    scaleY: 1
+                }
+            };
             this.collisionBox = {
                 x: 0,
                 y: 0,
@@ -112,9 +127,13 @@ var Jamble;
                 this.collisionBox.y = this.transform.y;
             }
             if (this.transform.y + this.transform.height >= 100) {
+                const wasInAir = !this.grounded;
                 this.transform.y = 100 - this.transform.height;
                 this.velocityY = 0;
                 this.grounded = true;
+                if (wasInAir) {
+                    this.onLanding();
+                }
             }
             else {
                 this.grounded = false;
@@ -139,6 +158,20 @@ var Jamble;
                 this.grounded = false;
             }
         }
+        onLanding() {
+            if (this.render.animation) {
+                this.render.animation.scaleX = 1.4;
+                this.render.animation.scaleY = 0.6;
+                this.render.animation.transition = 'none';
+                setTimeout(() => {
+                    if (this.render.animation) {
+                        this.render.animation.scaleX = 1;
+                        this.render.animation.scaleY = 1;
+                        this.render.animation.transition = 'transform 150ms ease-out';
+                    }
+                }, 50);
+            }
+        }
     }
     Jamble.Player = Player;
 })(Jamble || (Jamble = {}));
@@ -147,7 +180,18 @@ var Jamble;
     class Tree extends Jamble.GameObject {
         constructor(id, x = 0, y = 0) {
             super(id, x, y, 30, 40);
-            this.render.emoji = '🌳';
+            this.render = {
+                type: 'css-shape',
+                visible: true,
+                cssShape: {
+                    backgroundColor: '#388e3c',
+                    borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%'
+                },
+                animation: {
+                    scaleX: 1,
+                    scaleY: 1
+                }
+            };
             this.collisionBox = {
                 x: x,
                 y: y,
@@ -242,12 +286,22 @@ var Jamble;
                 element.style.bottom = (100 - obj.transform.y - obj.transform.height) + 'px';
                 element.style.width = obj.transform.width + 'px';
                 element.style.height = obj.transform.height + 'px';
-                if (obj.render.emoji) {
-                    element.textContent = obj.render.emoji;
-                }
-                else {
+                if (obj.render.type === 'css-shape' && obj.render.cssShape) {
                     element.textContent = '';
-                    element.style.backgroundColor = obj.render.color || '#888';
+                    element.style.backgroundColor = obj.render.cssShape.backgroundColor;
+                    element.style.borderRadius = obj.render.cssShape.borderRadius || '0';
+                    element.style.border = obj.render.cssShape.border || 'none';
+                    element.style.boxShadow = obj.render.cssShape.boxShadow || 'none';
+                }
+                else if (obj.render.type === 'emoji' && obj.render.emoji) {
+                    element.textContent = obj.render.emoji;
+                    element.style.backgroundColor = 'transparent';
+                }
+                if (obj.render.animation) {
+                    const scaleTransform = `scaleX(${obj.render.animation.scaleX}) scaleY(${obj.render.animation.scaleY})`;
+                    element.style.transform = scaleTransform;
+                    element.style.transition = obj.render.animation.transition || '';
+                    element.style.transformOrigin = 'center bottom';
                 }
             });
         }
@@ -633,11 +687,18 @@ var Jamble;
         }
         createSampleTree() {
             const groundSlots = this.slotManager.getAvailableSlots('ground');
+            console.log('Available ground slots:', groundSlots);
             if (groundSlots.length > 0) {
                 const slot = groundSlots[2];
-                const tree = new Jamble.Tree('tree1', slot.x - 15, slot.y - 40);
+                console.log('Using slot:', slot);
+                const tree = new Jamble.Tree('tree1', slot.x - 15, slot.y);
+                console.log('Created tree at position:', tree.transform.x, tree.transform.y);
+                console.log('Tree render info:', tree.render);
                 this.gameObjects.push(tree);
                 this.slotManager.occupySlot(slot.id, tree.id);
+            }
+            else {
+                console.warn('No ground slots available for tree');
             }
         }
         setupInput() {

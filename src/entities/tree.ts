@@ -4,7 +4,20 @@ namespace Jamble {
   export class Tree extends GameObject {
     constructor(id: string, x: number = 0, y: number = 0) {
       super(id, x, y, 30, 40);
-      this.render.emoji = '🌳';
+      
+      // CSS shape instead of emoji
+      this.render = {
+        type: 'css-shape',
+        visible: true,
+        cssShape: {
+          backgroundColor: '#388e3c',
+          borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%' // Tree-like shape
+        },
+        animation: {
+          scaleX: 1,
+          scaleY: 1
+        }
+      };
       
       // Add collision box
       this.collisionBox = {
