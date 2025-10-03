@@ -3,34 +3,31 @@
 const fs = require('fs');
 const path = require('path');
 
-const debugSystemPath = path.join(__dirname, '../src/debug/debug-system.ts');
+const buildCounterPath = path.join(__dirname, '../.build-counter');
 
 try {
-  // Read the debug-system.ts file
-  let content = fs.readFileSync(debugSystemPath, 'utf8');
-  
-  // Find the BUILD_VERSION line
-  const versionRegex = /private static readonly BUILD_VERSION = "v2\.0\.(\d+)";/;
-  const match = content.match(versionRegex);
-  
-  if (match) {
-    const currentNumber = parseInt(match[1]);
-    const newNumber = String(currentNumber + 1).padStart(3, '0');
-    const newVersion = `v2.0.${newNumber}`;
-    
-    // Replace the version in the file
-    content = content.replace(versionRegex, `private static readonly BUILD_VERSION = "${newVersion}";`);
-    
-    // Write back to file
-    fs.writeFileSync(debugSystemPath, content);
-    
-    console.log(`🎮 Build version updated: ${newVersion}`);
-    console.log(`📦 Ready to build Jamble...`);
-  } else {
-    console.error('❌ Could not find BUILD_VERSION in debug-system.ts');
-    process.exit(1);
+  // Read current build number, or start at 0 if file doesn't exist
+  let buildNumber = 0;
+  if (fs.existsSync(buildCounterPath)) {
+    buildNumber = parseInt(fs.readFileSync(buildCounterPath, 'utf8').trim()) || 0;
   }
+  
+  // Increment build number
+  buildNumber += 1;
+  
+  // Save new build number
+  fs.writeFileSync(buildCounterPath, buildNumber.toString());
+  
+  const buildVersion = `v2.0.${String(buildNumber).padStart(3, '0')}`;
+  
+  console.log(`🎮 Generating build version: ${buildVersion}`);
+
+  // Store build version in a temporary file for post-build injection
+  const buildInfoPath = path.join(__dirname, '../.build-info.json');
+  fs.writeFileSync(buildInfoPath, JSON.stringify({ version: buildVersion, timestamp: Date.now() }));
+
+  console.log(`📦 Ready to build Jamble...`);
 } catch (error) {
-  console.error('❌ Error updating build version:', error.message);
+  console.error('❌ Error generating build version:', error.message);
   process.exit(1);
 }

@@ -6,7 +6,7 @@
   "scripts": {
     "test": "tsc -p tsconfig.json --pretty false",
     "prebuild:jamble": "node scripts/increment-build.js",
-    "build:jamble": "mkdir -p dist && tsc -p tsconfig.json && cp src/jamble.css dist/jamble.css",
+    "build:jamble": "mkdir -p dist && tsc -p tsconfig.json && node scripts/inject-version.js && cp src/jamble.css dist/jamble.css",
     "watch": "tsc -w -p tsconfig.json",
     "serve": "python3 devserver.py",
     "kill-server": "lsof -ti:8000 | xargs kill -9 2>/dev/null || true",

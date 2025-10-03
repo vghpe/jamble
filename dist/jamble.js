@@ -410,6 +410,67 @@ var Jamble;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
+    class StateManager {
+        constructor() {
+            this.currentState = 'idle';
+            this.stateStartTime = 0;
+            this.countdownDuration = 3000;
+            this.stateStartTime = Date.now();
+            console.log('🎮 StateManager initialized in IDLE state');
+        }
+        getCurrentState() {
+            return this.currentState;
+        }
+        getStateTime() {
+            return Date.now() - this.stateStartTime;
+        }
+        getCountdownTimeRemaining() {
+            if (this.currentState !== 'countdown')
+                return 0;
+            return Math.max(0, this.countdownDuration - this.getStateTime());
+        }
+        getCountdownSeconds() {
+            return Math.ceil(this.getCountdownTimeRemaining() / 1000);
+        }
+        isIdle() {
+            return this.currentState === 'idle';
+        }
+        isCountdown() {
+            return this.currentState === 'countdown';
+        }
+        isRunning() {
+            return this.currentState === 'run';
+        }
+        startCountdown() {
+            if (this.currentState === 'idle') {
+                this.setState('countdown');
+                return true;
+            }
+            return false;
+        }
+        startRun() {
+            if (this.currentState === 'countdown') {
+                this.setState('run');
+                return true;
+            }
+            return false;
+        }
+        returnToIdle() {
+            this.setState('idle');
+        }
+        setState(newState) {
+            if (this.currentState === newState)
+                return;
+            const oldState = this.currentState;
+            this.currentState = newState;
+            this.stateStartTime = Date.now();
+            console.log(`State: ${oldState} → ${newState}`);
+        }
+    }
+    Jamble.StateManager = StateManager;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
     class DebugSystem {
         constructor(container) {
             this.debugContainer = null;
@@ -675,69 +736,8 @@ var Jamble;
             return this.showColliders;
         }
     }
-    DebugSystem.BUILD_VERSION = "v2.0.006";
+    DebugSystem.BUILD_VERSION = "v2.0.003";
     Jamble.DebugSystem = DebugSystem;
-})(Jamble || (Jamble = {}));
-var Jamble;
-(function (Jamble) {
-    class StateManager {
-        constructor() {
-            this.currentState = 'idle';
-            this.stateStartTime = 0;
-            this.countdownDuration = 3000;
-            this.stateStartTime = Date.now();
-            console.log('🎮 StateManager initialized in IDLE state');
-        }
-        getCurrentState() {
-            return this.currentState;
-        }
-        getStateTime() {
-            return Date.now() - this.stateStartTime;
-        }
-        getCountdownTimeRemaining() {
-            if (this.currentState !== 'countdown')
-                return 0;
-            return Math.max(0, this.countdownDuration - this.getStateTime());
-        }
-        getCountdownSeconds() {
-            return Math.ceil(this.getCountdownTimeRemaining() / 1000);
-        }
-        isIdle() {
-            return this.currentState === 'idle';
-        }
-        isCountdown() {
-            return this.currentState === 'countdown';
-        }
-        isRunning() {
-            return this.currentState === 'run';
-        }
-        startCountdown() {
-            if (this.currentState === 'idle') {
-                this.setState('countdown');
-                return true;
-            }
-            return false;
-        }
-        startRun() {
-            if (this.currentState === 'countdown') {
-                this.setState('run');
-                return true;
-            }
-            return false;
-        }
-        returnToIdle() {
-            this.setState('idle');
-        }
-        setState(newState) {
-            if (this.currentState === newState)
-                return;
-            const oldState = this.currentState;
-            this.currentState = newState;
-            this.stateStartTime = Date.now();
-            console.log(`State: ${oldState} → ${newState}`);
-        }
-    }
-    Jamble.StateManager = StateManager;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {

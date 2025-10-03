@@ -1,8 +1,9 @@
 /// <reference path="../entities/player.ts" />
+/// <reference path="../systems/state-manager.ts" />
 
 namespace Jamble {
   export class DebugSystem {
-    private static readonly BUILD_VERSION = "v2.0.006";
+    private static readonly BUILD_VERSION = "BUILD_VERSION_PLACEHOLDER";
     private debugContainer: HTMLElement | null = null;
     private showColliders: boolean = false;
     private player: Player | null = null;
