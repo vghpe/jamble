@@ -20,10 +20,11 @@ namespace Jamble {
   }
 
   export interface RenderInfo {
-    type: 'css-shape' | 'emoji';
+    type: 'css-shape' | 'emoji' | 'element';
     visible: boolean;
     cssShape?: CssShape;
     emoji?: string;
+    element?: HTMLElement;
     animation?: AnimationState;
   }
 

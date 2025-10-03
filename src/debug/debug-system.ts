@@ -2,7 +2,7 @@
 
 namespace Jamble {
   export class DebugSystem {
-    private static readonly BUILD_VERSION = "v2.0.004";
+    private static readonly BUILD_VERSION = "v2.0.006";
     private debugContainer: HTMLElement | null = null;
     private showColliders: boolean = false;
     private player: Player | null = null;

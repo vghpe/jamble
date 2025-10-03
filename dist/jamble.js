@@ -179,26 +179,42 @@ var Jamble;
 (function (Jamble) {
     class Tree extends Jamble.GameObject {
         constructor(id, x = 0, y = 0) {
-            super(id, x, y, 30, 40);
+            super(id, x, y, 10, 30);
             this.render = {
-                type: 'css-shape',
+                type: 'element',
                 visible: true,
-                cssShape: {
-                    backgroundColor: '#388e3c',
-                    borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%'
-                },
-                animation: {
-                    scaleX: 1,
-                    scaleY: 1
-                }
+                element: this.createTreeElement()
             };
             this.collisionBox = {
                 x: x,
                 y: y,
-                width: 30,
-                height: 40,
+                width: 8,
+                height: 25,
                 category: 'environment'
             };
+        }
+        createTreeElement() {
+            const treeEl = document.createElement('div');
+            treeEl.style.cssText = `
+        position: absolute;
+        bottom: 0;
+        width: 10px;
+        height: 30px;
+        background: #8d6e63;
+        border-radius: 2px;
+      `;
+            const foliage = document.createElement('div');
+            foliage.style.cssText = `
+        position: absolute;
+        bottom: 20px;
+        left: -5px;
+        width: 20px;
+        height: 20px;
+        background: #66bb6a;
+        border-radius: 50%;
+      `;
+            treeEl.appendChild(foliage);
+            return treeEl;
         }
         update(deltaTime) {
             if (this.collisionBox) {
@@ -279,7 +295,6 @@ var Jamble;
                     element.style.fontSize = '16px';
                     element.style.userSelect = 'none';
                     element.style.pointerEvents = 'none';
-                    element.style.zIndex = '1';
                     this.gameElement.appendChild(element);
                     this.objectElements.set(obj.id, element);
                 }
@@ -289,6 +304,7 @@ var Jamble;
                 element.style.height = obj.transform.height + 'px';
                 if (obj.render.type === 'css-shape' && obj.render.cssShape) {
                     element.textContent = '';
+                    element.innerHTML = '';
                     element.style.backgroundColor = obj.render.cssShape.backgroundColor;
                     element.style.borderRadius = obj.render.cssShape.borderRadius || '0';
                     element.style.border = obj.render.cssShape.border || 'none';
@@ -296,7 +312,14 @@ var Jamble;
                 }
                 else if (obj.render.type === 'emoji' && obj.render.emoji) {
                     element.textContent = obj.render.emoji;
+                    element.innerHTML = '';
                     element.style.backgroundColor = 'transparent';
+                }
+                else if (obj.render.type === 'element' && obj.render.element) {
+                    element.textContent = '';
+                    element.innerHTML = '';
+                    element.style.backgroundColor = 'transparent';
+                    element.appendChild(obj.render.element.cloneNode(true));
                 }
                 if (obj.render.animation) {
                     const scaleTransform = `scaleX(${obj.render.animation.scaleX}) scaleY(${obj.render.animation.scaleY})`;
@@ -334,7 +357,7 @@ var Jamble;
         width: 100%;
         height: 100%;
         pointer-events: none;
-        z-index: 9999;
+        z-index: 10;
       `;
             const ctx = this.canvas.getContext('2d');
             if (!ctx)
@@ -366,7 +389,6 @@ var Jamble;
                     this.drawCollisionBox(obj.collisionBox);
                 }
             });
-            this.drawPlayAreaBoundary();
         }
         drawCollisionBox(box) {
             const color = this.CATEGORY_COLORS[box.category];
@@ -379,19 +401,6 @@ var Jamble;
             this.ctx.font = '10px monospace';
             this.ctx.textAlign = 'center';
             this.ctx.fillText(box.category.toUpperCase(), box.x + box.width / 2, box.y - 5);
-        }
-        drawPlayAreaBoundary() {
-            const canvasRect = this.canvas.getBoundingClientRect();
-            const gameRect = this.gameElement.getBoundingClientRect();
-            this.ctx.strokeStyle = '#ff0000';
-            this.ctx.lineWidth = 1;
-            this.ctx.setLineDash([5, 3]);
-            this.ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
-            this.ctx.setLineDash([]);
-            this.ctx.fillStyle = '#ff0000';
-            this.ctx.font = '10px monospace';
-            this.ctx.textAlign = 'left';
-            this.ctx.fillText('COLLISION AREA', 5, 15);
         }
         setVisible(visible) {
             this.canvas.style.display = visible ? 'block' : 'none';
@@ -666,8 +675,126 @@ var Jamble;
             return this.showColliders;
         }
     }
-    DebugSystem.BUILD_VERSION = "v2.0.004";
+    DebugSystem.BUILD_VERSION = "v2.0.006";
     Jamble.DebugSystem = DebugSystem;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class StateManager {
+        constructor() {
+            this.currentState = 'idle';
+            this.stateStartTime = 0;
+            this.countdownDuration = 3000;
+            this.stateStartTime = Date.now();
+            console.log('🎮 StateManager initialized in IDLE state');
+        }
+        getCurrentState() {
+            return this.currentState;
+        }
+        getStateTime() {
+            return Date.now() - this.stateStartTime;
+        }
+        getCountdownTimeRemaining() {
+            if (this.currentState !== 'countdown')
+                return 0;
+            return Math.max(0, this.countdownDuration - this.getStateTime());
+        }
+        getCountdownSeconds() {
+            return Math.ceil(this.getCountdownTimeRemaining() / 1000);
+        }
+        isIdle() {
+            return this.currentState === 'idle';
+        }
+        isCountdown() {
+            return this.currentState === 'countdown';
+        }
+        isRunning() {
+            return this.currentState === 'run';
+        }
+        startCountdown() {
+            if (this.currentState === 'idle') {
+                this.setState('countdown');
+                return true;
+            }
+            return false;
+        }
+        startRun() {
+            if (this.currentState === 'countdown') {
+                this.setState('run');
+                return true;
+            }
+            return false;
+        }
+        returnToIdle() {
+            this.setState('idle');
+        }
+        setState(newState) {
+            if (this.currentState === newState)
+                return;
+            const oldState = this.currentState;
+            this.currentState = newState;
+            this.stateStartTime = Date.now();
+            console.log(`State: ${oldState} → ${newState}`);
+        }
+    }
+    Jamble.StateManager = StateManager;
+})(Jamble || (Jamble = {}));
+var Jamble;
+(function (Jamble) {
+    class InputManager {
+        constructor() {
+            this.keys = new Set();
+            this.keyDownHandlers = new Map();
+            this.keyUpHandlers = new Map();
+            this.setupEventListeners();
+            console.log('🎹 InputManager initialized');
+        }
+        setupEventListeners() {
+            document.addEventListener('keydown', (e) => {
+                this.keys.add(e.code);
+                const handler = this.keyDownHandlers.get(e.code);
+                if (handler) {
+                    handler();
+                    e.preventDefault();
+                }
+            });
+            document.addEventListener('keyup', (e) => {
+                this.keys.delete(e.code);
+                const handler = this.keyUpHandlers.get(e.code);
+                if (handler) {
+                    handler();
+                }
+            });
+        }
+        isKeyPressed(keyCode) {
+            return this.keys.has(keyCode);
+        }
+        onKeyDown(keyCode, handler) {
+            this.keyDownHandlers.set(keyCode, handler);
+        }
+        onKeyUp(keyCode, handler) {
+            this.keyUpHandlers.set(keyCode, handler);
+        }
+        removeKeyHandler(keyCode) {
+            this.keyDownHandlers.delete(keyCode);
+            this.keyUpHandlers.delete(keyCode);
+        }
+        isMovingLeft() {
+            return this.isKeyPressed('ArrowLeft') || this.isKeyPressed('KeyA');
+        }
+        isMovingRight() {
+            return this.isKeyPressed('ArrowRight') || this.isKeyPressed('KeyD');
+        }
+        isJumping() {
+            return this.isKeyPressed('Space');
+        }
+        destroy() {
+            this.keyDownHandlers.clear();
+            this.keyUpHandlers.clear();
+            this.keys.clear();
+        }
+    }
+    Jamble.InputManager = InputManager;
 })(Jamble || (Jamble = {}));
 var Jamble;
 (function (Jamble) {
@@ -677,12 +804,13 @@ var Jamble;
             this.lastTime = 0;
             this.gameWidth = 500;
             this.gameHeight = 100;
-            this.keys = new Set();
             try {
                 console.log('Initializing game...');
                 this.gameElement = gameElement;
                 this.renderer = new Jamble.Renderer(gameElement);
                 this.collisionRenderer = new Jamble.CollisionRenderer(gameElement);
+                this.stateManager = new Jamble.StateManager();
+                this.inputManager = new Jamble.InputManager();
                 this.slotManager = new Jamble.SlotManager(this.gameWidth, this.gameHeight);
                 this.skillManager = new Jamble.SkillManager();
                 console.log('Creating debug system with container:', debugContainer);
@@ -732,24 +860,19 @@ var Jamble;
             }
         }
         setupInput() {
-            document.addEventListener('keydown', (e) => {
-                this.keys.add(e.code);
-                if (e.code === 'Space' && this.skillManager.hasSkill('jump')) {
+            this.inputManager.onKeyDown('Space', () => {
+                if (this.skillManager.hasSkill('jump')) {
                     this.skillManager.useSkill('jump', this.player);
-                    e.preventDefault();
                 }
-            });
-            document.addEventListener('keyup', (e) => {
-                this.keys.delete(e.code);
             });
         }
         handleInput() {
             if (!this.skillManager.hasSkill('move'))
                 return;
-            if (this.keys.has('ArrowLeft') || this.keys.has('KeyA')) {
+            if (this.inputManager.isMovingLeft()) {
                 this.player.moveLeft();
             }
-            else if (this.keys.has('ArrowRight') || this.keys.has('KeyD')) {
+            else if (this.inputManager.isMovingRight()) {
                 this.player.moveRight();
             }
             else {
@@ -780,6 +903,5 @@ var Jamble;
             requestAnimationFrame(gameLoop);
         }
     }
-    Game.BUILD_VERSION = Date.now();
     Jamble.Game = Game;
 })(Jamble || (Jamble = {}));
