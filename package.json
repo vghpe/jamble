@@ -5,9 +5,12 @@
   "main": "jamble.js",
   "scripts": {
     "test": "tsc -p tsconfig.json --pretty false",
+    "prebuild:jamble": "node scripts/increment-build.js",
     "build:jamble": "mkdir -p dist && tsc -p tsconfig.json && cp src/jamble.css dist/jamble.css",
     "watch": "tsc -w -p tsconfig.json",
-    "serve": "python3 devserver.py 8080"
+    "serve": "python3 devserver.py",
+    "kill-server": "lsof -ti:8000 | xargs kill -9 2>/dev/null || true",
+    "restart": "npm run kill-server && npm run build:jamble && npm run serve"
   },
   "repository": {
     "type": "git",

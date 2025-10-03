@@ -2,6 +2,7 @@
 
 namespace Jamble {
   export class DebugSystem {
+    private static readonly BUILD_VERSION = "v2.0.004";
     private debugContainer: HTMLElement | null = null;
     private showColliders: boolean = false;
     private player: Player | null = null;
@@ -27,6 +28,7 @@ namespace Jamble {
             <div class="debug-header">
               <h2>🎮 Jamble Debug</h2>
               <p class="debug-info">Rebuilt Architecture</p>
+              <p class="build-info">Build: ${DebugSystem.BUILD_VERSION}</p>
             </div>
             
             <div class="debug-section">
@@ -41,9 +43,11 @@ namespace Jamble {
             <div class="debug-section">
               <div class="section-header">Debug Controls</div>
               <div class="section-content">
-                <button id="toggle-colliders" class="debug-button">
-                  Toggle Colliders: <span id="collider-status">OFF</span>
-                </button>
+                <label class="debug-checkbox-label">
+                  <input type="checkbox" id="toggle-colliders" class="debug-checkbox">
+                  <span class="checkmark"></span>
+                  Show Colliders
+                </label>
               </div>
             </div>
           </div>
@@ -89,6 +93,13 @@ namespace Jamble {
             color: #6c757d;
           }
           
+          .build-info {
+            margin: 4px 0 0 0;
+            font-size: 10px;
+            font-family: monospace;
+            color: #28a745;
+          }
+          
           .debug-section {
             background: #fff;
             border: 1px solid #dee2e6;
@@ -130,31 +141,36 @@ namespace Jamble {
             border: 1px solid #dee2e6;
           }
           
-          .debug-button {
-            width: 100%;
-            padding: 8px 12px;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
+          .debug-checkbox-label {
+            display: flex;
+            align-items: center;
             cursor: pointer;
             font-size: 14px;
+            color: #212529;
           }
           
-          .debug-button:hover {
-            background: #0056b3;
+          .debug-checkbox {
+            margin-right: 8px;
+            cursor: pointer;
+          }
+          
+          .debug-checkbox:checked + .checkmark {
+            color: #007bff;
           }
         `;
         document.head.appendChild(style);
         console.log('Debug panel styles added successfully');
 
-        // Setup button event
-        const toggleButton = this.debugContainer.querySelector('#toggle-colliders') as HTMLButtonElement;
-        if (toggleButton) {
-          toggleButton.onclick = () => this.toggleColliders();
-          console.log('Toggle button event attached successfully');
+        // Setup checkbox event
+        const toggleCheckbox = this.debugContainer.querySelector('#toggle-colliders') as HTMLInputElement;
+        if (toggleCheckbox) {
+          toggleCheckbox.onchange = () => {
+            this.showColliders = toggleCheckbox.checked;
+            console.log('Colliders visibility changed to:', this.showColliders);
+          };
+          console.log('Toggle checkbox event attached successfully');
         } else {
-          console.error('Could not find toggle-colliders button');
+          console.error('Could not find toggle-colliders checkbox');
         }
       } catch (error) {
         console.error('Error setting up debug panel styles and events:', error);
@@ -185,7 +201,10 @@ namespace Jamble {
 
       const toggleButton = debugElement.querySelector('#overlay-toggle') as HTMLButtonElement;
       if (toggleButton) {
-        toggleButton.onclick = () => this.toggleColliders();
+        toggleButton.onclick = () => {
+          this.showColliders = !this.showColliders;
+          console.log('Debug: Toggled colliders to:', this.showColliders ? 'ON' : 'OFF');
+        };
       }
     }
 
@@ -254,11 +273,6 @@ namespace Jamble {
 
         infoElement.innerHTML = info;
       }
-    }
-
-    toggleColliders() {
-      this.showColliders = !this.showColliders;
-      console.log('Debug: Toggled colliders to:', this.showColliders ? 'ON' : 'OFF');
     }
 
     getShowColliders(): boolean {

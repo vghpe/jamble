@@ -279,6 +279,7 @@ var Jamble;
                     element.style.fontSize = '16px';
                     element.style.userSelect = 'none';
                     element.style.pointerEvents = 'none';
+                    element.style.zIndex = '1';
                     this.gameElement.appendChild(element);
                     this.objectElements.set(obj.id, element);
                 }
@@ -333,7 +334,7 @@ var Jamble;
         width: 100%;
         height: 100%;
         pointer-events: none;
-        z-index: 10;
+        z-index: 9999;
       `;
             const ctx = this.canvas.getContext('2d');
             if (!ctx)
@@ -365,6 +366,7 @@ var Jamble;
                     this.drawCollisionBox(obj.collisionBox);
                 }
             });
+            this.drawPlayAreaBoundary();
         }
         drawCollisionBox(box) {
             const color = this.CATEGORY_COLORS[box.category];
@@ -377,6 +379,19 @@ var Jamble;
             this.ctx.font = '10px monospace';
             this.ctx.textAlign = 'center';
             this.ctx.fillText(box.category.toUpperCase(), box.x + box.width / 2, box.y - 5);
+        }
+        drawPlayAreaBoundary() {
+            const canvasRect = this.canvas.getBoundingClientRect();
+            const gameRect = this.gameElement.getBoundingClientRect();
+            this.ctx.strokeStyle = '#ff0000';
+            this.ctx.lineWidth = 1;
+            this.ctx.setLineDash([5, 3]);
+            this.ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.setLineDash([]);
+            this.ctx.fillStyle = '#ff0000';
+            this.ctx.font = '10px monospace';
+            this.ctx.textAlign = 'left';
+            this.ctx.fillText('COLLISION AREA', 5, 15);
         }
         setVisible(visible) {
             this.canvas.style.display = visible ? 'block' : 'none';
@@ -410,6 +425,7 @@ var Jamble;
             <div class="debug-header">
               <h2>🎮 Jamble Debug</h2>
               <p class="debug-info">Rebuilt Architecture</p>
+              <p class="build-info">Build: ${DebugSystem.BUILD_VERSION}</p>
             </div>
             
             <div class="debug-section">
@@ -424,9 +440,11 @@ var Jamble;
             <div class="debug-section">
               <div class="section-header">Debug Controls</div>
               <div class="section-content">
-                <button id="toggle-colliders" class="debug-button">
-                  Toggle Colliders: <span id="collider-status">OFF</span>
-                </button>
+                <label class="debug-checkbox-label">
+                  <input type="checkbox" id="toggle-colliders" class="debug-checkbox">
+                  <span class="checkmark"></span>
+                  Show Colliders
+                </label>
               </div>
             </div>
           </div>
@@ -470,6 +488,13 @@ var Jamble;
             color: #6c757d;
           }
           
+          .build-info {
+            margin: 4px 0 0 0;
+            font-size: 10px;
+            font-family: monospace;
+            color: #28a745;
+          }
+          
           .debug-section {
             background: #fff;
             border: 1px solid #dee2e6;
@@ -511,30 +536,35 @@ var Jamble;
             border: 1px solid #dee2e6;
           }
           
-          .debug-button {
-            width: 100%;
-            padding: 8px 12px;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
+          .debug-checkbox-label {
+            display: flex;
+            align-items: center;
             cursor: pointer;
             font-size: 14px;
+            color: #212529;
           }
           
-          .debug-button:hover {
-            background: #0056b3;
+          .debug-checkbox {
+            margin-right: 8px;
+            cursor: pointer;
+          }
+          
+          .debug-checkbox:checked + .checkmark {
+            color: #007bff;
           }
         `;
                 document.head.appendChild(style);
                 console.log('Debug panel styles added successfully');
-                const toggleButton = this.debugContainer.querySelector('#toggle-colliders');
-                if (toggleButton) {
-                    toggleButton.onclick = () => this.toggleColliders();
-                    console.log('Toggle button event attached successfully');
+                const toggleCheckbox = this.debugContainer.querySelector('#toggle-colliders');
+                if (toggleCheckbox) {
+                    toggleCheckbox.onchange = () => {
+                        this.showColliders = toggleCheckbox.checked;
+                        console.log('Colliders visibility changed to:', this.showColliders);
+                    };
+                    console.log('Toggle checkbox event attached successfully');
                 }
                 else {
-                    console.error('Could not find toggle-colliders button');
+                    console.error('Could not find toggle-colliders checkbox');
                 }
             }
             catch (error) {
@@ -564,7 +594,10 @@ var Jamble;
             document.body.appendChild(debugElement);
             const toggleButton = debugElement.querySelector('#overlay-toggle');
             if (toggleButton) {
-                toggleButton.onclick = () => this.toggleColliders();
+                toggleButton.onclick = () => {
+                    this.showColliders = !this.showColliders;
+                    console.log('Debug: Toggled colliders to:', this.showColliders ? 'ON' : 'OFF');
+                };
             }
         }
         setPlayer(player) {
@@ -629,14 +662,11 @@ var Jamble;
                 infoElement.innerHTML = info;
             }
         }
-        toggleColliders() {
-            this.showColliders = !this.showColliders;
-            console.log('Debug: Toggled colliders to:', this.showColliders ? 'ON' : 'OFF');
-        }
         getShowColliders() {
             return this.showColliders;
         }
     }
+    DebugSystem.BUILD_VERSION = "v2.0.004";
     Jamble.DebugSystem = DebugSystem;
 })(Jamble || (Jamble = {}));
 var Jamble;
@@ -750,5 +780,6 @@ var Jamble;
             requestAnimationFrame(gameLoop);
         }
     }
+    Game.BUILD_VERSION = Date.now();
     Jamble.Game = Game;
 })(Jamble || (Jamble = {}));
