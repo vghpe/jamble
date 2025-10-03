@@ -6,6 +6,7 @@ namespace Jamble {
     private static readonly BUILD_VERSION = "BUILD_VERSION_PLACEHOLDER";
     private debugContainer: HTMLElement | null = null;
     private showColliders: boolean = false;
+    private showOrigins: boolean = false;
     private player: Player | null = null;
 
     constructor(container?: HTMLElement) {
@@ -48,6 +49,12 @@ namespace Jamble {
                   <input type="checkbox" id="toggle-colliders" class="debug-checkbox">
                   <span class="checkmark"></span>
                   Show Colliders
+                </label>
+                <br><br>
+                <label class="debug-checkbox-label">
+                  <input type="checkbox" id="toggle-origins" class="debug-checkbox">
+                  <span class="checkmark"></span>
+                  Show Origins
                 </label>
               </div>
             </div>
@@ -162,16 +169,27 @@ namespace Jamble {
         document.head.appendChild(style);
         console.log('Debug panel styles added successfully');
 
-        // Setup checkbox event
-        const toggleCheckbox = this.debugContainer.querySelector('#toggle-colliders') as HTMLInputElement;
-        if (toggleCheckbox) {
-          toggleCheckbox.onchange = () => {
-            this.showColliders = toggleCheckbox.checked;
+        // Setup checkbox events
+        const toggleCollidersCheckbox = this.debugContainer.querySelector('#toggle-colliders') as HTMLInputElement;
+        if (toggleCollidersCheckbox) {
+          toggleCollidersCheckbox.onchange = () => {
+            this.showColliders = toggleCollidersCheckbox.checked;
             console.log('Colliders visibility changed to:', this.showColliders);
           };
-          console.log('Toggle checkbox event attached successfully');
+          console.log('Colliders toggle checkbox event attached successfully');
         } else {
           console.error('Could not find toggle-colliders checkbox');
+        }
+
+        const toggleOriginsCheckbox = this.debugContainer.querySelector('#toggle-origins') as HTMLInputElement;
+        if (toggleOriginsCheckbox) {
+          toggleOriginsCheckbox.onchange = () => {
+            this.showOrigins = toggleOriginsCheckbox.checked;
+            console.log('Origins visibility changed to:', this.showOrigins);
+          };
+          console.log('Origins toggle checkbox event attached successfully');
+        } else {
+          console.error('Could not find toggle-origins checkbox');
         }
       } catch (error) {
         console.error('Error setting up debug panel styles and events:', error);
@@ -278,6 +296,10 @@ namespace Jamble {
 
     getShowColliders(): boolean {
       return this.showColliders;
+    }
+
+    getShowOrigins(): boolean {
+      return this.showOrigins;
     }
   }
 }

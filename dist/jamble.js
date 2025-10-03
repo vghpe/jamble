@@ -380,15 +380,25 @@ var Jamble;
             this.canvas.style.width = width + 'px';
             this.canvas.style.height = height + 'px';
         }
-        render(gameObjects, visible) {
+        render(gameObjects, showColliders, showOrigins = false) {
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            if (!visible)
+            if (!showColliders && !showOrigins)
                 return;
-            gameObjects.forEach(obj => {
-                if (obj.collisionBox && obj.render.visible) {
-                    this.drawCollisionBox(obj.collisionBox);
-                }
-            });
+            if (showColliders) {
+                gameObjects.forEach(obj => {
+                    if (obj.collisionBox && obj.render.visible) {
+                        this.drawCollisionBox(obj.collisionBox);
+                    }
+                });
+                this.drawPlayAreaBoundary();
+            }
+            if (showOrigins) {
+                gameObjects.forEach(obj => {
+                    if (obj.render.visible) {
+                        this.drawOrigin(obj);
+                    }
+                });
+            }
         }
         drawCollisionBox(box) {
             const color = this.CATEGORY_COLORS[box.category];
@@ -401,6 +411,41 @@ var Jamble;
             this.ctx.font = '10px monospace';
             this.ctx.textAlign = 'center';
             this.ctx.fillText(box.category.toUpperCase(), box.x + box.width / 2, box.y - 5);
+        }
+        drawPlayAreaBoundary() {
+            this.ctx.strokeStyle = '#ff0000';
+            this.ctx.lineWidth = 1;
+            this.ctx.setLineDash([5, 3]);
+            this.ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.setLineDash([]);
+            this.ctx.fillStyle = '#ff0000';
+            this.ctx.font = '10px monospace';
+            this.ctx.textAlign = 'left';
+            this.ctx.fillText('COLLISION AREA', 5, 15);
+        }
+        drawOrigin(obj) {
+            const x = obj.transform.x;
+            const y = obj.transform.y;
+            const size = 4;
+            this.ctx.strokeStyle = '#ff6b35';
+            this.ctx.lineWidth = 1;
+            this.ctx.setLineDash([]);
+            this.ctx.beginPath();
+            this.ctx.moveTo(x - size, y);
+            this.ctx.lineTo(x + size, y);
+            this.ctx.stroke();
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, y - size);
+            this.ctx.lineTo(x, y + size);
+            this.ctx.stroke();
+            this.ctx.fillStyle = '#ff6b35';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 1, 0, 2 * Math.PI);
+            this.ctx.fill();
+            this.ctx.fillStyle = '#ff6b35';
+            this.ctx.font = '8px monospace';
+            this.ctx.textAlign = 'left';
+            this.ctx.fillText(obj.id, x + 6, y - 6);
         }
         setVisible(visible) {
             this.canvas.style.display = visible ? 'block' : 'none';
@@ -475,6 +520,7 @@ var Jamble;
         constructor(container) {
             this.debugContainer = null;
             this.showColliders = false;
+            this.showOrigins = false;
             this.player = null;
             if (container) {
                 this.debugContainer = container;
@@ -514,6 +560,12 @@ var Jamble;
                   <input type="checkbox" id="toggle-colliders" class="debug-checkbox">
                   <span class="checkmark"></span>
                   Show Colliders
+                </label>
+                <br><br>
+                <label class="debug-checkbox-label">
+                  <input type="checkbox" id="toggle-origins" class="debug-checkbox">
+                  <span class="checkmark"></span>
+                  Show Origins
                 </label>
               </div>
             </div>
@@ -625,16 +677,27 @@ var Jamble;
         `;
                 document.head.appendChild(style);
                 console.log('Debug panel styles added successfully');
-                const toggleCheckbox = this.debugContainer.querySelector('#toggle-colliders');
-                if (toggleCheckbox) {
-                    toggleCheckbox.onchange = () => {
-                        this.showColliders = toggleCheckbox.checked;
+                const toggleCollidersCheckbox = this.debugContainer.querySelector('#toggle-colliders');
+                if (toggleCollidersCheckbox) {
+                    toggleCollidersCheckbox.onchange = () => {
+                        this.showColliders = toggleCollidersCheckbox.checked;
                         console.log('Colliders visibility changed to:', this.showColliders);
                     };
-                    console.log('Toggle checkbox event attached successfully');
+                    console.log('Colliders toggle checkbox event attached successfully');
                 }
                 else {
                     console.error('Could not find toggle-colliders checkbox');
+                }
+                const toggleOriginsCheckbox = this.debugContainer.querySelector('#toggle-origins');
+                if (toggleOriginsCheckbox) {
+                    toggleOriginsCheckbox.onchange = () => {
+                        this.showOrigins = toggleOriginsCheckbox.checked;
+                        console.log('Origins visibility changed to:', this.showOrigins);
+                    };
+                    console.log('Origins toggle checkbox event attached successfully');
+                }
+                else {
+                    console.error('Could not find toggle-origins checkbox');
                 }
             }
             catch (error) {
@@ -735,8 +798,11 @@ var Jamble;
         getShowColliders() {
             return this.showColliders;
         }
+        getShowOrigins() {
+            return this.showOrigins;
+        }
     }
-    DebugSystem.BUILD_VERSION = "v2.0.003";
+    DebugSystem.BUILD_VERSION = "v2.0.005";
     Jamble.DebugSystem = DebugSystem;
 })(Jamble || (Jamble = {}));
 var Jamble;
@@ -890,7 +956,7 @@ var Jamble;
         }
         render() {
             this.renderer.render(this.gameObjects);
-            this.collisionRenderer.render(this.gameObjects, this.debugSystem.getShowColliders());
+            this.collisionRenderer.render(this.gameObjects, this.debugSystem.getShowColliders(), this.debugSystem.getShowOrigins());
         }
         start() {
             const gameLoop = (currentTime) => {

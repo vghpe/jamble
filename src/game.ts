@@ -126,7 +126,7 @@ namespace Jamble {
 
     private render() {
       this.renderer.render(this.gameObjects);
-      this.collisionRenderer.render(this.gameObjects, this.debugSystem.getShowColliders());
+      this.collisionRenderer.render(this.gameObjects, this.debugSystem.getShowColliders(), this.debugSystem.getShowOrigins());
     }
 
     start() {
