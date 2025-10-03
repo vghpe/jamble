@@ -6,7 +6,6 @@ namespace Jamble {
 
     constructor() {
       this.setupEventListeners();
-      console.log('🎹 InputManager initialized');
     }
 
     private setupEventListeners(): void {

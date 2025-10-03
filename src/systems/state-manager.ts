@@ -7,8 +7,8 @@ namespace Jamble {
     private countdownDuration: number = 3000; // 3 seconds
 
     constructor() {
+      this.currentState = 'idle';
       this.stateStartTime = Date.now();
-      console.log('🎮 StateManager initialized in IDLE state');
     }
 
     getCurrentState(): GameState {
@@ -68,8 +68,6 @@ namespace Jamble {
       const oldState = this.currentState;
       this.currentState = newState;
       this.stateStartTime = Date.now();
-
-      console.log(`State: ${oldState} → ${newState}`);
     }
   }
 }

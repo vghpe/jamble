@@ -48,8 +48,6 @@ namespace Jamble {
       const width = Math.max(1, rect.width || this.gameElement.offsetWidth || 500);
       const height = Math.max(1, rect.height || this.gameElement.offsetHeight || 100);
       
-      console.log(`Canvas resize: ${width}x${height} (DPR: ${dpr})`);
-      
       this.canvas.width = width * dpr;
       this.canvas.height = height * dpr;
       

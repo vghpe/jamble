@@ -67,8 +67,6 @@ namespace Jamble {
             </div>
           </div>
         `;
-
-        console.log('Debug panel HTML created successfully');
       } catch (error) {
         console.error('Error setting up debug panel HTML:', error);
         return;
@@ -174,16 +172,13 @@ namespace Jamble {
           }
         `;
         document.head.appendChild(style);
-        console.log('Debug panel styles added successfully');
 
         // Setup checkbox events
         const toggleCollidersCheckbox = this.debugContainer.querySelector('#toggle-colliders') as HTMLInputElement;
         if (toggleCollidersCheckbox) {
           toggleCollidersCheckbox.onchange = () => {
             this.showColliders = toggleCollidersCheckbox.checked;
-            console.log('Colliders visibility changed to:', this.showColliders);
           };
-          console.log('Colliders toggle checkbox event attached successfully');
         } else {
           console.error('Could not find toggle-colliders checkbox');
         }
@@ -192,9 +187,7 @@ namespace Jamble {
         if (toggleOriginsCheckbox) {
           toggleOriginsCheckbox.onchange = () => {
             this.showOrigins = toggleOriginsCheckbox.checked;
-            console.log('Origins visibility changed to:', this.showOrigins);
           };
-          console.log('Origins toggle checkbox event attached successfully');
         } else {
           console.error('Could not find toggle-origins checkbox');
         }
@@ -203,9 +196,7 @@ namespace Jamble {
         if (toggleSlotsCheckbox) {
           toggleSlotsCheckbox.onchange = () => {
             this.showSlots = toggleSlotsCheckbox.checked;
-            console.log('Slots visibility changed to:', this.showSlots);
           };
-          console.log('Slots toggle checkbox event attached successfully');
         } else {
           console.error('Could not find toggle-slots checkbox');
         }
@@ -240,7 +231,6 @@ namespace Jamble {
       if (toggleButton) {
         toggleButton.onclick = () => {
           this.showColliders = !this.showColliders;
-          console.log('Debug: Toggled colliders to:', this.showColliders ? 'ON' : 'OFF');
         };
       }
     }

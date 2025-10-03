@@ -28,7 +28,6 @@ namespace Jamble {
 
     constructor(gameElement: HTMLElement, debugContainer?: HTMLElement) {
       try {
-        console.log('Initializing game...');
         this.gameElement = gameElement;
         this.renderer = new Renderer(gameElement);
         this.debugRenderer = new DebugRenderer(gameElement);
@@ -36,8 +35,6 @@ namespace Jamble {
         this.inputManager = new InputManager();
         this.slotManager = new SlotManager(this.gameWidth, this.gameHeight);
         this.skillManager = new SkillManager();
-        
-        console.log('Creating debug system with container:', debugContainer);
         this.debugSystem = new DebugSystem(debugContainer);
 
         this.setupGameElement();
@@ -46,7 +43,6 @@ namespace Jamble {
         this.setupInput();
         
         this.debugSystem.setPlayer(this.player);
-        console.log('Game initialization complete');
       } catch (error) {
         console.error('Error during game initialization:', error);
         throw error;
@@ -73,13 +69,9 @@ namespace Jamble {
 
     private createSampleTree() {
       const groundSlots = this.slotManager.getAvailableSlots('ground');
-      console.log('Available ground slots:', groundSlots);
       if (groundSlots.length > 0) {
         const slot = groundSlots[2]; // Use 3rd slot
-        console.log('Using slot:', slot);
         const tree = new Tree('tree1', slot.x - 15, slot.y); // Place on ground level, not below it
-        console.log('Created tree at position:', tree.transform.x, tree.transform.y);
-        console.log('Tree render info:', tree.render);
         this.gameObjects.push(tree);
         this.slotManager.occupySlot(slot.id, tree.id);
       } else {
