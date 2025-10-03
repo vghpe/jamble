@@ -3,7 +3,7 @@
 /// <reference path="../level/elements/level-element-manager.ts" />
 /// <reference path="../level/elements/tree.ts" />
 /// <reference path="../level/elements/bird.ts" />
-/// <reference path="../level/elements/laps.ts" />
+/// <reference path="../level/elements/home.ts" />
 /// <reference path="./hand-manager.ts" />
 /// <reference path="./run-state-manager.ts" />
 /// <reference path="./ui/game-ui.ts" />
@@ -91,7 +91,7 @@ namespace Jamble {
       const canonicalElements = Jamble.deriveElementsSettings(Jamble.CoreDeckConfig);
       this.hand = new HandManager(this.levelElements, canonicalElements);
   this.run = new RunStateManager();
-      this.run.setInitialLaps(this.hand.getLapsValue());
+      this.run.setInitialLaps(1);
       this.countdown = new Countdown(cdEl);
       this.ui = new GameUi({
         startButton: startBtn,
@@ -161,6 +161,7 @@ namespace Jamble {
     start(): void {
       this.ensureSlotResizeMonitoring();
       this.rebuildSlots();
+      this.applyElementHand(); // Ensure home element is active before reset
       this.bind();
       this.reset();
       this.rafId = window.requestAnimationFrame(this.loop);
@@ -183,8 +184,20 @@ namespace Jamble {
       if (this.deathWiggleTimer !== null) { window.clearTimeout(this.deathWiggleTimer); this.deathWiggleTimer = null; }
       if (this.showResetTimer !== null) { window.clearTimeout(this.showResetTimer); this.showResetTimer = null; }
   this.movementSystem.clearImpulses();
-      this.player.reset();
+      
+      // Find home platform and use its spawn position
+      const homeElement = this.findHomeElement();
+      if (homeElement) {
+        const spawnPos = homeElement.getPlayerSpawnPosition();
+        this.player.reset(spawnPos);
+      } else {
+        this.player.reset(); // Fallback to original spawn logic
+      }
       this.ui.setResetVisible(false);
+      
+      // Reset back to idle mode
+      Jamble.Settings.current.mode = 'idle';
+      
       this.player.setFrozenStart();
       this.awaitingStartTap = true;
       this.waitGroundForStart = false;
@@ -193,8 +206,7 @@ namespace Jamble {
       this.direction = 1;
       this.level = 0;
       this.run.setRunsCompleted(0);
-      const defaultLaps = this.hand.resetLapsValue();
-      this.run.setInitialLaps(defaultLaps);
+      this.run.setInitialLaps(1);
       this.resetHandForIdle();
       this.updateLevel();
     }
@@ -220,7 +232,7 @@ namespace Jamble {
         }
       });
       if (this.isIdleState()){
-        this.run.applyLapValue(this.hand.getLapsValue());
+        this.run.applyLapValue(1);
       }
       this.emitElementHandChanged();
       this.updateRunDisplay();
@@ -245,7 +257,7 @@ namespace Jamble {
     }
 
     public setElementCardActive(id: string, active: boolean): void {
-      if (this.hand.isLapsCard(id)) return;
+
       const wasActive = this.hand.isCardActive(id);
       if (!active && wasActive && !this.elementEditingEnabled) return;
       const changed = this.hand.setCardActive(id, active);
@@ -254,17 +266,22 @@ namespace Jamble {
     }
 
     public incrementLaps(): number {
-      if (!this.isIdleState()) return this.hand.getLapsValue();
-      const next = this.hand.incrementLaps();
-      this.run.applyLapValue(next);
-      this.updateRunDisplay();
-      this.emitElementHandChanged();
-      return next;
+      // Laps are now fixed at 1 since we removed the laps element
+      return 1;
+    }
+
+    private findHomeElement(): HomeElement | null {
+      // Look through all active level elements to find the home element
+      const homeElements = this.levelElements.getByType('home');
+      if (homeElements.length > 0 && homeElements[0] instanceof HomeElement) {
+        return homeElements[0];
+      }
+      return null;
     }
 
     public getLapsState(): { value: number; target: number; remaining: number; max: number; runs: number } {
       return {
-        value: this.hand.getLapsValue(),
+        value: 1,
         target: this.run.getLapsTarget(),
         remaining: this.run.getLapsRemaining(),
         max: 9,
@@ -280,9 +297,13 @@ namespace Jamble {
       if (this.waitGroundForStart) return; // cannot start until grounded at edge
       if (!this.awaitingStartTap) return;
       this.awaitingStartTap = false;
+      
+      // Switch from idle mode to pingpong mode when starting
+      Jamble.Settings.current.mode = 'pingpong';
+      
       this.player.setPrestart();
       this.hideIdleControls();
-      this.run.startCountdown(this.hand.getLapsValue());
+      this.run.startCountdown(1);
       this.updateRunDisplay();
       this.countdown.start(Jamble.Settings.current.startFreezeTime);
       this.inCountdown = true;
@@ -407,6 +428,29 @@ namespace Jamble {
         this.waitGroundForStart = false;
       this.awaitingStartTap = true;
       this.showIdleControls();
+      }
+
+      // Check for home platform collision first (non-deadly)
+      const homeElement = this.findHomeElement();
+      if (!this.player.frozenStart && !this.player.frozenDeath && homeElement && this.collisionWith(homeElement)) {
+        const playerRect = this.player.el.getBoundingClientRect();
+        const playerVelocity = this.direction * Jamble.Settings.current.playerSpeed; // Approximate current velocity
+        const collisionType = homeElement.getCollisionType(playerRect, playerVelocity);
+        
+        if (collisionType === 'top' && Jamble.Settings.current.mode === 'pingpong') {
+          // Landing on top of home platform - switch to idle mode
+          Jamble.Settings.current.mode = 'idle';
+          this.player.setFrozenStart();
+          this.awaitingStartTap = true;
+          this.showIdleControls();
+          this.player.jumpHeight = 0;
+          this.player.velocity = 0;
+          this.player.isJumping = false;
+        } else if (collisionType === 'side') {
+          // Side collision - ping pong effect (reverse direction)
+          this.direction *= -1;
+          this.movementSystem.addImpulse(this.direction * 100, 100); // Bounce force
+        }
       }
 
       // Collision: wiggle + freeze; show reset button, no auto reset
@@ -575,7 +619,7 @@ namespace Jamble {
 
     private updateRunDisplay(): void {
       const inRun = this.run.getState() === 'running';
-      const value = inRun ? Math.max(this.run.getLapsRemaining(), 0) : Math.max(this.hand.getLapsValue(), 1);
+      const value = inRun ? Math.max(this.run.getLapsRemaining(), 0) : 1;
       const text = String(value);
       this.ui.setRunDisplay(text);
     }
@@ -598,8 +642,19 @@ namespace Jamble {
 
     private finishRun(nextDirection: 1 | -1): void {
       this.run.finishRun();
-      const defaultLaps = this.hand.resetLapsValue();
+      const defaultLaps = 1;
       this.run.resetToIdle(defaultLaps);
+      
+      // Reset back to idle mode and spawn on home platform
+      Jamble.Settings.current.mode = 'idle';
+      const homeElement = this.findHomeElement();
+      if (homeElement) {
+        const spawnPos = homeElement.getPlayerSpawnPosition();
+        this.player.reset(spawnPos);
+      } else {
+        this.player.reset(); // Fallback
+      }
+      
       this.player.setFrozenStart();
       this.player.velocity = 0;
       this.awaitingStartTap = true;

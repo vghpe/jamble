@@ -75,9 +75,9 @@ namespace Jamble {
         height: rect.height
       };
       
-      // Initialize collision config (replaces hardcoded 0.8 scale)
+      // Initialize collision config - using rectangle for better platform collision
       this.collisionConfig = {
-        shape: 'circle',
+        shape: 'rect',
         scaleX: 0.8,  // More forgiving collision
         scaleY: 0.8,
         offsetX: 0,
@@ -114,13 +114,14 @@ namespace Jamble {
       if (spawnPosition) {
         // Use provided spawn position (e.g., from home platform)
         this.x = spawnPosition.x;
+        this.transform.x = this.x;
         this.transform.y = spawnPosition.y;
       } else {
         // Fallback to original spawn logic
         this.x = Jamble.Settings.current.playerStartOffset + this.transform.width / 2;
+        this.transform.x = this.x;
+        this.transform.y = 0;
       }
-      this.transform.x = this.x;
-      this.transform.y = 0;
       this.won = false;
       this.frozenStart = true;
       this.frozenDeath = false;
@@ -168,14 +169,23 @@ namespace Jamble {
       
       // Hybrid approach: DOM for position (reliable), transform data for sizing (configurable)
       const rect = this.el.getBoundingClientRect();
-      const centerX = rect.x + rect.width / 2 + this.collisionConfig.offsetX;
-      const centerY = rect.y + rect.height / 2 + this.collisionConfig.offsetY;
       
-      // Calculate collision size from transform data (configurable, was hardcoded 0.8)
-      const baseRadius = Math.min(this.transform.width, this.transform.height) / 2;
-      const radius = baseRadius * this.collisionConfig.scaleX;
+      // Calculate collision size from transform data (configurable)
+      const collisionWidth = this.transform.width * this.collisionConfig.scaleX;
+      const collisionHeight = this.transform.height * this.collisionConfig.scaleY;
+      
+      // Center the collision box within the visual bounds
+      const offsetX = (rect.width - collisionWidth) / 2 + this.collisionConfig.offsetX;
+      const offsetY = (rect.height - collisionHeight) / 2 + this.collisionConfig.offsetY;
+      
+      const collisionBounds = new DOMRect(
+        rect.x + offsetX,
+        rect.y + offsetY,
+        collisionWidth,
+        collisionHeight
+      );
 
-      return CollisionManager.createCircleShape(centerX, centerY, radius, 'player');
+      return CollisionManager.createRectShape(collisionBounds, 'player');
     }
 
     // Idle at current x

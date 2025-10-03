@@ -1,6 +1,5 @@
 /// <reference path="../level/elements/types.ts" />
 /// <reference path="../level/elements/level-element-manager.ts" />
-/// <reference path="../level/elements/laps.ts" />
 /// <reference path="../level/registry/deck-config.ts" />
 
 namespace Jamble {
@@ -25,8 +24,6 @@ namespace Jamble {
     private deck: ElementDeckEntry[];
     private handSlots: Array<{ slotId: string; cardId: string | null; active: boolean }>;
     private instances = new Map<string, ElementDeckEntry>();
-    private lapsCardId: string | null = null;
-    private lapsValue = 1;
 
     constructor(private levelElements: LevelElementManager, settings: ElementsSettings){
       this.deck = settings.deck.map(card => ({ ...card }));
@@ -87,6 +84,14 @@ namespace Jamble {
       const slot = this.handSlots.find(s => s.cardId === cardId);
       if (!slot) return false;
       if (slot.active === active) return false;
+      
+      // Home elements must always be active
+      const cardMeta = this.getCardMeta(cardId);
+      if (cardMeta && cardMeta.type === 'home') {
+        slot.active = true;
+        return true;
+      }
+      
       slot.active = active;
       return true;
     }
@@ -107,51 +112,13 @@ namespace Jamble {
       });
     }
 
-    incrementLaps(): number {
-      const lapsElement = this.getLapsElement();
-      if (!lapsElement) return this.lapsValue;
-      const next = lapsElement.increment();
-      this.lapsValue = next;
-      this.updateLapsConfig(next);
-      return this.lapsValue;
-    }
 
-    getLapsValue(): number {
-      return this.lapsValue;
-    }
-
-    setLapsValue(value: number): number {
-      const clamped = this.clampLaps(value);
-      const lapsElement = this.getLapsElement();
-      if (lapsElement) lapsElement.setValue(clamped);
-      this.lapsValue = clamped;
-      this.updateLapsConfig(clamped);
-      return this.lapsValue;
-    }
-
-    resetLapsValue(): number {
-      return this.setLapsValue(1);
-    }
-
-    getLapsCardId(): string | null {
-      return this.lapsCardId;
-    }
-
-    isLapsCard(cardId: string): boolean {
-      return !!this.lapsCardId && this.lapsCardId === cardId;
-    }
 
     resetForIdle(): void {
-      const lapsId = this.lapsCardId;
-      const pool = this.deck.filter(card => card.id !== lapsId);
-      const available = pool.slice();
+      const available = this.deck.slice();
 
       this.handSlots.forEach(slot => {
         slot.active = false;
-        if (lapsId && slot.cardId === lapsId){
-          // keep laps card in place for now
-          return;
-        }
         if (available.length === 0){
           slot.cardId = null;
           return;
@@ -159,15 +126,12 @@ namespace Jamble {
         const index = Math.floor(Math.random() * available.length);
         const [card] = available.splice(index, 1);
         slot.cardId = card.id;
-      });
-
-      if (lapsId && !this.handSlots.some(slot => slot.cardId === lapsId)){
-        const target = this.handSlots[0];
-        if (target.cardId){
-          // return displaced card to available pool if desired
+        
+        // Home elements must always be active
+        if (card.type === 'home') {
+          slot.active = true;
         }
-        target.cardId = lapsId;
-      }
+      });
     }
 
     private initializeDeckElements(): void {
@@ -179,41 +143,8 @@ namespace Jamble {
         });
         if (instance){
           this.instances.set(card.id, { ...card });
-          if (instance instanceof LapsElement){
-            this.lapsCardId = card.id;
-            this.lapsValue = instance.getValue();
-          }
         }
       });
-      if (!this.lapsCardId){
-        const lapsEntry = this.deck.find(card => card.definitionId === 'laps.basic');
-        if (lapsEntry) this.lapsCardId = lapsEntry.id;
-      }
-    }
-
-    private getLapsElement(): LapsElement | null {
-      if (!this.lapsCardId) return null;
-      const instance = this.levelElements.get(this.lapsCardId);
-      if (instance && instance instanceof LapsElement) return instance;
-      return null;
-    }
-
-    private updateLapsConfig(value: number): void {
-      if (this.lapsCardId){
-        const meta = this.instances.get(this.lapsCardId);
-        if (meta){
-          meta.config = { ...(meta.config || {}), value };
-        }
-        const deckEntry = this.deck.find(card => card.id === this.lapsCardId);
-        if (deckEntry){
-          deckEntry.config = { ...(deckEntry.config || {}), value };
-        }
-      }
-    }
-
-    private clampLaps(value: number): number {
-      if (!Number.isFinite(value)) return 1;
-      return Math.max(1, Math.min(9, Math.floor(value)));
     }
   }
 }

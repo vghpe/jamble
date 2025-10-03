@@ -2,6 +2,7 @@
 /// <reference path="../elements/tree.ts" />
 /// <reference path="../elements/bird.ts" />
 /// <reference path="../elements/knob.ts" />
+/// <reference path="../elements/home.ts" />
 
 namespace Jamble {
   type CoreElementDescriptor<TCfg = any> = LevelElementDescriptor<TCfg> & {
@@ -44,16 +45,6 @@ namespace Jamble {
       el.style.display = 'none';
       return el;
     },
-    'laps-control': (root, id) => {
-      let el = root.querySelector('.jamble-laps[data-element-id="' + id + '"]') as HTMLElement | null;
-      if (el) return el;
-      el = document.createElement('div');
-      el.className = 'jamble-laps';
-      el.setAttribute('data-element-id', id);
-      el.style.display = 'none';
-      root.appendChild(el);
-      return el;
-    },
     'knob-interactive': (root, id) => {
       let el = root.querySelector('.jamble-knob[data-element-id="' + id + '"]') as HTMLElement | null;
       if (el) return el;
@@ -64,21 +55,32 @@ namespace Jamble {
       el.style.display = 'none';
       root.appendChild(el);
       return el;
+    },
+    'home-platform': (root, id) => {
+      let el = root.querySelector('.jamble-home[data-element-id="' + id + '"]') as HTMLElement | null;
+      if (el) return el;
+      el = document.createElement('div');
+      el.className = 'jamble-home';
+      el.setAttribute('data-element-id', id);
+      el.style.display = 'none';
+      root.appendChild(el);
+      return el;
     }
   };
 
   const CORE_ELEMENTS: CoreElementDescriptor[] = [
     {
-      id: 'laps.basic',
-      name: 'Laps',
-      emoji: '🔁',
-      type: 'laps',
-      hostKind: 'laps-control',
-      defaults: { value: 1 } as LapsElementConfig,
-      ensureHost: (root, id) => hostFactories['laps-control'](root, id),
-      create: ({ id, host, root, config }) => {
-        const el = host || hostFactories['laps-control'](root, id);
-        return new LapsElement(id, el, config as LapsElementConfig | undefined);
+      id: 'home.basic',
+      name: 'Home',
+      emoji: '🏠',
+      type: 'home',
+      hostKind: 'home-platform',
+      defaults: {},
+      placement: { validSlotTypes: ['ground'], blockedNeighbors: { types: [], distance: 0 }, allowStartZone: true },
+      ensureHost: (root, id) => hostFactories['home-platform'](root, id),
+      create: ({ id, host, root }) => {
+        const el = host || hostFactories['home-platform'](root, id);
+        return new HomeElement(id, el);
       }
     },
     {
@@ -135,6 +137,20 @@ namespace Jamble {
       create: ({ id, host, root, config }) => {
         const el = host || hostFactories['bird-floating'](root, id);
         return new BirdElement(id, el, config as BirdElementConfig | undefined);
+      }
+    },
+    {
+      id: 'home.basic',
+      name: 'Home',
+      emoji: '🏠',
+      type: 'home',
+      hostKind: 'home-platform',
+      defaults: {},
+      placement: { validSlotTypes: ['ground'], blockedNeighbors: { types: [], distance: 0 }, allowStartZone: true },
+      ensureHost: (root, id) => hostFactories['home-platform'](root, id),
+      create: ({ id, host, root }) => {
+        const el = host || hostFactories['home-platform'](root, id);
+        return new HomeElement(id, el);
       }
     },
     {

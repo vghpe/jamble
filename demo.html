@@ -1,304 +1,121 @@
 <!doctype html>
 <html>
-  <head>
+<head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Jamble Demo</title>
-    <link rel="stylesheet" href="./dist/jamble.css" />
+    <title>Jamble Rebuild - Debug Panel</title>
     <style>
-      /* Layout styles for debug panel and game frames */
-      body {
-        margin: 0;
-        padding: 0;
-        font-family: system-ui, sans-serif;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-      }
-      
-      .demo-header {
-        text-align: center;
-        padding: 16px;
-        background: #f8f9fa;
-        border-bottom: 1px solid #dee2e6;
-        margin: 0;
-        font-size: 24px;
-        font-weight: 600;
-        color: #212529;
-      }
-      
-      .demo-container {
-        flex: 1;
-        display: flex;
-        min-height: 0; /* Important for flex child to shrink */
-      }
-      
-      .debug-frame {
-        width: 320px;
-        min-width: 320px;
-        border-right: 1px solid #dee2e6;
-        background: #f8f9fa;
-      }
-      
-      .debug-frame iframe {
-        width: 100%;
-        height: 100%;
-        border: none;
-        display: block;
-      }
-      
-      .game-frame {
-        flex: 1;
-        display: flex;
-        justify-content: center;
-        align-items: flex-start;
-        padding: 20px;
-        background: #fff;
-        overflow: auto;
-      }
-      
-      /* Responsive behavior - stack on smaller screens */
-      @media (max-width: 968px) {
-        .demo-container {
-          flex-direction: column;
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
         
-        .debug-frame {
-          width: 100%;
-          height: 300px;
-          border-right: none;
-          border-bottom: 1px solid #dee2e6;
-        }
-        
-        .game-frame {
-          padding: 16px;
-        }
-      }
-      
-      /* Further adjustments for very small screens */
-      @media (max-width: 640px) {
         .demo-header {
-          font-size: 20px;
-          padding: 12px;
+            text-align: center;
+            padding: 16px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+            color: #212529;
         }
         
-        .debug-frame {
-          height: 250px;
+        .demo-container {
+            flex: 1;
+            display: flex;
+            min-height: 0;
         }
         
-        .game-frame {
-          padding: 12px;
+        .debug-panel {
+            width: 320px;
+            min-width: 320px;
+            border-right: 1px solid #dee2e6;
+            background: #f8f9fa;
+            overflow-y: auto;
         }
-      }
+        
+        .game-panel {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            padding: 20px;
+        }
+        
+        #jamble-game {
+            display: block;
+        }
+        
+        .instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            color: #666;
+            background: rgba(255,255,255,0.9);
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
     </style>
-  </head>
-  <body>
-    <h1 class="demo-header">Jamble Demo</h1>
+</head>
+<body>
+    <div class="demo-header">
+        🎮 Jamble Game - Rebuilt Architecture with Debug Panel
+    </div>
+    
     <div class="demo-container">
-      <div class="debug-frame">
-        <iframe src="./debug-panel.html" title="Debug Panel"></iframe>
-      </div>
-      <div class="game-frame">
-        <div id="jamble">
-          <div class="jamble-game">
-            <div class="jamble-player jamble-player-idle"></div>
-            <div class="jamble-level">0</div>
-            <div class="jamble-countdown">3</div>
-            <button class="jamble-reset" title="Reset">↻</button>
-          </div>
-          <div class="jamble-controls">
-            <button class="jamble-start" title="Start">▶</button>
-            <button class="jamble-shuffle" title="Shuffle">⇄</button>
-          </div>
-          <div class="jamble-section">
-            <h3 class="jamble-section-heading">Skill Loadout</h3>
-            <div class="jamble-skill-slots" id="skill-slots">
-              <!-- Slots will be generated dynamically from registry -->
-            </div>
-            <div class="jamble-skill-menu" id="skill-menu">
-              <!-- Skill bank will be generated dynamically from registry -->
-            </div>
-          </div>
-          <div class="jamble-section">
-            <h3 class="jamble-section-heading">Level Element Hand</h3>
-            <div class="jamble-element-hand" id="element-hand"></div>
-          </div>
+        <div class="debug-panel" id="debug-container">
+            <!-- Debug system will populate this -->
         </div>
-      </div>
+        
+        <div class="game-panel">
+            <div id="jamble-game"></div>
+            
+            <div class="instructions">
+                <strong>Controls:</strong><br>
+                Arrow Keys or A/D - Move | Space - Jump<br>
+                Watch live stats in debug panel ←
+            </div>
+        </div>
     </div>
 
     <script src="./dist/jamble.js"></script>
     <script>
-      (function(){
-        if (!window.Jamble || !window.Jamble.Game) return;
-
-        var root = document.getElementById('jamble');
-        var game = new window.Jamble.Game(root);
-        window.__game = game;
-        game.start();
-
-        var settings = window.Jamble.Settings;
-        var skillManager = game.getSkillManager();
-
-        // Game UI elements
-        var elementHandEl = document.getElementById('element-hand');
-        var skillSlots = document.getElementById('skill-slots');
-        var skillMenu = document.getElementById('skill-menu');
-        var skillBank = game.getSkillBank();
-        var skillManager = game.getSkillManager();
-
-        function renderSkillSystem(){
-          renderSkillSlots();
-          renderSkillBank();
-        }
-
-        function renderSkillSlots(){
-          if (!skillSlots) return;
-          var slotView = skillBank.getSlotView();
-          skillSlots.innerHTML = '';
-          
-          slotView.forEach(function(slot){
-            var slotEl = document.createElement('div');
-            slotEl.className = 'jamble-skill-slot';
-            slotEl.textContent = slot.symbol || '';
-            skillSlots.appendChild(slotEl);
-          });
-        }
-
-        function renderSkillBank(){
-          if (!skillMenu) return;
-          var bankView = skillBank.getBankView();
-          skillMenu.innerHTML = '';
-          
-          bankView.forEach(function(skill){
-            var btn = document.createElement('div');
-            btn.className = 'jamble-skill-btn';
-            btn.setAttribute('data-skill', skill.id);
-            btn.textContent = skill.symbol;
-            btn.classList.toggle('jamble-active', skill.active);
-            skillMenu.appendChild(btn);
-          });
-        }
-
-        function toggleSkillActive(skillId){
-          var bankView = skillBank.getBankView();
-          var skill = bankView.find(function(s){ return s.id === skillId; });
-          if (!skill) return;
-          
-          var newActive = !skill.active;
-          skillBank.setActive(skillId, newActive);
-          
-          // Update SkillManager
-          skillManager.clear();
-          var activeSkills = skillBank.getActiveSkillIds();
-          activeSkills.forEach(function(id){ 
-            try { skillManager.equip(id); } catch(_e){} 
-          });
-          
-          renderSkillSystem();
-        }
-
-        function iconForCard(card){
-          if (!card) return '…';
-          if (card.emoji) return card.emoji;
-          if (card.definitionId === 'bird.basic') return '🐦';
-          if (card.definitionId === 'bird.fast') return '🐦';
-          if (card.definitionId === 'tree.ceiling') return '🌲';
-          if (card.definitionId === 'tree.basic') return '🌳';
-          return '❔';
-        }
-
-        function renderElementHand(hand){
-          if (!elementHandEl) return;
-          var cards = Array.isArray(hand) ? hand : (game.getElementHand ? game.getElementHand() : []);
-          var defaultSlots = (game && typeof game.getHandSlotCount === 'function') ? game.getHandSlotCount() : cards.length;
-          var maxSlots = Math.max(cards.length, defaultSlots);
-          var canEditElements = typeof game.canEditElements === 'function' ? game.canEditElements() : false;
-          elementHandEl.innerHTML = '';
-          for (var idx = 0; idx < maxSlots; idx++){
-            var card = cards[idx];
-            var btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'jamble-element-card';
-            if (card && card.available){
-              var isLaps = card.definitionId === 'laps.basic';
-              if (isLaps){
-                var lapsState = typeof game.getLapsState === 'function' ? game.getLapsState() : null;
-                var lapsValue = lapsState ? lapsState.value : 1;
-                btn.classList.add('jamble-laps-card');
-                btn.textContent = iconForCard(card) + String(lapsValue);
-                btn.setAttribute('aria-label', (card.name || 'Laps') + ' ' + lapsValue);
-                var canAdjust = typeof game.isIdle === 'function' ? game.isIdle() : false;
-                btn.disabled = !canAdjust;
-                btn.title = canAdjust ? 'Tap to raise the lap count (max 9).' : 'Available between runs.';
-                btn.addEventListener('click', function(ev){
-                  ev.preventDefault();
-                  ev.stopPropagation();
-                  if (typeof game.incrementLaps !== 'function' || typeof game.isIdle !== 'function') return;
-                  if (!game.isIdle()) return;
-                  game.incrementLaps();
-                });
-              } else {
-                btn.textContent = iconForCard(card);
-                btn.setAttribute('aria-label', card.name || 'Element');
-                if (card.active) btn.classList.add('jamble-active');
-                var locked = card.active && !canEditElements;
-                if (locked){
-                  btn.classList.add('jamble-locked');
-                  btn.disabled = true;
-                  btn.title = 'Locked. Enable element removal to modify.';
-                } else {
-                  btn.disabled = false;
-                  (function(cardId, active){
-                    btn.addEventListener('click', function(ev){
-                      ev.preventDefault();
-                      ev.stopPropagation();
-                      if (typeof game.setElementCardActive === 'function'){
-                        game.setElementCardActive(cardId, !active);
-                      }
-                    });
-                  })(card.id, card.active);
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                console.log('DOM loaded, initializing game...');
+                const gameContainer = document.getElementById('jamble-game');
+                const debugContainer = document.getElementById('debug-container');
+                
+                if (!gameContainer) {
+                    throw new Error('Game container not found');
                 }
-              }
-            } else {
-              btn.textContent = '…';
-              btn.disabled = true;
-              btn.classList.add('jamble-placeholder');
+                if (!debugContainer) {
+                    throw new Error('Debug container not found');
+                }
+                
+                console.log('Containers found, creating game...');
+                const game = new Jamble.Game(gameContainer, debugContainer);
+                console.log('Game created, starting...');
+                game.start();
+                console.log('Game started successfully');
+            } catch (error) {
+                console.error('Error initializing game:', error);
+                // Show error in the debug container if available
+                const debugContainer = document.getElementById('debug-container');
+                if (debugContainer) {
+                    debugContainer.innerHTML = '<div style="padding: 20px; color: red;"><h3>Error:</h3><pre>' + error.message + '</pre></div>';
+                }
             }
-            elementHandEl.appendChild(btn);
-          }
-        }
-
-        // Skill menu interactions
-        if (skillMenu){
-          skillMenu.addEventListener('pointerdown', function(ev){ ev.stopPropagation(); });
-          skillMenu.addEventListener('click', function(ev){ ev.stopPropagation(); });
-          skillMenu.addEventListener('click', function(ev){
-            var target = ev.target;
-            if (!target || !target.classList || !target.classList.contains('jamble-skill-btn')) return;
-            var skillId = target.getAttribute('data-skill');
-            if (!skillId) return;
-            toggleSkillActive(skillId);
-          });
-        }
-
-        // Element hand interactions
-        if (elementHandEl){
-          elementHandEl.addEventListener('pointerdown', function(ev){ ev.stopPropagation(); });
-          elementHandEl.addEventListener('click', function(ev){ ev.stopPropagation(); });
-        }
-
-        // Listen for element hand changes
-        window.addEventListener('jamble:elementHandChanged', function(ev){
-          renderElementHand(ev && ev.detail);
         });
-
-        // Initialize everything
-        renderSkillSystem();
-        renderElementHand();
-
-        console.log('🎮 Game UI initialized with skill and element management');
-      })();
     </script>
-  </body>
+</body>
 </html>
