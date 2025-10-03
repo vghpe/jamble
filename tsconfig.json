@@ -14,9 +14,12 @@
     "src/slots/slot-manager.ts",
     "src/entities/player.ts",
     "src/entities/tree.ts",
+    "src/entities/knob.ts",
     "src/skills/skill-system.ts",
-    "src/systems/renderer.ts",
+    "src/systems/canvas-renderer.ts",
     "src/systems/debug-renderer.ts",
+    "src/systems/input-manager.ts",
+    "src/systems/state-manager.ts",
     "src/debug/debug-system.ts",
     "src/game.ts"
   ]

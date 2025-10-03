@@ -6,11 +6,17 @@ namespace Jamble {
       // Keep the GameObject transform at the base position (origin point)
       super(id, x, y); 
       
-      // Create element with old tree styling
+      // Canvas rendering with custom tree drawing
       this.render = {
-        type: 'element',
+        type: 'canvas',
         visible: true,
-        element: this.createTreeElement()
+        canvas: {
+          color: '#8d6e63', // Trunk color (not used directly due to custom draw)
+          shape: 'custom',
+          width: 20,
+          height: 30,
+          customDraw: this.drawTree.bind(this)
+        }
       };
       
       // Collision box positioned relative to the base origin
@@ -23,35 +29,34 @@ namespace Jamble {
       };
     }
 
-    private createTreeElement(): HTMLElement {
-      const treeEl = document.createElement('div');
-      treeEl.style.cssText = `
-        position: absolute;
-        top: -30px;
-        left: 0;
-        width: 10px;
-        height: 30px;
-        background: #8d6e63;
-        border-radius: 2px;
-      `;
+    private drawTree(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+      // Draw brown trunk extending upward from base position
+      ctx.fillStyle = '#8d6e63';
+      this.drawRoundedRect(ctx, x, y - 30, 10, 30, 2);
       
-      // Add foliage with ::after equivalent
-      const foliage = document.createElement('div');
-      foliage.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: -5px;
-        width: 20px;
-        height: 20px;
-        background: #66bb6a;
-        border-radius: 50%;
-      `;
-      
-      treeEl.appendChild(foliage);
-      return treeEl;
+      // Draw circular green foliage centered on trunk
+      ctx.fillStyle = '#66bb6a';
+      ctx.beginPath();
+      ctx.arc(x + 5, y - 20, 10, 0, 2 * Math.PI);
+      ctx.fill();
     }
 
-    update(deltaTime: number) {
+    private drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number): void {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    update(deltaTime: number): void {
       // Trees are static - no update logic needed
       // But we still update collision box position relative to the base origin
       if (this.collisionBox) {

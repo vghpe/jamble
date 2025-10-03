@@ -1,6 +1,7 @@
 /// <reference path="entities/player.ts" />
 /// <reference path="entities/tree.ts" />
-/// <reference path="systems/renderer.ts" />
+/// <reference path="entities/knob.ts" />
+/// <reference path="systems/canvas-renderer.ts" />
 /// <reference path="systems/debug-renderer.ts" />
 /// <reference path="systems/state-manager.ts" />
 /// <reference path="systems/input-manager.ts" />
@@ -11,7 +12,7 @@
 namespace Jamble {
   export class Game {
     private gameElement: HTMLElement;
-    private renderer: Renderer;
+    private renderer: CanvasRenderer;
     private debugRenderer: DebugRenderer;
     private stateManager: StateManager;
     private inputManager: InputManager;
@@ -29,7 +30,7 @@ namespace Jamble {
     constructor(gameElement: HTMLElement, debugContainer?: HTMLElement) {
       try {
         this.gameElement = gameElement;
-        this.renderer = new Renderer(gameElement);
+        this.renderer = new CanvasRenderer(gameElement, this.gameWidth, this.gameHeight);
         this.debugRenderer = new DebugRenderer(gameElement);
         this.stateManager = new StateManager();
         this.inputManager = new InputManager();
@@ -69,13 +70,22 @@ namespace Jamble {
 
     private createSampleTree() {
       const groundSlots = this.slotManager.getAvailableSlots('ground');
-      if (groundSlots.length > 0) {
-        const slot = groundSlots[2]; // Use 3rd slot
-        const tree = new Tree('tree1', slot.x, slot.y); // Place on ground level, not below it
+      if (groundSlots.length > 1) {
+        // Place tree in 3rd slot
+        const treeSlot = groundSlots[2];
+        const tree = new Tree('tree1', treeSlot.x, treeSlot.y);
         this.gameObjects.push(tree);
-        this.slotManager.occupySlot(slot.id, tree.id);
+        this.slotManager.occupySlot(treeSlot.id, tree.id);
+        
+        // Place knob in 4th slot (next to tree)
+        if (groundSlots.length > 3) {
+          const knobSlot = groundSlots[3];
+          const knob = new Knob('knob1', knobSlot.x, knobSlot.y);
+          this.gameObjects.push(knob);
+          this.slotManager.occupySlot(knobSlot.id, knob.id);
+        }
       } else {
-        console.warn('No ground slots available for tree');
+        console.warn('Not enough ground slots available for tree and knob');
       }
     }
 
@@ -107,6 +117,9 @@ namespace Jamble {
       // Update all game objects
       this.gameObjects.forEach(obj => obj.update(deltaTime));
       
+      // Check knob collisions for physics animation
+      this.checkKnobCollisions();
+      
       // Keep player in bounds using collision box
       if (this.player.collisionBox) {
         const rightBound = this.player.collisionBox.x + this.player.collisionBox.width;
@@ -117,6 +130,32 @@ namespace Jamble {
       }
 
       this.debugSystem.update();
+    }
+
+    private checkKnobCollisions() {
+      if (!this.player.collisionBox) return;
+      
+      // Find knobs and check collision with player
+      this.gameObjects.forEach(obj => {
+        if (obj instanceof Knob && obj.collisionBox) {
+          const playerBox = this.player.collisionBox!;
+          const knobBox = obj.collisionBox;
+          
+          // Simple AABB collision detection
+          const collision = (
+            playerBox.x < knobBox.x + knobBox.width &&
+            playerBox.x + playerBox.width > knobBox.x &&
+            playerBox.y < knobBox.y + knobBox.height &&
+            playerBox.y + playerBox.height > knobBox.y
+          );
+          
+          if (collision) {
+            // Determine deflection direction based on player's horizontal velocity
+            const direction = this.player.velocityX > 0 ? 1 : -1;
+            obj.deflect(direction);
+          }
+        }
+      });
     }
 
     private render() {

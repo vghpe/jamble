@@ -4,25 +4,24 @@ namespace Jamble {
     y: number;
   }
 
-  export interface CssShape {
-    backgroundColor: string;
-    borderRadius?: string;
-    border?: string;
-    boxShadow?: string;
-  }
-
   export interface AnimationState {
     scaleX: number;
     scaleY: number;
-    transition?: string;
+  }
+
+  export interface CanvasRenderInfo {
+    color: string;
+    shape: 'rectangle' | 'circle' | 'custom';
+    width?: number;
+    height?: number;
+    borderRadius?: number;
+    customDraw?: (ctx: CanvasRenderingContext2D, x: number, y: number) => void;
   }
 
   export interface RenderInfo {
-    type: 'css-shape' | 'emoji' | 'element';
+    type: 'canvas';
     visible: boolean;
-    cssShape?: CssShape;
-    emoji?: string;
-    element?: HTMLElement;
+    canvas: CanvasRenderInfo;
     animation?: AnimationState;
   }
 
@@ -44,8 +43,14 @@ namespace Jamble {
       this.id = id;
       this.transform = { x, y };
       this.render = { 
-        type: 'css-shape', 
+        type: 'canvas',
         visible: true,
+        canvas: {
+          color: '#ffffff',
+          shape: 'rectangle',
+          width: 20,
+          height: 20
+        },
         animation: { scaleX: 1, scaleY: 1 }
       };
     }

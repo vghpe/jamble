@@ -7,17 +7,25 @@ namespace Jamble {
     public grounded: boolean = false;
     public moveSpeed: number = 200; // pixels per second
     public jumpHeight: number = 300; // pixels per second
+    
+    // Animation system
+    private targetScaleX: number = 1;
+    private targetScaleY: number = 1;
+    private readonly animationSpeed: number = 8;
 
     constructor(x: number = 0, y: number = 0) {
       super('player', x, y);
       
-      // CSS shape instead of emoji
+      // Canvas rendering with rounded rectangle
       this.render = {
-        type: 'css-shape',
+        type: 'canvas',
         visible: true,
-        cssShape: {
-          backgroundColor: '#4db6ac',
-          borderRadius: '4px'
+        canvas: {
+          color: '#4db6ac',
+          shape: 'rectangle',
+          width: 20,
+          height: 20,
+          borderRadius: 4
         },
         animation: {
           scaleX: 1,
@@ -44,6 +52,9 @@ namespace Jamble {
       // Update position based on velocity
       this.transform.x += this.velocityX * deltaTime;
       this.transform.y += this.velocityY * deltaTime;
+
+      // Update animation tweening
+      this.updateAnimationTweening(deltaTime);
 
       // Update collision box position
       if (this.collisionBox) {
@@ -97,23 +108,33 @@ namespace Jamble {
       }
     }
 
-    private onLanding() {
-      // Landing squash animation
-      if (this.render.animation) {
-        // Instant squash
-        this.render.animation.scaleX = 1.4;
-        this.render.animation.scaleY = 0.6;
-        this.render.animation.transition = 'none';
-        
-        // Ease back to normal after brief delay
-        setTimeout(() => {
-          if (this.render.animation) {
-            this.render.animation.scaleX = 1;
-            this.render.animation.scaleY = 1;
-            this.render.animation.transition = 'transform 150ms ease-out';
-          }
-        }, 50);
-      }
+    private updateAnimationTweening(deltaTime: number): void {
+      const animation = this.render.animation;
+      if (!animation) return;
+      
+      // Exponential smoothing for natural animation curves
+      const lerpFactor = 1 - Math.pow(0.001, deltaTime * this.animationSpeed);
+      
+      animation.scaleX += (this.targetScaleX - animation.scaleX) * lerpFactor;
+      animation.scaleY += (this.targetScaleY - animation.scaleY) * lerpFactor;
+    }
+
+    private onLanding(): void {
+      // Trigger squash-and-stretch landing animation
+      const animation = this.render.animation;
+      if (!animation) return;
+      
+      // Immediate squash effect
+      animation.scaleX = 1.4;
+      animation.scaleY = 0.6;
+      this.targetScaleX = 1.4;
+      this.targetScaleY = 0.6;
+      
+      // Recover to normal scale after brief squash
+      setTimeout(() => {
+        this.targetScaleX = 1;
+        this.targetScaleY = 1;
+      }, 50);
     }
   }
 }
