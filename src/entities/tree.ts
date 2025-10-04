@@ -2,11 +2,9 @@
 
 namespace Jamble {
   export class Tree extends GameObject {
-    // Visual and collision offsets for fine-tuning positioning
-    private readonly visualOffsetX: number = 0;
-    private readonly visualOffsetY: number = -30; // Trunk extends up from base
-    private readonly collisionOffsetX: number = 1; // Center 8px box on 10px trunk  
-    private readonly collisionOffsetY: number = -25; // Collision box height from base
+    // Visual offset to center 10px trunk inside a 20px canvas
+    private readonly visualOffsetX: number = 5;
+    private readonly visualOffsetY: number = 0;
     
     constructor(id: string, x: number = 0, y: number = 0) {
       // Keep the GameObject transform at the base position (origin point)
@@ -23,16 +21,17 @@ namespace Jamble {
           height: 30,
           customDraw: this.drawTree.bind(this)
         },
-        // Preserve current visuals: transform is treated as top-left
-        anchor: { x: 0, y: 0 }
+        // Base/pivot at the bottom center so slots align with the base
+        anchor: { x: 0.5, y: 1 }
       };
       
-      // Collision box positioned using offsets
+      // Collision box centered on trunk, anchored at base
       this.collisionBox = {
-        x: x + this.collisionOffsetX, 
-        y: y + this.collisionOffsetY,  
+        x: x - 4,
+        y: y - 25,
         width: 8,
         height: 25,
+        anchor: { x: 0.5, y: 1 },
         category: 'environment'
       };
     }
@@ -42,7 +41,7 @@ namespace Jamble {
       const drawX = x + this.visualOffsetX;
       const drawY = y + this.visualOffsetY;
       
-      // Draw brown trunk (30px tall, positioned above base)
+      // Draw brown trunk (30px tall), positioned above base
       ctx.fillStyle = '#8d6e63';
       this.drawRoundedRect(ctx, drawX, drawY, 10, 30, 2);
       
@@ -70,10 +69,13 @@ namespace Jamble {
 
     update(deltaTime: number): void {
       // Trees are static - no update logic needed
-      // Update collision box position using offsets
+      // Update collision box position from its anchor
       if (this.collisionBox) {
-        this.collisionBox.x = this.transform.x + this.collisionOffsetX;
-        this.collisionBox.y = this.transform.y + this.collisionOffsetY;
+        const cb = this.collisionBox;
+        const ax = cb.anchor?.x ?? 0;
+        const ay = cb.anchor?.y ?? 0;
+        cb.x = this.transform.x - ax * cb.width;
+        cb.y = this.transform.y - ay * cb.height;
       }
     }
   }

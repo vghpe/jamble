@@ -40,6 +40,7 @@ namespace Jamble {
     width: number;
     height: number;
     category: 'player' | 'environment' | 'deadly' | 'neutral';
+    anchor?: Anchor; // Where the object's transform aligns within the box
   }
 
   export abstract class GameObject {

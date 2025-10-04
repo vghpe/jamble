@@ -51,10 +51,11 @@ namespace Jamble {
       
       // Collision box for knob interaction (circular area around the pivot)
       this.collisionBox = {
-        x: x - 15,  // Center 30px collision box at original ground position
-        y: y - 15,  // Center 30px collision box at original ground position
+        x: x - 15,  // Centered on the anchor/base
+        y: y - 15,  // Centered on the anchor/base
         width: 30,
         height: 30,
+        anchor: { x: 0.5, y: 0.5 },
         category: 'environment'
       };
     }
@@ -79,8 +80,11 @@ namespace Jamble {
 
     private updateCollisionBox(): void {
       if (this.collisionBox) {
-        this.collisionBox.x = this.transform.x - 15;
-        this.collisionBox.y = this.transform.y - 15;
+        const cb = this.collisionBox;
+        const ax = cb.anchor?.x ?? 0;
+        const ay = cb.anchor?.y ?? 0;
+        cb.x = this.transform.x - ax * cb.width;
+        cb.y = this.transform.y - ay * cb.height;
       }
     }
 

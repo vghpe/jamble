@@ -45,6 +45,7 @@ namespace Jamble {
         y: y - 20,
         width: 20,
         height: 20,
+        anchor: { x: 0.5, y: 1 },
         category: 'player'
       };
     }
@@ -62,10 +63,13 @@ namespace Jamble {
       // Update animation tweening
       this.updateAnimationTweening(deltaTime);
 
-      // Update collision box position (anchored at bottom-center)
+      // Update collision box position from anchor
       if (this.collisionBox) {
-        this.collisionBox.x = this.transform.x - 10;
-        this.collisionBox.y = this.transform.y - 20;
+        const cb = this.collisionBox;
+        const ax = cb.anchor?.x ?? 0;
+        const ay = cb.anchor?.y ?? 0;
+        cb.x = this.transform.x - ax * cb.width;
+        cb.y = this.transform.y - ay * cb.height;
       }
 
       // Simple ground collision (at bottom of game area) using collision box
