@@ -1,25 +1,14 @@
 {{/*
-  Jamble shortcode
+  Jamble shortcode (minimal container)
   Optional parameter:
-    - path: subfolder under /static to load assets from (default: "jamble")
-  Example:
-    {{< jamble >}}                         -> loads /jamble/jamble.css|js
-    {{< jamble path="games/jamble" >}}    -> loads /games/jamble/jamble.css|js
+    - path: subfolder under /static to load assets from (default: "games/jamble")
+  Examples:
+    {{< jamble >}}                      -> loads /games/jamble/jamble.css|js
+    {{< jamble path="games/jamble" >}} -> loads /games/jamble/jamble.css|js
 */}}
 {{ $base := .Get "path" | default "games/jamble" }}
 
-<div id="jamble">
-    <div class="jamble-game">
-      <div class="jamble-player jamble-player-idle"></div>
-      <div class="jamble-level">0</div>
-      <div class="jamble-countdown">3</div>
-      <button class="jamble-reset" title="Reset">↻</button>
-    </div>
-    <div class="jamble-controls">
-      <button class="jamble-start" title="Start">▶</button>
-      <button class="jamble-shuffle" title="Shuffle">⇄</button>
-    </div>
-</div>
+<div id="jamble"></div>
 
 <link rel="stylesheet" href="{{ printf "/%s/jamble.css" $base | relURL }}">
 <script src="{{ printf "/%s/jamble.js" $base | relURL }}"></script>
@@ -30,4 +19,4 @@
     var game = new window.Jamble.Game(root);
     game.start();
   })();
-  </script>
+</script>
