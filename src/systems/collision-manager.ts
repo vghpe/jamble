@@ -2,21 +2,32 @@
 
 namespace Jamble {
   export class CollisionManager {
+    private prevTriggerPairs: Set<string> = new Set();
     constructor(private gameWidth: number, private gameHeight: number) {}
 
     update(gameObjects: GameObject[]): void {
       const dynamics: GameObject[] = [];
       const solids: GameObject[] = [];
+      const triggers: GameObject[] = [];
+
+      const byId = new Map<string, GameObject>();
+      for (const obj of gameObjects) byId.set(obj.id, obj);
 
       for (const obj of gameObjects) {
         if (!obj.collisionBox) continue;
         const cat = obj.collisionBox.category;
         if (cat === 'player') dynamics.push(obj);
         if (cat === 'environment') solids.push(obj);
+        if (cat === 'kinematic' || cat === 'deadly') triggers.push(obj);
       }
 
+      // Solid resolution and world clamps
       for (const dyn of dynamics) {
         if (!dyn.collisionBox) continue;
+        // Reset per-frame contact flags where applicable
+        if ((dyn as any).grounded !== undefined) {
+          (dyn as any).grounded = false;
+        }
 
         // Resolve vs static solids
         for (const solid of solids) {
@@ -24,9 +35,58 @@ namespace Jamble {
           this.resolveAABB(dyn, solid);
         }
 
-        // Clamp to world edges using collider
+        // Clamp to world edges and ground using collider
         this.clampToWorld(dyn);
       }
+
+      // Trigger handling (enter/stay/exit)
+      const currentPairs: Set<string> = new Set();
+      for (const dyn of dynamics) {
+        if (!dyn.collisionBox) continue;
+        for (const other of triggers) {
+          if (!other.collisionBox) continue;
+          if (dyn === other) continue;
+          if (this.aabbIntersects(dyn, other)) {
+            const key = `${dyn.id}|${other.id}`;
+            currentPairs.add(key);
+            if (!this.prevTriggerPairs.has(key)) {
+              // Enter
+              other.onTriggerEnter?.(dyn);
+              dyn.onTriggerEnter?.(other);
+            } else {
+              // Stay
+              other.onTriggerStay?.(dyn);
+              dyn.onTriggerStay?.(other);
+            }
+          }
+        }
+      }
+
+      // Exits
+      for (const key of this.prevTriggerPairs) {
+        if (!currentPairs.has(key)) {
+          const [dynId, otherId] = key.split('|');
+          const dyn = byId.get(dynId);
+          const other = byId.get(otherId);
+          if (dyn && other) {
+            other.onTriggerExit?.(dyn);
+            dyn.onTriggerExit?.(other);
+          }
+        }
+      }
+
+      this.prevTriggerPairs = currentPairs;
+    }
+
+    private aabbIntersects(a: GameObject, b: GameObject): boolean {
+      const A = this.getAABB(a);
+      const B = this.getAABB(b);
+      return (
+        A.x < B.x + B.width &&
+        A.x + A.width > B.x &&
+        A.y < B.y + B.height &&
+        A.y + A.height > B.y
+      );
     }
 
     private getAABB(obj: GameObject) {
@@ -104,7 +164,20 @@ namespace Jamble {
           (obj as any).velocityX = 0;
         }
       }
+
+      // Bottom ground clamp (do not clamp top)
+      const pb2 = this.getAABB(obj);
+      if (pb2.y + pb2.height > this.gameHeight) {
+        const dy = this.gameHeight - (pb2.y + pb2.height);
+        obj.transform.y += dy;
+        this.setColliderTopLeft(obj, pb2.x, pb2.y + dy);
+        if ((obj as any).velocityY !== undefined) {
+          (obj as any).velocityY = 0;
+        }
+        if ((obj as any).grounded !== undefined) {
+          (obj as any).grounded = true;
+        }
+      }
     }
   }
 }
-

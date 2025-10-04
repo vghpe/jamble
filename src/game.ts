@@ -129,8 +129,7 @@ namespace Jamble {
       // Update all game objects
       this.gameObjects.forEach(obj => obj.update(deltaTime));
       
-      // Check knob collisions for physics animation
-      this.checkKnobCollisions();
+      // Trigger interactions handled in CollisionManager (knob, etc.)
       // Resolve collisions against solid environment (platforms, trees, etc.)
       this.collisionManager.update(this.gameObjects);
       
@@ -139,33 +138,7 @@ namespace Jamble {
       this.debugSystem.update();
     }
 
-    private checkKnobCollisions() {
-      if (!this.player.collisionBox) return;
-      
-      // Find knobs and check collision with player
-      this.gameObjects.forEach(obj => {
-        if (obj instanceof Knob && obj.collisionBox) {
-          const playerBox = this.player.collisionBox!;
-          const knobBox = obj.collisionBox;
-          
-          // Simple AABB collision detection
-          const collision = (
-            playerBox.x < knobBox.x + knobBox.width &&
-            playerBox.x + playerBox.width > knobBox.x &&
-            playerBox.y < knobBox.y + knobBox.height &&
-            playerBox.y + playerBox.height > knobBox.y
-          );
-          
-          if (collision) {
-            // Determine deflection direction based on player's horizontal velocity
-            const direction = this.player.velocityX > 0 ? 1 : -1;
-            obj.deflect(direction);
-          }
-        }
-      });
-    }
-
-    // CollisionManager now owns environment collision resolution
+    // CollisionManager now owns environment collisions and trigger handling
 
     private render() {
       this.renderer.render(this.gameObjects);

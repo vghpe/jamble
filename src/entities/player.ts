@@ -78,24 +78,7 @@ namespace Jamble {
         cb.y = this.transform.y - ay * cb.height;
       }
 
-      // Simple ground collision (at bottom of game area) using collision box
-      if (this.collisionBox) {
-        const bottomOfPlayer = this.collisionBox.y + this.collisionBox.height;
-        if (bottomOfPlayer >= this.worldHeight) {
-          const wasInAir = !this.grounded;
-          // Adjust transform so anchor (bottom-center) sits on ground
-          this.transform.y = this.worldHeight - this.collisionBox.height - (this.collisionBox.y - this.transform.y);
-          this.velocityY = 0;
-          this.grounded = true;
-          
-          // Trigger landing animation if we just landed
-          if (wasInAir) {
-            this.onLanding();
-          }
-        } else {
-          this.grounded = false;
-        }
-      }
+      // Grounding now handled by CollisionManager
 
       // Horizontal boundaries are handled centrally in Game using the collider
       // (no transform-based clamping here)

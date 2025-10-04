@@ -53,6 +53,10 @@ namespace Jamble {
     public transform: Transform;
     public render: RenderInfo;
     public collisionBox?: CollisionBox;
+    // Optional trigger callbacks (used by CollisionManager); no-ops by default
+    onTriggerEnter?(other: GameObject): void;
+    onTriggerStay?(other: GameObject): void;
+    onTriggerExit?(other: GameObject): void;
     
     constructor(id: string, x: number = 0, y: number = 0) {
       this.id = id;

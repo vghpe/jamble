@@ -187,5 +187,14 @@ namespace Jamble {
         this.thetaTarget = 0; // Return to center
       }, 200);
     }
+
+    // Trigger callback used by CollisionManager
+    onTriggerEnter(other: GameObject): void {
+      // Only react to player
+      if (other instanceof Player) {
+        const dir = (other as Player).velocityX >= 0 ? 1 : -1;
+        this.deflect(dir);
+      }
+    }
   }
 }
