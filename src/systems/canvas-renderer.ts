@@ -47,30 +47,25 @@ namespace Jamble {
       return ctx;
     }
 
-    private setupHighDPIRendering(gameElement: HTMLElement): void {
-      // Wait for element to be rendered to get accurate dimensions
-      setTimeout(() => {
-        const rect = gameElement.getBoundingClientRect();
-        const pixelRatio = window.devicePixelRatio || 1;
-        
-        // Set canvas resolution to match display pixels for crisp rendering
-        const displayWidth = rect.width;
-        const displayHeight = rect.height;
-        
-        this.canvas.width = displayWidth * pixelRatio;
-        this.canvas.height = displayHeight * pixelRatio;
-        
-        // Ensure CSS size matches visual size
-        this.canvas.style.width = displayWidth + 'px';
-        this.canvas.style.height = displayHeight + 'px';
-        
-        // Calculate and apply scaling for logical game coordinates
-        this.scaleX = (displayWidth * pixelRatio) / this.gameWidth;
-        this.scaleY = (displayHeight * pixelRatio) / this.gameHeight;
-        
-        this.ctx.scale(this.scaleX, this.scaleY);
-        this.ctx.imageSmoothingEnabled = false; // Reapply after scaling
-      }, 0);
+    private setupHighDPIRendering(_gameElement: HTMLElement): void {
+      // Configure immediately using known logical game size; avoids a transient
+      // first-frame stretch before layout settles.
+      const pixelRatio = window.devicePixelRatio || 1;
+
+      // Match backing store to device pixels while keeping logical coordinates
+      // in game units (gameWidth × gameHeight).
+      this.canvas.width = this.gameWidth * pixelRatio;
+      this.canvas.height = this.gameHeight * pixelRatio;
+
+      // Ensure CSS size matches logical game size
+      this.canvas.style.width = this.gameWidth + 'px';
+      this.canvas.style.height = this.gameHeight + 'px';
+
+      // Apply DPR scaling so 1 logical unit = 1 CSS pixel
+      this.scaleX = pixelRatio;
+      this.scaleY = pixelRatio;
+      this.ctx.setTransform(this.scaleX, 0, 0, this.scaleY, 0, 0);
+      this.ctx.imageSmoothingEnabled = false;
     }
 
     render(gameObjects: GameObject[]): void {
