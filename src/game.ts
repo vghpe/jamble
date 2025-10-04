@@ -1,6 +1,7 @@
 /// <reference path="entities/player.ts" />
 /// <reference path="entities/tree.ts" />
 /// <reference path="entities/knob.ts" />
+/// <reference path="entities/platform.ts" />
 /// <reference path="systems/canvas-renderer.ts" />
 /// <reference path="systems/debug-renderer.ts" />
 /// <reference path="systems/state-manager.ts" />
@@ -63,11 +64,13 @@ namespace Jamble {
 
     private createPlayer() {
       this.player = new Player(50, 0);
+      this.player.setWorldHeight(this.gameHeight);
       this.gameObjects.push(this.player);
     }
 
     private createSampleTree() {
       const groundSlots = this.slotManager.getAvailableSlots('ground');
+      const lowAirSlots = this.slotManager.getAvailableSlots('air_low');
       if (groundSlots.length > 1) {
         // Place tree in 3rd slot
         const treeSlot = groundSlots[2];
@@ -81,6 +84,14 @@ namespace Jamble {
           const knob = new Knob('knob1', knobSlot.x, knobSlot.y);
           this.gameObjects.push(knob);
           this.slotManager.occupySlot(knobSlot.id, knob.id);
+        }
+
+        // Add a simple platform in low air layer to test collisions
+        if (lowAirSlots.length > 2) {
+          const platSlot = lowAirSlots[2];
+          const platform = new Platform('platform1', platSlot.x, platSlot.y);
+          this.gameObjects.push(platform);
+          this.slotManager.occupySlot(platSlot.id, platform.id);
         }
       } else {
         console.warn('Not enough ground slots available for tree and knob');
@@ -117,6 +128,8 @@ namespace Jamble {
       
       // Check knob collisions for physics animation
       this.checkKnobCollisions();
+      // Resolve collisions against solid environment (platforms, trees, etc.)
+      this.resolvePlayerEnvironmentCollisions();
       
       // Keep player in bounds using collision box (both sides)
       if (this.player.collisionBox) {
@@ -158,6 +171,53 @@ namespace Jamble {
             // Determine deflection direction based on player's horizontal velocity
             const direction = this.player.velocityX > 0 ? 1 : -1;
             obj.deflect(direction);
+          }
+        }
+      });
+    }
+
+    private resolvePlayerEnvironmentCollisions() {
+      if (!this.player.collisionBox) return;
+      const pb = this.player.collisionBox;
+
+      this.gameObjects.forEach(obj => {
+        if (obj === this.player) return;
+        if (!obj.collisionBox) return;
+        const ob = obj.collisionBox;
+        if (ob.category !== 'environment') return; // only solid environment for now
+
+        // AABB test
+        const intersects = (
+          pb.x < ob.x + ob.width &&
+          pb.x + pb.width > ob.x &&
+          pb.y < ob.y + ob.height &&
+          pb.y + pb.height > ob.y
+        );
+        if (!intersects) return;
+
+        // Compute minimal push out along axes
+        const pushLeft = (pb.x + pb.width) - ob.x;             // move player left
+        const pushRight = (ob.x + ob.width) - pb.x;            // move player right
+        const pushUp = (pb.y + pb.height) - ob.y;              // move player up
+        const pushDown = (ob.y + ob.height) - pb.y;            // move player down
+
+        const minPushX = Math.min(pushLeft, pushRight);
+        const minPushY = Math.min(pushUp, pushDown);
+
+        if (minPushX < minPushY) {
+          // Resolve horizontally
+          const dx = (pushLeft < pushRight) ? -pushLeft : pushRight;
+          this.player.transform.x += dx;
+          pb.x += dx;
+          this.player.velocityX = 0;
+        } else {
+          // Resolve vertically
+          const dy = (pushUp < pushDown) ? -pushUp : pushDown;
+          this.player.transform.y += dy;
+          pb.y += dy;
+          this.player.velocityY = 0;
+          if (dy < 0) {
+            this.player.grounded = true; // landed on top
           }
         }
       });

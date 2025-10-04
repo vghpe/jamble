@@ -56,7 +56,7 @@ namespace Jamble {
         width: 30,
         height: 30,
         anchor: { x: 0.5, y: 0.5 },
-        category: 'environment'
+        category: 'kinematic'
       };
     }
 

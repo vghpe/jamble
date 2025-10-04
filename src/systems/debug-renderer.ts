@@ -10,7 +10,7 @@ namespace Jamble {
     private readonly CATEGORY_COLORS = {
       player: '#7F00FF',       // violet
       deadly: '#ef4444',       // red
-      neutral: '#ffcc02',      // yellow
+      kinematic: '#ffcc02',    // yellow
       environment: '#60a5fa'   // blue
     };
 

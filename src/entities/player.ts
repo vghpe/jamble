@@ -7,6 +7,7 @@ namespace Jamble {
     public grounded: boolean = false;
     public moveSpeed: number = 200; // pixels per second
     public jumpHeight: number = 300; // pixels per second
+    private worldHeight: number = 100; // default; overridden by Game
     
     // Visual positioning offsets for fine-tuning
     private readonly visualOffsetX: number = 0;
@@ -50,6 +51,11 @@ namespace Jamble {
       };
     }
 
+    // Set logical world height so ground checks are not hardcoded
+    setWorldHeight(height: number) {
+      this.worldHeight = height;
+    }
+
     update(deltaTime: number) {
       // Apply gravity
       if (!this.grounded) {
@@ -75,10 +81,10 @@ namespace Jamble {
       // Simple ground collision (at bottom of game area) using collision box
       if (this.collisionBox) {
         const bottomOfPlayer = this.collisionBox.y + this.collisionBox.height;
-        if (bottomOfPlayer >= 100) {
+        if (bottomOfPlayer >= this.worldHeight) {
           const wasInAir = !this.grounded;
           // Adjust transform so anchor (bottom-center) sits on ground
-          this.transform.y = 100 - this.collisionBox.height - (this.collisionBox.y - this.transform.y);
+          this.transform.y = this.worldHeight - this.collisionBox.height - (this.collisionBox.y - this.transform.y);
           this.velocityY = 0;
           this.grounded = true;
           

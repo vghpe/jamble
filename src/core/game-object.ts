@@ -39,7 +39,12 @@ namespace Jamble {
     y: number;
     width: number;
     height: number;
-    category: 'player' | 'environment' | 'deadly' | 'neutral';
+    // Category semantics:
+    // - environment: solid world geometry (blocks movement)
+    // - kinematic: non-solid movers/triggers (no blocking by default)
+    // - deadly: hazards; contact has effects but not necessarily solid
+    // - player: the player character
+    category: 'player' | 'environment' | 'deadly' | 'kinematic';
     anchor?: Anchor; // Where the object's transform aligns within the box
   }
 
