@@ -118,11 +118,18 @@ namespace Jamble {
       // Check knob collisions for physics animation
       this.checkKnobCollisions();
       
-      // Keep player in bounds using collision box
+      // Keep player in bounds using collision box (both sides)
       if (this.player.collisionBox) {
-        const rightBound = this.player.collisionBox.x + this.player.collisionBox.width;
+        const box = this.player.collisionBox;
+        // Right edge
+        const rightBound = box.x + box.width;
         if (rightBound > this.gameWidth) {
-          this.player.transform.x = this.gameWidth - this.player.collisionBox.width - (this.player.collisionBox.x - this.player.transform.x);
+          this.player.transform.x = this.gameWidth - box.width - (box.x - this.player.transform.x);
+          this.player.velocityX = 0;
+        }
+        // Left edge
+        if (box.x < 0) {
+          this.player.transform.x = this.player.transform.x - box.x;
           this.player.velocityX = 0;
         }
       }

@@ -91,12 +91,8 @@ namespace Jamble {
         }
       }
 
-      // Keep player in bounds horizontally
-      if (this.transform.x < 0) {
-        this.transform.x = 0;
-        this.velocityX = 0;
-      }
-      // Note: Right boundary will be handled by game bounds
+      // Horizontal boundaries are handled centrally in Game using the collider
+      // (no transform-based clamping here)
     }
 
     moveLeft() {
