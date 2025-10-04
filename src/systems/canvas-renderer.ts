@@ -8,6 +8,7 @@ namespace Jamble {
   export class CanvasRenderer {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
+    private readonly backgroundColor: string = '#e8f5e9';
     private gameWidth: number;
     private gameHeight: number;
     private scaleX: number = 1;
@@ -39,7 +40,7 @@ namespace Jamble {
     }
 
     private setupContext(): CanvasRenderingContext2D {
-      const ctx = this.canvas.getContext('2d');
+      const ctx = this.canvas.getContext('2d', { alpha: false });
       if (!ctx) {
         throw new Error('Could not get 2D canvas context');
       }
@@ -69,8 +70,9 @@ namespace Jamble {
     }
 
     render(gameObjects: GameObject[]): void {
-      // Clear canvas using logical game coordinates
-      this.ctx.clearRect(0, 0, this.gameWidth, this.gameHeight);
+      // Paint opaque background using logical game coordinates
+      this.ctx.fillStyle = this.backgroundColor;
+      this.ctx.fillRect(0, 0, this.gameWidth, this.gameHeight);
       
       // Render all visible game objects
       gameObjects.forEach(obj => {
