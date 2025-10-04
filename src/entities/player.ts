@@ -17,6 +17,15 @@ namespace Jamble {
     private targetScaleY: number = 1;
     private readonly animationSpeed: number = 8;
 
+    // Air stretch/squash and landing tuning (inspired by archive CSS)
+    private readonly airStretchFactor: number = 0.05; // scales with upward velocity units
+    private readonly airSquashFactor: number = 0.02;
+    private readonly airVelocityUnit: number = 40; // px/s mapped to ~1 velocity unit
+    private readonly landScaleX: number = 1.4;
+    private readonly landScaleY: number = 0.6;
+    private readonly landSquashDurationMs: number = 150;
+    private landingActive: boolean = false;
+
     constructor(x: number = 0, y: number = 0) {
       super('player', x, y);
       
@@ -60,8 +69,21 @@ namespace Jamble {
       this.transform.x += this.velocityX * deltaTime;
       this.transform.y += this.velocityY * deltaTime;
 
-      // Update animation tweening
+      // Update animation tweening (targetScaleX/Y controls easing back to 1)
       this.updateAnimationTweening(deltaTime);
+
+      // In-air stretch based on upward speed (negative velocityY means going up)
+      if (!this.grounded && !this.landingActive) {
+        const vUnits = Math.max(0, -this.velocityY / this.airVelocityUnit); // >= 0 when moving up
+        const stretchY = 1 + vUnits * this.airStretchFactor;
+        const squashX = 1 - vUnits * this.airSquashFactor;
+        const anim = this.render.animation!;
+        anim.scaleX = squashX;
+        anim.scaleY = stretchY;
+        // Keep targets in sync to avoid the tweener fighting the in-air pose
+        this.targetScaleX = squashX;
+        this.targetScaleY = stretchY;
+      }
 
       // Collider world position is derived on demand by systems that need it.
     }
@@ -96,22 +118,32 @@ namespace Jamble {
       animation.scaleY += (this.targetScaleY - animation.scaleY) * lerpFactor;
     }
 
-    private onLanding(): void {
+    // Called by CollisionManager when we transition from air to grounded
+    public onLanded(velocityYAtImpact: number = 0): void {
+      // Trigger squash-and-stretch landing animation (archive-inspired)
       // Trigger squash-and-stretch landing animation
       const animation = this.render.animation;
       if (!animation) return;
       
-      // Immediate squash effect
-      animation.scaleX = 1.4;
-      animation.scaleY = 0.6;
-      this.targetScaleX = 1.4;
-      this.targetScaleY = 0.6;
-      
-      // Recover to normal scale after brief squash
+      // Scale squash amount with impact speed (linear up to full at ~500 px/s)
+      const fullSpeed = 500; // px/s → reach configured squash at ~this speed
+      const ratio = Math.max(0, Math.min(1, Math.abs(velocityYAtImpact) / fullSpeed));
+      const sx = 1 + (this.landScaleX - 1) * ratio;
+      const sy = 1 - (1 - this.landScaleY) * ratio;
+
+      // Immediate squash effect at computed intensity
+      animation.scaleX = sx;
+      animation.scaleY = sy;
+      this.targetScaleX = sx;
+      this.targetScaleY = sy;
+      this.landingActive = true;
+
+      // Hold the squash briefly, then ease back toward 1 using the tweener
       setTimeout(() => {
         this.targetScaleX = 1;
         this.targetScaleY = 1;
-      }, 50);
+        this.landingActive = false;
+      }, this.landSquashDurationMs);
     }
 
     private drawPlayer(ctx: CanvasRenderingContext2D, x: number, y: number): void {

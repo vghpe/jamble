@@ -19,7 +19,8 @@
  */
 
 namespace Jamble {
-  export class CollisionManager {
+export class CollisionManager {
+    private static readonly EPS = 0.001;
     private prevTriggerPairs: Set<string> = new Set();
     constructor(private gameWidth: number, private gameHeight: number) {}
 
@@ -43,6 +44,9 @@ namespace Jamble {
       // 1) Resolve against solids, then clamp to world
       for (const dyn of dynamics) {
         if (!dyn.collisionBox) continue;
+        const wasGrounded = (dyn as any).grounded === true;
+        // Capture vertical velocity BEFORE we potentially zero it during resolution/clamp
+        const vyBefore: number = (dyn as any).velocityY ?? 0;
 
         // Resolve vs static solids (minimal translation along the smallest axis)
         for (const solid of solids) {
@@ -56,7 +60,7 @@ namespace Jamble {
         // 2) Derive grounded state after all resolution/clamping
         //    Use a small epsilon so it stays true while resting exactly on surfaces
         const pb = this.getAABB(dyn);
-        const eps = 0.001;
+        const eps = CollisionManager.EPS;
         let grounded = false;
         // World ground contact
         if (pb.y + pb.height >= this.gameHeight - eps) {
@@ -68,8 +72,7 @@ namespace Jamble {
             const ob = this.getAABB(solid);
             const horizontalOverlap = pb.x < ob.x + ob.width && pb.x + pb.width > ob.x;
             const touchingTop = Math.abs((pb.y + pb.height) - ob.y) <= eps;
-            const vy = (dyn as any).velocityY ?? 0;
-            if (horizontalOverlap && touchingTop && vy >= 0) {
+            if (horizontalOverlap && touchingTop && vyBefore >= 0) {
               grounded = true;
               break;
             }
@@ -77,6 +80,10 @@ namespace Jamble {
         }
         if ((dyn as any).grounded !== undefined) {
           (dyn as any).grounded = grounded;
+          if (!wasGrounded && grounded) {
+            // Notify landing transition if entity exposes a handler
+            (dyn as any).onLanded?.(vyBefore);
+          }
         }
       }
 
