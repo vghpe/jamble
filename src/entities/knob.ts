@@ -31,10 +31,9 @@ namespace Jamble {
     private deflectionDirection: number = 1; // 1 for right, -1 for left
 
     constructor(id: string, x: number = 0, y: number = 0) {
-      // Position the knob above ground level so it's visible
-      // Ground is at y=100, we want the knob base to be at ground level
-      // So we offset by the canvas height to position the knob above ground
-      super(id, x, y - 80);
+      // Anchor the knob at the given position (slot). We'll use
+      // bottom-center as the anchor so the slot aligns with the base.
+      super(id, x, y);
       
       // Canvas rendering with custom knob drawing
       this.render = {
@@ -46,7 +45,8 @@ namespace Jamble {
           width: 80,  // Canvas area size (increased to accommodate full swing)
           height: 80,
           customDraw: this.drawKnob.bind(this)
-        }
+        },
+        anchor: { x: 0.5, y: 1 } // bottom-center anchor
       };
       
       // Collision box for knob interaction (circular area around the pivot)
@@ -85,9 +85,13 @@ namespace Jamble {
     }
 
     private updateSpringPoints(): void {
-      // Base position: center-x, 90% down (matching original getOrigin())
-      this.basePos.x = 40; // Center of 80px canvas
-      this.basePos.y = 72; // 90% down: 0.9 * 80 = 72
+      // Base position: use the render anchor within the knob's canvas
+      const width = this.render.canvas.width || 80;
+      const height = this.render.canvas.height || 80;
+      const anchorX = (this.render.anchor?.x ?? 0.5) * width;
+      const anchorY = (this.render.anchor?.y ?? 1.0) * height;
+      this.basePos.x = anchorX;
+      this.basePos.y = anchorY;
       
       const tipX = this.basePos.x + this.config.length * Math.sin(this.theta);
       const tipY = this.basePos.y - this.config.length * Math.cos(this.theta);

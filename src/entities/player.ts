@@ -31,16 +31,18 @@ namespace Jamble {
           height: 20,
           customDraw: this.drawPlayer.bind(this)
         },
+        // Anchor at bottom-center so scaling/pivot feels grounded
+        anchor: { x: 0.5, y: 1 },
         animation: {
           scaleX: 1,
           scaleY: 1
         }
       };
       
-      // Add collision box - position it at the same location as the transform
+      // Add collision box - center on the anchor (bottom-center)
       this.collisionBox = {
-        x: x,
-        y: y,
+        x: x - 10,
+        y: y - 20,
         width: 20,
         height: 20,
         category: 'player'
@@ -60,10 +62,10 @@ namespace Jamble {
       // Update animation tweening
       this.updateAnimationTweening(deltaTime);
 
-      // Update collision box position
+      // Update collision box position (anchored at bottom-center)
       if (this.collisionBox) {
-        this.collisionBox.x = this.transform.x;
-        this.collisionBox.y = this.transform.y;
+        this.collisionBox.x = this.transform.x - 10;
+        this.collisionBox.y = this.transform.y - 20;
       }
 
       // Simple ground collision (at bottom of game area) using collision box
@@ -71,7 +73,7 @@ namespace Jamble {
         const bottomOfPlayer = this.collisionBox.y + this.collisionBox.height;
         if (bottomOfPlayer >= 100) {
           const wasInAir = !this.grounded;
-          // Adjust transform position to keep collision box at ground level
+          // Adjust transform so anchor (bottom-center) sits on ground
           this.transform.y = 100 - this.collisionBox.height - (this.collisionBox.y - this.transform.y);
           this.velocityY = 0;
           this.grounded = true;

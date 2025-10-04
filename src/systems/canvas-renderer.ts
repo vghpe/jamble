@@ -89,23 +89,26 @@ namespace Jamble {
     }
 
     private applyTransform(obj: GameObject): void {
-      // Get pixel-perfect coordinates
+      // Get pixel-perfect coordinates and anchor
       const x = Math.round(obj.transform.x);
       const y = Math.round(obj.transform.y);
-      
+      const width = obj.render.canvas.width || 20;
+      const height = obj.render.canvas.height || 20;
+      const anchorX = (obj.render.anchor?.x ?? 0.5) * width;
+      const anchorY = (obj.render.anchor?.y ?? 0.5) * height;
+
+      // First, move to the object's anchor position
       this.ctx.translate(x, y);
-      
-      // Apply scaling animation with center-bottom transform origin
+
+      // Apply scaling animation around the anchor pivot
       const animation = obj.render.animation;
       if (animation && (animation.scaleX !== 1 || animation.scaleY !== 1)) {
-        const width = obj.render.canvas.width || 20;
-        const height = obj.render.canvas.height || 20;
-        
-        // Transform origin: center-bottom (ground-based objects)
-        this.ctx.translate(width / 2, height);
+        this.ctx.translate(0, 0); // origin is already at anchor
         this.ctx.scale(animation.scaleX, animation.scaleY);
-        this.ctx.translate(-width / 2, -height);
       }
+
+      // Shift so that (0,0) in the object's local space is its top-left
+      this.ctx.translate(-anchorX, -anchorY);
     }
 
     private renderCanvasObject(obj: GameObject): void {

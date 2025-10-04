@@ -22,7 +22,9 @@ namespace Jamble {
           width: 20,
           height: 30,
           customDraw: this.drawTree.bind(this)
-        }
+        },
+        // Preserve current visuals: transform is treated as top-left
+        anchor: { x: 0, y: 0 }
       };
       
       // Collision box positioned using offsets

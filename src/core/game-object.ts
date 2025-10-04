@@ -9,6 +9,14 @@ namespace Jamble {
     scaleY: number;
   }
 
+  // Rendering anchor within the object's logical canvas
+  // x: 0 left, 0.5 center, 1 right
+  // y: 0 top, 0.5 center, 1 bottom
+  export interface Anchor {
+    x: number;
+    y: number;
+  }
+
   export interface CanvasRenderInfo {
     color: string;
     shape: 'rectangle' | 'circle' | 'custom';
@@ -23,6 +31,7 @@ namespace Jamble {
     visible: boolean;
     canvas: CanvasRenderInfo;
     animation?: AnimationState;
+    anchor?: Anchor; // Where transform is anchored within canvas
   }
 
   export interface CollisionBox {
@@ -51,7 +60,8 @@ namespace Jamble {
           width: 20,
           height: 20
         },
-        animation: { scaleX: 1, scaleY: 1 }
+        animation: { scaleX: 1, scaleY: 1 },
+        anchor: { x: 0.5, y: 0.5 } // Default to center
       };
     }
 
