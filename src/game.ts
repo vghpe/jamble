@@ -2,6 +2,7 @@
 /// <reference path="entities/tree.ts" />
 /// <reference path="entities/knob.ts" />
 /// <reference path="entities/platform.ts" />
+/// <reference path="entities/home.ts" />
 /// <reference path="systems/canvas-renderer.ts" />
 /// <reference path="systems/debug-renderer.ts" />
 /// <reference path="systems/state-manager.ts" />
@@ -44,10 +45,11 @@ namespace Jamble {
 
         this.setupGameElement();
         this.createPlayer();
-        this.createSampleTree();
+        this.TempEntitiesLayout();
         this.setupInput();
         
         this.debugSystem.setPlayer(this.player);
+        this.debugSystem.setStateManager(this.stateManager);
       } catch (error) {
         console.error('Error during game initialization:', error);
         throw error;
@@ -70,33 +72,43 @@ namespace Jamble {
       this.gameObjects.push(this.player);
     }
 
-    private createSampleTree() {
-      const groundSlots = this.slotManager.getAvailableSlots('ground');
+    private TempEntitiesLayout() {
+      const groundSlots = this.slotManager.getSlotsByType('ground');
       const lowAirSlots = this.slotManager.getAvailableSlots('air_low');
-      if (groundSlots.length > 1) {
-        // Place tree in 3rd slot
-        const treeSlot = groundSlots[2];
+
+      // Place home at the first ground slot (leftmost)
+      if (groundSlots.length > 0) {
+        const homeSlot = groundSlots[0];
+        const home = new Home('home', homeSlot.x, homeSlot.y);
+        this.gameObjects.push(home);
+        this.slotManager.occupySlot(homeSlot.id, home.id);
+      }
+
+      // Get available slots after home placement
+      const availableGroundSlots = this.slotManager.getAvailableSlots('ground');
+
+      // Place tree at the third available ground slot
+      if (availableGroundSlots.length > 2) {
+        const treeSlot = availableGroundSlots[2];
         const tree = new Tree('tree1', treeSlot.x, treeSlot.y);
         this.gameObjects.push(tree);
         this.slotManager.occupySlot(treeSlot.id, tree.id);
-        
-        // Place knob in 4th slot (next to tree)
-        if (groundSlots.length > 3) {
-          const knobSlot = groundSlots[3];
-          const knob = new Knob('knob1', knobSlot.x, knobSlot.y);
-          this.gameObjects.push(knob);
-          this.slotManager.occupySlot(knobSlot.id, knob.id);
-        }
+      }
 
-        // Add a simple platform in low air layer to test collisions
-        if (lowAirSlots.length > 2) {
-          const platSlot = lowAirSlots[2];
-          const platform = new Platform('platform1', platSlot.x, platSlot.y);
-          this.gameObjects.push(platform);
-          this.slotManager.occupySlot(platSlot.id, platform.id);
-        }
-      } else {
-        console.warn('Not enough ground slots available for tree and knob');
+      // Place knob at the fourth available ground slot
+      if (availableGroundSlots.length > 3) {
+        const knobSlot = availableGroundSlots[3];
+        const knob = new Knob('knob1', knobSlot.x, knobSlot.y);
+        this.gameObjects.push(knob);
+        this.slotManager.occupySlot(knobSlot.id, knob.id);
+      }
+
+      // Place platform at the third low air slot
+      if (lowAirSlots.length > 2) {
+        const platformSlot = lowAirSlots[2];
+        const platform = new Platform('platform1', platformSlot.x, platformSlot.y);
+        this.gameObjects.push(platform);
+        this.slotManager.occupySlot(platformSlot.id, platform.id);
       }
     }
 
