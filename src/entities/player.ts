@@ -51,8 +51,8 @@ namespace Jamble {
       
       // Add collision box - center on the anchor (bottom-center)
       this.collisionBox = {
-        x: x - 10,
-        y: y - 20,
+        x: 0,
+        y: 0,
         width: 20,
         height: 20,
         anchor: { x: 0.5, y: 1 },

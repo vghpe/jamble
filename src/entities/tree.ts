@@ -27,8 +27,8 @@ namespace Jamble {
       
       // Collision box centered on trunk, anchored at base
       this.collisionBox = {
-        x: x - 4,
-        y: y - 25,
+        x: 0,
+        y: 0,
         width: 8,
         height: 25,
         anchor: { x: 0.5, y: 1 },

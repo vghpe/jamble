@@ -51,8 +51,8 @@ namespace Jamble {
       
       // Collision box for knob interaction (circular area around the pivot)
       this.collisionBox = {
-        x: x - 15,  // Centered on the anchor/base
-        y: y - 15,  // Centered on the anchor/base
+        x: 0,
+        y: 0,
         width: 30,
         height: 30,
         anchor: { x: 0.5, y: 0.5 },
@@ -113,17 +113,6 @@ namespace Jamble {
     }
 
     private drawKnob(ctx: CanvasRenderingContext2D, x: number, y: number): void {
-      // DEBUG: Draw canvas bounds
-      ctx.strokeStyle = '#ff0000';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(x, y, 80, 80);
-      
-      // DEBUG: Draw coordinate info
-      ctx.fillStyle = '#000000';
-      ctx.font = '8px Arial';
-      ctx.fillText(`θ:${this.theta.toFixed(2)}`, x + 2, y + 10);
-      ctx.fillText(`target:${this.thetaTarget.toFixed(2)}`, x + 2, y + 20);
-      
       // Draw spring curve (original archive style)
       ctx.save();
       ctx.lineCap = 'round';

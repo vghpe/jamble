@@ -33,8 +33,8 @@ namespace Jamble {
       
       gameElement.appendChild(this.canvas);
       
-      // Force initial resize after a short delay to ensure parent is sized
-      setTimeout(() => this.resize(), 10);
+      // Initial sizing synchronously
+      this.resize();
       
       // Listen for resize events
       window.addEventListener('resize', () => this.resize());
