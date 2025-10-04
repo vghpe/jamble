@@ -124,14 +124,22 @@ namespace Jamble {
     private handleInput() {
       if (!this.skillManager.hasSkill('move')) return;
 
-      // Handle movement using InputManager
-      if (this.inputManager.isMovingLeft()) {
-        this.player.moveLeft();
-      } else if (this.inputManager.isMovingRight()) {
-        this.player.moveRight();
-      } else {
-        this.player.stopMoving();
+      // Handle movement based on game state
+      if (this.stateManager.isRunning()) {
+        // In run state: auto-movement (player controls direction through collisions)
+        this.player.startAutoRun();
+      } else if (this.stateManager.isIdle()) {
+        // In idle state: stop autorun and use manual movement
+        this.player.stopAutoRun();
+        if (this.inputManager.isMovingLeft()) {
+          this.player.moveLeft();
+        } else if (this.inputManager.isMovingRight()) {
+          this.player.moveRight();
+        } else {
+          this.player.stopMoving();
+        }
       }
+      // Note: In countdown state, no movement (could add countdown behavior later)
     }
 
     private update(deltaTime: number) {

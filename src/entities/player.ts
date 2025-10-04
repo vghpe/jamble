@@ -8,6 +8,11 @@ namespace Jamble {
     public moveSpeed: number = 200; // pixels per second
     public jumpHeight: number = 300; // pixels per second
     
+    // Autorunner state
+    private lastDirection: 'left' | 'right' = 'right'; // Default to right
+    private autoRunDirection: 'left' | 'right' = 'right';
+    private isAutoRunning: boolean = false;
+    
     // Visual positioning offsets for fine-tuning
     private readonly visualOffsetX: number = 0;
     private readonly visualOffsetY: number = 0;
@@ -95,14 +100,39 @@ namespace Jamble {
 
     moveLeft() {
       this.velocityX = -this.moveSpeed;
+      this.lastDirection = 'left';
     }
 
     moveRight() {
       this.velocityX = this.moveSpeed;
+      this.lastDirection = 'right';
     }
 
     stopMoving() {
       this.velocityX = 0;
+    }
+
+    // Autorunner methods
+    startAutoRun() {
+      if (!this.isAutoRunning) {
+        this.isAutoRunning = true;
+        this.autoRunDirection = this.lastDirection;
+      }
+      this.velocityX = this.autoRunDirection === 'left' ? -this.moveSpeed : this.moveSpeed;
+    }
+
+    stopAutoRun() {
+      this.isAutoRunning = false;
+      this.velocityX = 0;
+    }
+
+    // Collision callback for horizontal collisions
+    onHorizontalCollision(side: 'left' | 'right', collider: any) {
+      if (this.isAutoRunning) {
+        // Reverse direction on side collisions
+        this.autoRunDirection = this.autoRunDirection === 'left' ? 'right' : 'left';
+        this.velocityX = this.autoRunDirection === 'left' ? -this.moveSpeed : this.moveSpeed;
+      }
     }
 
     jump() {

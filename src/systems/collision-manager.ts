@@ -179,19 +179,30 @@ export class CollisionManager {
       const minPushY = Math.min(pushUp, pushDown);
 
       if (minPushX < minPushY) {
-        const dx = (pushLeft < pushRight) ? -pushLeft : pushRight;
+        // Horizontal collision
+        const isLeftSide = pushLeft < pushRight;
+        const dx = isLeftSide ? -pushLeft : pushRight;
         dyn.transform.x += dx;
         this.setColliderTopLeft(dyn, pb.x + dx, pb.y);
-        // Zero horizontal velocity if known fields exist
+        
         if ((dyn as any).velocityX !== undefined) {
           (dyn as any).velocityX = 0;
         }
+        if ((dyn as any).onHorizontalCollision) {
+          (dyn as any).onHorizontalCollision(isLeftSide ? 'left' : 'right', solid);
+        }
       } else {
-        const dy = (pushUp < pushDown) ? -pushUp : pushDown;
+        // Vertical collision
+        const isTopSide = pushUp < pushDown;
+        const dy = isTopSide ? -pushUp : pushDown;
         dyn.transform.y += dy;
         this.setColliderTopLeft(dyn, pb.x, pb.y + dy);
+        
         if ((dyn as any).velocityY !== undefined) {
           (dyn as any).velocityY = 0;
+        }
+        if ((dyn as any).onVerticalCollision) {
+          (dyn as any).onVerticalCollision(isTopSide ? 'top' : 'bottom', solid);
         }
       }
     }
@@ -201,16 +212,25 @@ export class CollisionManager {
       if (!obj.collisionBox) return;
       const pb = this.getAABB(obj);
       let dx = 0;
+      let wallSide: 'left' | 'right' | null = null;
+      
       if (pb.x < 0) {
         dx = -pb.x;
+        wallSide = 'left';
       } else if (pb.x + pb.width > this.gameWidth) {
         dx = this.gameWidth - (pb.x + pb.width);
+        wallSide = 'right';
       }
+      
       if (dx !== 0) {
         obj.transform.x += dx;
         this.setColliderTopLeft(obj, pb.x + dx, pb.y);
+        
         if ((obj as any).velocityX !== undefined) {
           (obj as any).velocityX = 0;
+        }
+        if (wallSide && (obj as any).onHorizontalCollision) {
+          (obj as any).onHorizontalCollision(wallSide, null);
         }
       }
 
