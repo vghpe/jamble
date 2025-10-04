@@ -62,6 +62,11 @@ namespace Jamble {
       this.setState('idle');
     }
 
+    // Debug method to directly set run state
+    forceRunState(): void {
+      this.setState('run');
+    }
+
     private setState(newState: GameState): void {
       if (this.currentState === newState) return;
 

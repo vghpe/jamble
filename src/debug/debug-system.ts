@@ -9,6 +9,7 @@ namespace Jamble {
     private showOrigins: boolean = false;
     private showSlots: boolean = false;
     private player: Player | null = null;
+    private stateManager: StateManager | null = null;
 
     constructor(container?: HTMLElement) {
       if (container) {
@@ -63,6 +64,21 @@ namespace Jamble {
                   <span class="checkmark"></span>
                   Show Slots
                 </label>
+                <br><br>
+                <label class="debug-checkbox-label">
+                  <input type="checkbox" id="toggle-run-state" class="debug-checkbox">
+                  <span class="checkmark"></span>
+                  Run State
+                </label>
+              </div>
+            </div>
+            
+            <div class="debug-section">
+              <div class="section-header">Game State</div>
+              <div class="section-content">
+                <div class="form-grid" id="game-state">
+                  <!-- Game state will be populated here -->
+                </div>
               </div>
             </div>
           </div>
@@ -200,6 +216,21 @@ namespace Jamble {
         } else {
           console.error('Could not find toggle-slots checkbox');
         }
+
+        const toggleRunStateCheckbox = this.debugContainer.querySelector('#toggle-run-state') as HTMLInputElement;
+        if (toggleRunStateCheckbox) {
+          toggleRunStateCheckbox.onchange = () => {
+            if (this.stateManager) {
+              if (toggleRunStateCheckbox.checked) {
+                this.stateManager.forceRunState();
+              } else {
+                this.stateManager.returnToIdle();
+              }
+            }
+          };
+        } else {
+          console.error('Could not find toggle-run-state checkbox');
+        }
       } catch (error) {
         console.error('Error setting up debug panel styles and events:', error);
       }
@@ -237,6 +268,10 @@ namespace Jamble {
 
     setPlayer(player: Player) {
       this.player = player;
+    }
+
+    setStateManager(stateManager: StateManager) {
+      this.stateManager = stateManager;
     }
 
     update() {
@@ -278,6 +313,25 @@ namespace Jamble {
         `;
       }
 
+      // Update game state display
+      if (this.stateManager) {
+        const gameStateContainer = this.debugContainer.querySelector('#game-state');
+        if (gameStateContainer) {
+          const currentState = this.stateManager.getCurrentState();
+          
+          gameStateContainer.innerHTML = `
+            <span class="stat-label">Current State:</span>
+            <span class="stat-value">${currentState.toUpperCase()}</span>
+          `;
+        }
+
+        // Keep run state checkbox in sync
+        const toggleRunStateCheckbox = this.debugContainer.querySelector('#toggle-run-state') as HTMLInputElement;
+        if (toggleRunStateCheckbox) {
+          toggleRunStateCheckbox.checked = this.stateManager.isRunning();
+        }
+      }
+
       const colliderStatus = this.debugContainer.querySelector('#collider-status');
       if (colliderStatus) {
         colliderStatus.textContent = this.showColliders ? 'ON' : 'OFF';
@@ -296,9 +350,13 @@ namespace Jamble {
           `Velocity: ${this.player.velocityX.toFixed(1)}, ${this.player.velocityY.toFixed(1)}`,
           `Grounded: ${this.player.grounded}`,
           `Colliders: ${this.showColliders ? 'ON' : 'OFF'}`
-        ].join('<br>');
+        ];
 
-        infoElement.innerHTML = info;
+        if (this.stateManager) {
+          info.push(`State: ${this.stateManager.getCurrentState().toUpperCase()}`);
+        }
+
+        infoElement.innerHTML = info.join('<br>');
       }
     }
 
