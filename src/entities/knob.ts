@@ -77,7 +77,7 @@ namespace Jamble {
       this.updateSpringPoints();
     }
 
-    // Collider world position derived by CollisionManager/DebugRenderer when needed
+    // Collider world position is derived on demand by systems that need it.
 
     private updateSpringPoints(): void {
       // Base position: use the render anchor within the knob's canvas
@@ -179,7 +179,6 @@ namespace Jamble {
       }, 200);
     }
 
-    // Trigger callback used by CollisionManager
     onTriggerEnter(other: GameObject): void {
       // Only react to player
       if (other instanceof Player) {

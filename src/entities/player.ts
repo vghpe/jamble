@@ -50,8 +50,6 @@ namespace Jamble {
       };
     }
 
-    // Grounding is handled by CollisionManager
-
     update(deltaTime: number) {
       // Apply gravity
       if (!this.grounded) {
@@ -65,12 +63,7 @@ namespace Jamble {
       // Update animation tweening
       this.updateAnimationTweening(deltaTime);
 
-      // Collider world position derived on demand by CollisionManager/DebugRenderer
-
-      // Grounding now handled by CollisionManager
-
-      // Horizontal boundaries are handled centrally in Game using the collider
-      // (no transform-based clamping here)
+      // Collider world position is derived on demand by systems that need it.
     }
 
     moveLeft() {

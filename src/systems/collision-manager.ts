@@ -1,11 +1,30 @@
 /// <reference path="../core/game-object.ts" />
 
+/**
+ * CollisionManager
+ *
+ * Extremely small, single-pass collision system tailored for this game.
+ * Responsibilities:
+ * - Compute world-space AABBs from each object's transform + collider anchor.
+ * - Resolve intersections between dynamic actors (player) and solid environment.
+ * - Clamp actors to world bounds (left/right walls and bottom ground).
+ * - Drive simple trigger interactions (enter/stay/exit) for non‑blocking colliders.
+ *
+ * Design choices kept intentionally simple:
+ * - No broadphase structure (entity counts are tiny).
+ * - One dynamic category ('player'), one solid ('environment'), and triggers
+ *   ('kinematic' | 'deadly').
+ * - Grounded state is derived after resolution using an epsilon check so it
+ *   remains true while resting exactly on a surface.
+ */
+
 namespace Jamble {
   export class CollisionManager {
     private prevTriggerPairs: Set<string> = new Set();
     constructor(private gameWidth: number, private gameHeight: number) {}
 
     update(gameObjects: GameObject[]): void {
+      // Partition colliders by category. Keep it flat and tiny.
       const dynamics: GameObject[] = [];
       const solids: GameObject[] = [];
       const triggers: GameObject[] = [];
@@ -21,25 +40,47 @@ namespace Jamble {
         if (cat === 'kinematic' || cat === 'deadly') triggers.push(obj);
       }
 
-      // Solid resolution and world clamps
+      // 1) Resolve against solids, then clamp to world
       for (const dyn of dynamics) {
         if (!dyn.collisionBox) continue;
-        // Reset per-frame contact flags where applicable
-        if ((dyn as any).grounded !== undefined) {
-          (dyn as any).grounded = false;
-        }
 
-        // Resolve vs static solids
+        // Resolve vs static solids (minimal translation along the smallest axis)
         for (const solid of solids) {
           if (dyn === solid || !solid.collisionBox) continue;
           this.resolveAABB(dyn, solid);
         }
 
-        // Clamp to world edges and ground using collider
+        // Clamp to world edges and bottom ground using collider
         this.clampToWorld(dyn);
+
+        // 2) Derive grounded state after all resolution/clamping
+        //    Use a small epsilon so it stays true while resting exactly on surfaces
+        const pb = this.getAABB(dyn);
+        const eps = 0.001;
+        let grounded = false;
+        // World ground contact
+        if (pb.y + pb.height >= this.gameHeight - eps) {
+          grounded = true;
+        } else {
+          // Check top faces of solids directly beneath
+          for (const solid of solids) {
+            if (!solid.collisionBox) continue;
+            const ob = this.getAABB(solid);
+            const horizontalOverlap = pb.x < ob.x + ob.width && pb.x + pb.width > ob.x;
+            const touchingTop = Math.abs((pb.y + pb.height) - ob.y) <= eps;
+            const vy = (dyn as any).velocityY ?? 0;
+            if (horizontalOverlap && touchingTop && vy >= 0) {
+              grounded = true;
+              break;
+            }
+          }
+        }
+        if ((dyn as any).grounded !== undefined) {
+          (dyn as any).grounded = grounded;
+        }
       }
 
-      // Trigger handling (enter/stay/exit)
+      // 3) Trigger handling (enter/stay/exit) for non‑blocking overlaps
       const currentPairs: Set<string> = new Set();
       for (const dyn of dynamics) {
         if (!dyn.collisionBox) continue;
@@ -62,7 +103,7 @@ namespace Jamble {
         }
       }
 
-      // Exits
+      // Exits: anything that was present last frame but not now
       for (const key of this.prevTriggerPairs) {
         if (!currentPairs.has(key)) {
           const [dynId, otherId] = key.split('|');
@@ -78,6 +119,7 @@ namespace Jamble {
       this.prevTriggerPairs = currentPairs;
     }
 
+    // Simple overlap test using derived AABBs
     private aabbIntersects(a: GameObject, b: GameObject): boolean {
       const A = this.getAABB(a);
       const B = this.getAABB(b);
@@ -89,6 +131,7 @@ namespace Jamble {
       );
     }
 
+    // Derive collider top-left from transform and anchor
     private getAABB(obj: GameObject) {
       const cb = obj.collisionBox!;
       const ax = cb.anchor?.x ?? 0;
@@ -98,12 +141,14 @@ namespace Jamble {
       return { x, y, width: cb.width, height: cb.height };
     }
 
+    // Keep collider.x/y up to date for any consumers that read it directly
     private setColliderTopLeft(obj: GameObject, x: number, y: number) {
       if (!obj.collisionBox) return;
       obj.collisionBox.x = x;
       obj.collisionBox.y = y;
     }
 
+    // Minimal-translation resolution between a dynamic and a solid box
     private resolveAABB(dyn: GameObject, solid: GameObject) {
       const pb = this.getAABB(dyn);
       const ob = this.getAABB(solid);
@@ -141,13 +186,10 @@ namespace Jamble {
         if ((dyn as any).velocityY !== undefined) {
           (dyn as any).velocityY = 0;
         }
-        // Mark grounded on upward resolution (landed on top)
-        if (dy < 0 && (dyn as any).grounded !== undefined) {
-          (dyn as any).grounded = true;
-        }
       }
     }
 
+    // Clamp to world left/right and bottom ground using the collider AABB
     private clampToWorld(obj: GameObject) {
       if (!obj.collisionBox) return;
       const pb = this.getAABB(obj);
@@ -173,9 +215,6 @@ namespace Jamble {
         this.setColliderTopLeft(obj, pb2.x, pb2.y + dy);
         if ((obj as any).velocityY !== undefined) {
           (obj as any).velocityY = 0;
-        }
-        if ((obj as any).grounded !== undefined) {
-          (obj as any).grounded = true;
         }
       }
     }

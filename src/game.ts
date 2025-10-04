@@ -128,16 +128,14 @@ namespace Jamble {
       // Update all game objects
       this.gameObjects.forEach(obj => obj.update(deltaTime));
       
-      // Trigger interactions handled in CollisionManager (knob, etc.)
       // Resolve collisions against solid environment (platforms, trees, etc.)
       this.collisionManager.update(this.gameObjects);
       
-      // Edge clamping now handled in CollisionManager
 
       this.debugSystem.update();
     }
 
-    // CollisionManager now owns environment collisions and trigger handling
+    // Render debug overlays and visuals
 
     private render() {
       this.renderer.render(this.gameObjects);
