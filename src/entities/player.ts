@@ -7,7 +7,6 @@ namespace Jamble {
     public grounded: boolean = false;
     public moveSpeed: number = 200; // pixels per second
     public jumpHeight: number = 300; // pixels per second
-    private worldHeight: number = 100; // default; overridden by Game
     
     // Visual positioning offsets for fine-tuning
     private readonly visualOffsetX: number = 0;
@@ -51,10 +50,7 @@ namespace Jamble {
       };
     }
 
-    // Set logical world height so ground checks are not hardcoded
-    setWorldHeight(height: number) {
-      this.worldHeight = height;
-    }
+    // Grounding is handled by CollisionManager
 
     update(deltaTime: number) {
       // Apply gravity
@@ -69,14 +65,7 @@ namespace Jamble {
       // Update animation tweening
       this.updateAnimationTweening(deltaTime);
 
-      // Update collision box position from anchor
-      if (this.collisionBox) {
-        const cb = this.collisionBox;
-        const ax = cb.anchor?.x ?? 0;
-        const ay = cb.anchor?.y ?? 0;
-        cb.x = this.transform.x - ax * cb.width;
-        cb.y = this.transform.y - ay * cb.height;
-      }
+      // Collider world position derived on demand by CollisionManager/DebugRenderer
 
       // Grounding now handled by CollisionManager
 

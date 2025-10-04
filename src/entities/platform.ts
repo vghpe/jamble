@@ -30,15 +30,7 @@ namespace Jamble {
     }
 
     update(deltaTime: number): void {
-      // Static platform — just keep collider aligned to anchor
-      if (this.collisionBox) {
-        const cb = this.collisionBox;
-        const ax = cb.anchor?.x ?? 0;
-        const ay = cb.anchor?.y ?? 0;
-        cb.x = this.transform.x - ax * cb.width;
-        cb.y = this.transform.y - ay * cb.height;
-      }
+      // Static platform — nothing to update per frame.
     }
   }
 }
-

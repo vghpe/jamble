@@ -62,7 +62,6 @@ namespace Jamble {
 
     update(deltaTime: number): void {
       this.updateSpringPhysics(deltaTime);
-      this.updateCollisionBox();
     }
 
     private updateSpringPhysics(deltaTime: number): void {
@@ -78,15 +77,7 @@ namespace Jamble {
       this.updateSpringPoints();
     }
 
-    private updateCollisionBox(): void {
-      if (this.collisionBox) {
-        const cb = this.collisionBox;
-        const ax = cb.anchor?.x ?? 0;
-        const ay = cb.anchor?.y ?? 0;
-        cb.x = this.transform.x - ax * cb.width;
-        cb.y = this.transform.y - ay * cb.height;
-      }
-    }
+    // Collider world position derived by CollisionManager/DebugRenderer when needed
 
     private updateSpringPoints(): void {
       // Base position: use the render anchor within the knob's canvas

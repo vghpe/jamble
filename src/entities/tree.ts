@@ -68,15 +68,7 @@ namespace Jamble {
     }
 
     update(deltaTime: number): void {
-      // Trees are static - no update logic needed
-      // Update collision box position from its anchor
-      if (this.collisionBox) {
-        const cb = this.collisionBox;
-        const ax = cb.anchor?.x ?? 0;
-        const ay = cb.anchor?.y ?? 0;
-        cb.x = this.transform.x - ax * cb.width;
-        cb.y = this.transform.y - ay * cb.height;
-      }
+      // Static tree — nothing to update per frame.
     }
   }
 }

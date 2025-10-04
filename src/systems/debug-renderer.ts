@@ -69,7 +69,7 @@ namespace Jamble {
       if (showColliders) {
         gameObjects.forEach(obj => {
           if (obj.collisionBox && obj.render.visible) {
-            this.drawCollisionBox(obj.collisionBox);
+            this.drawCollisionForObject(obj);
           }
         });
 
@@ -92,20 +92,22 @@ namespace Jamble {
       }
     }
 
-    private drawCollisionBox(box: CollisionBox) {
+    private drawCollisionForObject(obj: GameObject) {
+      const box = obj.collisionBox!;
       const color = this.CATEGORY_COLORS[box.category];
-      
-      // Keep it simple - just use the collision box coordinates directly
-      // The collision boxes should already be in the same coordinate system as the canvas
-      
+      const ax = box.anchor?.x ?? 0;
+      const ay = box.anchor?.y ?? 0;
+      const x = obj.transform.x - ax * box.width;
+      const y = obj.transform.y - ay * box.height;
+
       // Draw semi-transparent filled rectangle
-      this.ctx.fillStyle = color + '30'; // Add transparency
-      this.ctx.fillRect(box.x, box.y, box.width, box.height);
-      
+      this.ctx.fillStyle = color + '30';
+      this.ctx.fillRect(x, y, box.width, box.height);
+
       // Draw border
       this.ctx.strokeStyle = color;
       this.ctx.lineWidth = 1;
-      this.ctx.strokeRect(box.x, box.y, box.width, box.height);
+      this.ctx.strokeRect(x, y, box.width, box.height);
     }
 
     private drawPlayAreaBoundary() {

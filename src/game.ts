@@ -67,7 +67,6 @@ namespace Jamble {
 
     private createPlayer() {
       this.player = new Player(50, 0);
-      this.player.setWorldHeight(this.gameHeight);
       this.gameObjects.push(this.player);
     }
 
