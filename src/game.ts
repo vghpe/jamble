@@ -9,6 +9,7 @@
 /// <reference path="slots/slot-manager.ts" />
 /// <reference path="skills/skill-system.ts" />
 /// <reference path="debug/debug-system.ts" />
+/// <reference path="systems/collision-manager.ts" />
 
 namespace Jamble {
   export class Game {
@@ -20,6 +21,7 @@ namespace Jamble {
     private slotManager: SlotManager;
     private skillManager: SkillManager;
     private debugSystem: DebugSystem;
+    private collisionManager: CollisionManager;
     
     private player!: Player; // Will be initialized in createPlayer()
     private gameObjects: GameObject[] = [];
@@ -38,6 +40,7 @@ namespace Jamble {
         this.slotManager = new SlotManager(this.gameWidth, this.gameHeight);
         this.skillManager = new SkillManager();
         this.debugSystem = new DebugSystem(debugContainer);
+        this.collisionManager = new CollisionManager(this.gameWidth, this.gameHeight);
 
         this.setupGameElement();
         this.createPlayer();
@@ -129,23 +132,9 @@ namespace Jamble {
       // Check knob collisions for physics animation
       this.checkKnobCollisions();
       // Resolve collisions against solid environment (platforms, trees, etc.)
-      this.resolvePlayerEnvironmentCollisions();
+      this.collisionManager.update(this.gameObjects);
       
-      // Keep player in bounds using collision box (both sides)
-      if (this.player.collisionBox) {
-        const box = this.player.collisionBox;
-        // Right edge
-        const rightBound = box.x + box.width;
-        if (rightBound > this.gameWidth) {
-          this.player.transform.x = this.gameWidth - box.width - (box.x - this.player.transform.x);
-          this.player.velocityX = 0;
-        }
-        // Left edge
-        if (box.x < 0) {
-          this.player.transform.x = this.player.transform.x - box.x;
-          this.player.velocityX = 0;
-        }
-      }
+      // Edge clamping now handled in CollisionManager
 
       this.debugSystem.update();
     }
@@ -176,52 +165,7 @@ namespace Jamble {
       });
     }
 
-    private resolvePlayerEnvironmentCollisions() {
-      if (!this.player.collisionBox) return;
-      const pb = this.player.collisionBox;
-
-      this.gameObjects.forEach(obj => {
-        if (obj === this.player) return;
-        if (!obj.collisionBox) return;
-        const ob = obj.collisionBox;
-        if (ob.category !== 'environment') return; // only solid environment for now
-
-        // AABB test
-        const intersects = (
-          pb.x < ob.x + ob.width &&
-          pb.x + pb.width > ob.x &&
-          pb.y < ob.y + ob.height &&
-          pb.y + pb.height > ob.y
-        );
-        if (!intersects) return;
-
-        // Compute minimal push out along axes
-        const pushLeft = (pb.x + pb.width) - ob.x;             // move player left
-        const pushRight = (ob.x + ob.width) - pb.x;            // move player right
-        const pushUp = (pb.y + pb.height) - ob.y;              // move player up
-        const pushDown = (ob.y + ob.height) - pb.y;            // move player down
-
-        const minPushX = Math.min(pushLeft, pushRight);
-        const minPushY = Math.min(pushUp, pushDown);
-
-        if (minPushX < minPushY) {
-          // Resolve horizontally
-          const dx = (pushLeft < pushRight) ? -pushLeft : pushRight;
-          this.player.transform.x += dx;
-          pb.x += dx;
-          this.player.velocityX = 0;
-        } else {
-          // Resolve vertically
-          const dy = (pushUp < pushDown) ? -pushUp : pushDown;
-          this.player.transform.y += dy;
-          pb.y += dy;
-          this.player.velocityY = 0;
-          if (dy < 0) {
-            this.player.grounded = true; // landed on top
-          }
-        }
-      });
-    }
+    // CollisionManager now owns environment collision resolution
 
     private render() {
       this.renderer.render(this.gameObjects);
