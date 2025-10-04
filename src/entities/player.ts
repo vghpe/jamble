@@ -25,6 +25,7 @@ namespace Jamble {
     private readonly landScaleY: number = 0.6;
     private readonly landSquashDurationMs: number = 150;
     private landingActive: boolean = false;
+    private landingTimeoutId: number | null = null;
 
     constructor(x: number = 0, y: number = 0) {
       super('player', x, y);
@@ -60,6 +61,10 @@ namespace Jamble {
     }
 
     update(deltaTime: number) {
+      // If we left the ground while a landing hold is active, cancel it immediately
+      if (!this.grounded && this.landingActive) {
+        this.cancelLandingHold();
+      }
       // Apply gravity
       if (!this.grounded) {
         this.velocityY += 800 * deltaTime; // gravity
@@ -137,13 +142,31 @@ namespace Jamble {
       this.targetScaleX = sx;
       this.targetScaleY = sy;
       this.landingActive = true;
+      // Ensure any previous landing timer is cleared
+      if (this.landingTimeoutId !== null) {
+        clearTimeout(this.landingTimeoutId);
+        this.landingTimeoutId = null;
+      }
 
       // Hold the squash briefly, then ease back toward 1 using the tweener
-      setTimeout(() => {
+      this.landingTimeoutId = setTimeout(() => {
         this.targetScaleX = 1;
         this.targetScaleY = 1;
         this.landingActive = false;
-      }, this.landSquashDurationMs);
+        this.landingTimeoutId = null;
+      }, this.landSquashDurationMs) as unknown as number;
+    }
+
+    private cancelLandingHold(): void {
+      this.landingActive = false;
+      if (this.landingTimeoutId !== null) {
+        clearTimeout(this.landingTimeoutId);
+        this.landingTimeoutId = null;
+      }
+      // Keep current animation values; in-air update will override this frame
+      const anim = this.render.animation!;
+      this.targetScaleX = anim.scaleX;
+      this.targetScaleY = anim.scaleY;
     }
 
     private drawPlayer(ctx: CanvasRenderingContext2D, x: number, y: number): void {
