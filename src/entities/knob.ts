@@ -32,6 +32,15 @@ namespace Jamble {
     // Animation state
     private isDeflecting: boolean = false;
     private deflectionDirection: number = 1; // 1 for right, -1 for left
+    
+    // Squash animation state (separate physics system)
+    private isSquashing: boolean = false;
+    private squashStartTime: number = 0;
+    private squashPhase: 'compress' | 'hold' | 'spring' = 'compress';
+    private originalLength: number = 0;
+    private squashVelocity: number = 0;
+    private originalLineWidth: number = 0;
+    private currentLineWidth: number = 0;
 
     constructor(id: string, x: number = 0, y: number = 0) {
       // Anchor the knob at the given position (slot). We'll use
@@ -67,6 +76,8 @@ namespace Jamble {
 
     update(deltaTime: number): void {
       this.updateSpringPhysics(deltaTime);
+      this.updateSquashPhysics(deltaTime); // Separate physics system for top collisions
+      this.updateSpringPoints();
     }
 
     private updateSpringPhysics(deltaTime: number): void {
@@ -174,18 +185,134 @@ namespace Jamble {
     }
 
     onCollected(player: Player): number {
-      // For now, just return base value (no top collision detection yet)
-      this.economyManager.addCurrency(this.currencyValue);
-      return this.currencyValue;
+      const collisionType = this.detectCollisionType(player);
+      let currencyAmount = this.currencyValue; // Default side collision value (1)
+      
+      if (collisionType === 'top') {
+        currencyAmount = 5; // Top collision gives 5 points
+        this.squashAnimation();
+      } else {
+        this.deflectAnimation();
+      }
+      
+      this.economyManager.addCurrency(currencyAmount);
+      return currencyAmount;
+    }
+
+    private detectCollisionType(player: Player): 'top' | 'side' {
+      // Get player's center and knob's center for better comparison
+      const playerY = player.transform.y;
+      const knobY = this.transform.y;
+      
+      // Check if player is coming from above (positive Y velocity = downward in this coordinate system)
+      const isMovingDown = player.velocityY > 0;
+      // Player is above if their Y position is less than knob's Y position (higher on screen)
+      const isAboveKnob = playerY < knobY - 10; // 10px tolerance
+      
+
+      
+      if (isMovingDown && isAboveKnob) {
+        return 'top';
+      }
+      return 'side';
+    }
+
+    private squashAnimation(): void {
+      // Start physics-based squash animation
+      this.isSquashing = true;
+      this.squashStartTime = Date.now();
+      this.squashPhase = 'compress';
+      this.originalLength = this.config.length;
+      this.originalLineWidth = this.config.lineWidth;
+      this.squashVelocity = 0;
+      
+      // Tuned squash amount
+      const squashPercent = 4;
+      this.config.length = this.originalLength * (squashPercent / 100);
+      
+      // Make it wider when squashed - tuned value
+      const widthMultiplier = 1.3;
+      this.config.lineWidth = this.originalLineWidth * widthMultiplier;
+      this.currentLineWidth = this.config.lineWidth;
+    }
+    
+    private updateSquashPhysics(deltaTime: number): void {
+      if (!this.isSquashing) return;
+      
+      const elapsed = Date.now() - this.squashStartTime;
+      
+      // Tuned hold time
+      const holdTime = 150;
+      
+      if (this.squashPhase === 'compress') {
+        // Hold compressed state for specified time
+        if (elapsed >= holdTime) {
+          this.squashPhase = 'hold';
+          this.squashStartTime = Date.now(); // Reset timer for hold phase
+        }
+      } else if (this.squashPhase === 'hold') {
+        // Hold compressed for specified time
+        if (elapsed >= holdTime) {
+          this.squashPhase = 'spring';
+          this.squashStartTime = Date.now(); // Reset timer for spring phase
+        }
+      } else if (this.squashPhase === 'spring') {
+        // Physics-based spring back over ~3 seconds
+        const springElapsed = elapsed / 1000; // Convert to seconds
+        const targetLength = this.originalLength;
+        const currentLength = this.config.length;
+        
+        // Spring physics constants - tuned values
+        const springConstant = 605.0;
+        const damping = 7.5;
+        
+        // Calculate spring force for length
+        const displacement = currentLength - targetLength;
+        const springForce = -springConstant * displacement;
+        const dampingForce = -damping * this.squashVelocity;
+        const totalForce = springForce + dampingForce;
+        
+        // Update velocity and position (Euler integration)
+        this.squashVelocity += totalForce * deltaTime;
+        this.config.length += this.squashVelocity * deltaTime;
+        
+        // Animate line width back to original (proportional to length recovery)
+        const lengthProgress = 1 - Math.abs(displacement) / Math.abs(this.originalLength * 0.9);
+        const clampedProgress = Math.max(0, Math.min(1, lengthProgress));
+        const widthMultiplier = 1.3;
+        this.config.lineWidth = this.originalLineWidth * widthMultiplier - (this.originalLineWidth * (widthMultiplier - 1.0) * clampedProgress);
+        
+        // Stop animation when settled (close to target and low velocity) - ultra tight for fastest settling
+        const isSettled = Math.abs(displacement) < 0.01 && Math.abs(this.squashVelocity) < 0.01;
+        if (isSettled || springElapsed > 1.5) { // Max 1.5 seconds for even faster settling
+          // Animation complete
+          this.config.length = this.originalLength;
+          this.config.lineWidth = this.originalLineWidth; // Reset width
+          this.isSquashing = false;
+          this.squashVelocity = 0;
+        }
+      }
+    }
+
+    private deflectAnimation(): void {
+      // Original deflection animation for side collisions
+      this.isDeflecting = true;
+      
+      // Set target deflection angle (use original maxAngleDeg)
+      const maxAngle = (this.config.maxAngleDeg * Math.PI) / 180;
+      this.thetaTarget = (Math.random() > 0.5 ? 1 : -1) * maxAngle;
+      
+      // Stop deflecting after animation completes
+      setTimeout(() => {
+        this.isDeflecting = false;
+        this.thetaTarget = 0; // Return to center
+      }, 200);
     }
 
     onTriggerEnter(other: GameObject): void {
       // Only react to player
       if (other instanceof Player) {
-        const dir = (other as Player).velocityX >= 0 ? 1 : -1;
-        this.deflect(dir);
-        
-        // Collect currency when player touches knob
+        // Collect currency when player touches knob (handles animation internally)
         this.onCollected(other as Player);
       }
     }

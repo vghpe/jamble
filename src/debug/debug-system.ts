@@ -193,6 +193,18 @@ namespace Jamble {
           .debug-checkbox:checked + .checkmark {
             color: #007bff;
           }
+          
+          .debug-slider {
+            width: 120px;
+            margin-right: 8px;
+          }
+          
+          .form-grid {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 8px 12px;
+            align-items: center;
+          }
         `;
         document.head.appendChild(style);
 
@@ -223,6 +235,8 @@ namespace Jamble {
         } else {
           console.error('Could not find toggle-slots checkbox');
         }
+        
+
       } catch (error) {
         console.error('Error setting up debug panel styles and events:', error);
       }
