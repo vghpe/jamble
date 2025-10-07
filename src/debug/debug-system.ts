@@ -64,12 +64,6 @@ namespace Jamble {
                   <span class="checkmark"></span>
                   Show Slots
                 </label>
-                <br><br>
-                <label class="debug-checkbox-label">
-                  <input type="checkbox" id="toggle-run-state" class="debug-checkbox">
-                  <span class="checkmark"></span>
-                  Run State
-                </label>
               </div>
             </div>
             
@@ -216,21 +210,6 @@ namespace Jamble {
         } else {
           console.error('Could not find toggle-slots checkbox');
         }
-
-        const toggleRunStateCheckbox = this.debugContainer.querySelector('#toggle-run-state') as HTMLInputElement;
-        if (toggleRunStateCheckbox) {
-          toggleRunStateCheckbox.onchange = () => {
-            if (this.stateManager) {
-              if (toggleRunStateCheckbox.checked) {
-                this.stateManager.forceRunState();
-              } else {
-                this.stateManager.returnToIdle();
-              }
-            }
-          };
-        } else {
-          console.error('Could not find toggle-run-state checkbox');
-        }
       } catch (error) {
         console.error('Error setting up debug panel styles and events:', error);
       }
@@ -323,12 +302,6 @@ namespace Jamble {
             <span class="stat-label">Current State:</span>
             <span class="stat-value">${currentState.toUpperCase()}</span>
           `;
-        }
-
-        // Keep run state checkbox in sync
-        const toggleRunStateCheckbox = this.debugContainer.querySelector('#toggle-run-state') as HTMLInputElement;
-        if (toggleRunStateCheckbox) {
-          toggleRunStateCheckbox.checked = this.stateManager.isRunning();
         }
       }
 

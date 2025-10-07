@@ -3,6 +3,7 @@
 /// <reference path="entities/knob.ts" />
 /// <reference path="entities/platform.ts" />
 /// <reference path="entities/home.ts" />
+/// <reference path="entities/sensor.ts" />
 /// <reference path="systems/canvas-renderer.ts" />
 /// <reference path="systems/debug-renderer.ts" />
 /// <reference path="systems/state-manager.ts" />
@@ -82,6 +83,16 @@ namespace Jamble {
         const home = new Home('home', homeSlot.x, homeSlot.y);
         this.gameObjects.push(home);
         this.slotManager.occupySlot(homeSlot.id, home.id);
+        
+        // Add home sensor - attached to home, just above it
+        const homeSensor = new Sensor('home-sensor', home, 0, -20);
+        homeSensor.setTriggerSize(70, 10); // Wider than home, thinner height
+        homeSensor.onTriggerEnter = (other: GameObject) => {
+          if (other.id === 'player') {
+            this.stateManager.returnToIdle();
+          }
+        };
+        this.gameObjects.push(homeSensor);
       }
 
       // Get available slots after home placement
@@ -110,6 +121,16 @@ namespace Jamble {
         this.gameObjects.push(platform);
         this.slotManager.occupySlot(platformSlot.id, platform.id);
       }
+      
+      // Add ground sensor - static sensor just above ground level for run state
+      const groundSensor = new Sensor('ground-sensor', undefined, this.gameWidth / 2, this.gameHeight - 5);
+      groundSensor.setTriggerSize(this.gameWidth, 5); // Full width ground sensor, very thin
+      groundSensor.onTriggerEnter = (other: GameObject) => {
+        if (other.id === 'player') {
+          this.stateManager.forceRunState();
+        }
+      };
+      this.gameObjects.push(groundSensor);
     }
 
     private setupInput() {

@@ -68,7 +68,7 @@ namespace Jamble {
       // Draw collision boxes first (underneath)
       if (showColliders) {
         gameObjects.forEach(obj => {
-          if (obj.collisionBox && obj.render.visible) {
+          if (obj.collisionBox) {
             this.drawCollisionForObject(obj);
           }
         });

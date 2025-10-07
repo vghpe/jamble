@@ -1,0 +1,8 @@
+- [x] Fix bounds collision
+- [ ] Design Home element rules
+- [ ] Add home elements
+- [ ] Add collision from top on knob
+- [ ] Add knob Top collision animation. 
+- [ ] Put in a sprite renderer for person
+- [ ] Design person layout. 
+- [ ] Handle responsive width. 
