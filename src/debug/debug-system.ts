@@ -1,5 +1,6 @@
 /// <reference path="../entities/player.ts" />
 /// <reference path="../systems/state-manager.ts" />
+/// <reference path="../systems/economy-manager.ts" />
 
 namespace Jamble {
   export class DebugSystem {
@@ -10,8 +11,11 @@ namespace Jamble {
     private showSlots: boolean = false;
     private player: Player | null = null;
     private stateManager: StateManager | null = null;
+    private economyManager: EconomyManager;
 
     constructor(container?: HTMLElement) {
+      this.economyManager = EconomyManager.getInstance();
+      
       if (container) {
         this.debugContainer = container;
         this.setupSidePanelDebug();
@@ -33,6 +37,15 @@ namespace Jamble {
               <h2>🎮 Jamble Debug</h2>
               <p class="debug-info">Rebuilt Architecture</p>
               <p class="build-info">Build: ${DebugSystem.BUILD_VERSION}</p>
+            </div>
+            
+            <div class="debug-section">
+              <div class="section-header">Economy</div>
+              <div class="section-content">
+                <div class="form-grid" id="economy-stats">
+                  <!-- Economy stats will be populated here -->
+                </div>
+              </div>
             </div>
             
             <div class="debug-section">
@@ -265,6 +278,15 @@ namespace Jamble {
 
     private updateSidePanelDebug() {
       if (!this.player || !this.debugContainer) return;
+
+      // Update economy stats
+      const economyContainer = this.debugContainer.querySelector('#economy-stats');
+      if (economyContainer) {
+        economyContainer.innerHTML = `
+          <span class="stat-label">Currency:</span>
+          <span class="stat-value">$${this.economyManager.getCurrency()}</span>
+        `;
+      }
 
       const statsContainer = this.debugContainer.querySelector('#player-stats');
       if (statsContainer) {

@@ -25,6 +25,7 @@ namespace Jamble {
     }
 
     private setupCanvas(gameElement: HTMLElement): void {
+      this.canvas.id = 'gameCanvas';
       this.canvas.style.cssText = `
         position: absolute;
         top: 0;

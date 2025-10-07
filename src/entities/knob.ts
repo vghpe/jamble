@@ -1,7 +1,10 @@
 /// <reference path="../core/game-object.ts" />
+/// <reference path="../systems/economy-manager.ts" />
 
 namespace Jamble {
-  export class Knob extends GameObject {
+  export class Knob extends GameObject implements CurrencyCollectible {
+    public currencyValue = 1; // Base value for collisions
+    private economyManager: EconomyManager;
     // Original knob configuration (from archive)
     private config = {
       length: 10,           // Spring length in pixels
@@ -34,6 +37,8 @@ namespace Jamble {
       // Anchor the knob at the given position (slot). We'll use
       // bottom-center as the anchor so the slot aligns with the base.
       super(id, x, y);
+      
+      this.economyManager = EconomyManager.getInstance();
       
       // Canvas rendering with custom knob drawing
       this.render = {
@@ -168,11 +173,20 @@ namespace Jamble {
       }, 200);
     }
 
+    onCollected(player: Player): number {
+      // For now, just return base value (no top collision detection yet)
+      this.economyManager.addCurrency(this.currencyValue);
+      return this.currencyValue;
+    }
+
     onTriggerEnter(other: GameObject): void {
       // Only react to player
       if (other instanceof Player) {
         const dir = (other as Player).velocityX >= 0 ? 1 : -1;
         this.deflect(dir);
+        
+        // Collect currency when player touches knob
+        this.onCollected(other as Player);
       }
     }
   }

@@ -12,6 +12,7 @@
 /// <reference path="skills/skill-system.ts" />
 /// <reference path="debug/debug-system.ts" />
 /// <reference path="systems/collision-manager.ts" />
+/// <reference path="ui/shop-ui.ts" />
 
 namespace Jamble {
   export class Game {
@@ -24,6 +25,7 @@ namespace Jamble {
     private skillManager: SkillManager;
     private debugSystem: DebugSystem;
     private collisionManager: CollisionManager;
+    private shopUI: ShopUI;
     
     private player!: Player; // Will be initialized in createPlayer()
     private gameObjects: GameObject[] = [];
@@ -43,6 +45,8 @@ namespace Jamble {
         this.skillManager = new SkillManager();
         this.debugSystem = new DebugSystem(debugContainer);
         this.collisionManager = new CollisionManager(this.gameWidth, this.gameHeight);
+        this.shopUI = new ShopUI();
+        this.shopUI.setStateManager(this.stateManager);
 
         this.setupGameElement();
         this.createPlayer();
@@ -172,8 +176,9 @@ namespace Jamble {
       // Resolve collisions against solid environment (platforms, trees, etc.)
       this.collisionManager.update(this.gameObjects);
       
-
+      // Update UI systems
       this.debugSystem.update();
+      this.shopUI.update();
     }
 
     // Render debug overlays and visuals
