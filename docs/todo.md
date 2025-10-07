@@ -1,8 +1,10 @@
 - [x] Fix bounds collision
+- [x] Add collision from top on knob
+- [x] Add knob Top collision animation
 - [ ] Design Home element rules
 - [ ] Add home elements
-- [ ] Add collision from top on knob
-- [ ] Add knob Top collision animation. 
 - [ ] Put in a sprite renderer for person
 - [ ] Design person layout. 
 - [ ] Handle responsive width. 
+- [ ] Consider the sensor object, do we need it or could it just be a gameobject. 
+- [ ] Consider adding enable disable to the gameobject. 
