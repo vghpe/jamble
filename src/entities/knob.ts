@@ -32,15 +32,23 @@ namespace Jamble {
     // Animation state
     private isDeflecting: boolean = false;
     private deflectionDirection: number = 1; // 1 for right, -1 for left
+    private deflectTimer: number = 0;    // seconds remaining for deflection hold
+    private readonly deflectDuration: number = 0.2; // seconds (was 200ms timeout)
     
     // Squash animation state (separate physics system)
     private isSquashing: boolean = false;
-    private squashStartTime: number = 0;
     private squashPhase: 'compress' | 'hold' | 'spring' = 'compress';
     private originalLength: number = 0;
-    private squashVelocity: number = 0;
+    private squashVelocity: number = 0;  // d(length)/dt
     private originalLineWidth: number = 0;
     private currentLineWidth: number = 0;
+    private squashPhaseTimer: number = 0; // seconds for compress/hold phases
+    private squashSpringElapsed: number = 0; // seconds elapsed in spring phase
+    // Use ω/ζ form for squash spring to match side spring formulation.
+    // Values chosen to preserve prior K=605, D=7.5 behavior: ω≈sqrt(605)≈24.6, ζ≈D/(2ω)≈0.15
+    private readonly squashOmega: number = 24.6;
+    private readonly squashZeta: number = 0.15;
+    private readonly squashHoldTimeS: number = 0.15; // seconds (was 150ms)
 
     constructor(id: string, x: number = 0, y: number = 0) {
       // Anchor the knob at the given position (slot). We'll use
@@ -75,8 +83,21 @@ namespace Jamble {
     }
 
     update(deltaTime: number): void {
+      // Update deflection target deterministically using timers
+      if (this.isDeflecting) {
+        this.deflectTimer -= deltaTime;
+        if (this.deflectTimer <= 0) {
+          this.isDeflecting = false;
+          this.thetaTarget = 0; // Return to center
+        } else {
+          const maxAngle = (this.config.maxAngleDeg * Math.PI) / 180;
+          this.thetaTarget = this.deflectionDirection * maxAngle;
+        }
+      }
+
       this.updateSpringPhysics(deltaTime);
       this.updateSquashPhysics(deltaTime); // Separate physics system for top collisions
+      // Update geometry after all physics updates
       this.updateSpringPoints();
     }
 
@@ -88,9 +109,6 @@ namespace Jamble {
       
       this.thetaDot += acceleration * deltaTime;
       this.theta += this.thetaDot * deltaTime;
-      
-      // Update spring points for rendering
-      this.updateSpringPoints();
     }
 
     // Collider world position is derived on demand by systems that need it.
@@ -171,17 +189,11 @@ namespace Jamble {
 
     deflect(direction: number): void {
       this.isDeflecting = true;
-      this.deflectionDirection = direction;
-      
+      this.deflectionDirection = direction >= 0 ? 1 : -1;
       // Set target deflection angle (use original maxAngleDeg)
       const maxAngle = (this.config.maxAngleDeg * Math.PI) / 180;
-      this.thetaTarget = direction * maxAngle;
-      
-      // Stop deflecting after animation completes
-      setTimeout(() => {
-        this.isDeflecting = false;
-        this.thetaTarget = 0; // Return to center
-      }, 200);
+      this.thetaTarget = this.deflectionDirection * maxAngle;
+      this.deflectTimer = this.deflectDuration;
     }
 
     onCollected(player: Player): number {
@@ -218,15 +230,15 @@ namespace Jamble {
     }
 
     private squashAnimation(): void {
-      // Start physics-based squash animation
+      // Start physics-based squash animation (deterministic timers)
       this.isSquashing = true;
-      this.squashStartTime = Date.now();
       this.squashPhase = 'compress';
       this.originalLength = this.config.length;
       this.originalLineWidth = this.config.lineWidth;
       this.squashVelocity = 0;
+      this.squashSpringElapsed = 0;
       
-      // Tuned squash amount
+      // Tuned squash amount (preserve current look)
       const squashPercent = 4;
       this.config.length = this.originalLength * (squashPercent / 100);
       
@@ -234,60 +246,56 @@ namespace Jamble {
       const widthMultiplier = 1.3;
       this.config.lineWidth = this.originalLineWidth * widthMultiplier;
       this.currentLineWidth = this.config.lineWidth;
+      
+      // Hold the compressed state briefly, then proceed to 'hold' and 'spring'
+      this.squashPhaseTimer = this.squashHoldTimeS;
     }
     
     private updateSquashPhysics(deltaTime: number): void {
       if (!this.isSquashing) return;
-      
-      const elapsed = Date.now() - this.squashStartTime;
-      
-      // Tuned hold time
-      const holdTime = 150;
-      
+
       if (this.squashPhase === 'compress') {
-        // Hold compressed state for specified time
-        if (elapsed >= holdTime) {
+        this.squashPhaseTimer -= deltaTime;
+        if (this.squashPhaseTimer <= 0) {
           this.squashPhase = 'hold';
-          this.squashStartTime = Date.now(); // Reset timer for hold phase
+          this.squashPhaseTimer = this.squashHoldTimeS;
         }
-      } else if (this.squashPhase === 'hold') {
-        // Hold compressed for specified time
-        if (elapsed >= holdTime) {
+        return;
+      }
+
+      if (this.squashPhase === 'hold') {
+        this.squashPhaseTimer -= deltaTime;
+        if (this.squashPhaseTimer <= 0) {
           this.squashPhase = 'spring';
-          this.squashStartTime = Date.now(); // Reset timer for spring phase
+          this.squashSpringElapsed = 0;
         }
-      } else if (this.squashPhase === 'spring') {
-        // Physics-based spring back over ~3 seconds
-        const springElapsed = elapsed / 1000; // Convert to seconds
+        return;
+      }
+
+      if (this.squashPhase === 'spring') {
+        // ω/ζ spring back to original length
         const targetLength = this.originalLength;
-        const currentLength = this.config.length;
-        
-        // Spring physics constants - tuned values
-        const springConstant = 605.0;
-        const damping = 7.5;
-        
-        // Calculate spring force for length
-        const displacement = currentLength - targetLength;
-        const springForce = -springConstant * displacement;
-        const dampingForce = -damping * this.squashVelocity;
-        const totalForce = springForce + dampingForce;
-        
-        // Update velocity and position (Euler integration)
-        this.squashVelocity += totalForce * deltaTime;
+        const displacement = this.config.length - targetLength;
+        const omega = this.squashOmega;
+        const zeta = this.squashZeta;
+        const acceleration = -2 * zeta * omega * this.squashVelocity - (omega * omega) * displacement;
+
+        // Integrate
+        this.squashVelocity += acceleration * deltaTime;
         this.config.length += this.squashVelocity * deltaTime;
-        
-        // Animate line width back to original (proportional to length recovery)
+        this.squashSpringElapsed += deltaTime;
+
+        // Animate line width back proportionally to recovery
         const lengthProgress = 1 - Math.abs(displacement) / Math.abs(this.originalLength * 0.9);
         const clampedProgress = Math.max(0, Math.min(1, lengthProgress));
         const widthMultiplier = 1.3;
         this.config.lineWidth = this.originalLineWidth * widthMultiplier - (this.originalLineWidth * (widthMultiplier - 1.0) * clampedProgress);
-        
-        // Stop animation when settled (close to target and low velocity) - ultra tight for fastest settling
+
+        // Stop when settled or after safety timeout
         const isSettled = Math.abs(displacement) < 0.01 && Math.abs(this.squashVelocity) < 0.01;
-        if (isSettled || springElapsed > 1.5) { // Max 1.5 seconds for even faster settling
-          // Animation complete
+        if (isSettled || this.squashSpringElapsed > 1.5) {
           this.config.length = this.originalLength;
-          this.config.lineWidth = this.originalLineWidth; // Reset width
+          this.config.lineWidth = this.originalLineWidth;
           this.isSquashing = false;
           this.squashVelocity = 0;
         }
@@ -295,18 +303,12 @@ namespace Jamble {
     }
 
     private deflectAnimation(): void {
-      // Original deflection animation for side collisions
+      // Original deflection animation for side collisions (deterministic timer)
       this.isDeflecting = true;
-      
-      // Set target deflection angle (use original maxAngleDeg)
+      this.deflectionDirection = Math.random() > 0.5 ? 1 : -1;
       const maxAngle = (this.config.maxAngleDeg * Math.PI) / 180;
-      this.thetaTarget = (Math.random() > 0.5 ? 1 : -1) * maxAngle;
-      
-      // Stop deflecting after animation completes
-      setTimeout(() => {
-        this.isDeflecting = false;
-        this.thetaTarget = 0; // Return to center
-      }, 200);
+      this.thetaTarget = this.deflectionDirection * maxAngle;
+      this.deflectTimer = this.deflectDuration;
     }
 
     onTriggerEnter(other: GameObject): void {
