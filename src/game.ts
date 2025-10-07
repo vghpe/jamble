@@ -113,7 +113,7 @@ namespace Jamble {
       // Place knob at the fourth available ground slot
       if (availableGroundSlots.length > 3) {
         const knobSlot = availableGroundSlots[3];
-        const knob = new Knob('knob1', knobSlot.x, knobSlot.y);
+        const knob = new Knob('knob1', knobSlot.x, knobSlot.y, this.slotManager, knobSlot.id);
         this.gameObjects.push(knob);
         this.slotManager.occupySlot(knobSlot.id, knob.id);
       }

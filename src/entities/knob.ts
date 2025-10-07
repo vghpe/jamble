@@ -1,5 +1,6 @@
 /// <reference path="../core/game-object.ts" />
 /// <reference path="../systems/economy-manager.ts" />
+/// <reference path="../slots/slot-manager.ts" />
 
 namespace Jamble {
   export class Knob extends GameObject implements CurrencyCollectible {
@@ -35,13 +36,23 @@ namespace Jamble {
     private deflectTimer: number = 0;    // seconds remaining for deflection hold
     private readonly deflectDuration: number = 0.2; // seconds (was 200ms timeout)
     
-    // Squash animation state (separate physics system)
+        // Squash animation state (separate physics system)
     private isSquashing: boolean = false;
+    private squashStartTime: number = 0;
     private squashPhase: 'compress' | 'hold' | 'spring' = 'compress';
     private originalLength: number = 0;
-    private squashVelocity: number = 0;  // d(length)/dt
+    private squashVelocity: number = 0;
     private originalLineWidth: number = 0;
     private currentLineWidth: number = 0;
+    
+    // Hit tolerance and relocation system
+    private hitTolerance: number = 3;           // Hits before relocation
+    private currentHits: number = 0;            // Current hit count
+    private knobState: 'active' | 'hidden' = 'active'; // Simple state
+    private respawnTimer: number = 0;           // 2-second delay timer
+    private readonly respawnDelay: number = 2.0; // 2 seconds
+    private slotManager: SlotManager;           // Reference to slot system
+    private currentSlotId: string = '';         // Track which slot we occupy
     private squashPhaseTimer: number = 0; // seconds for compress/hold phases
     private squashSpringElapsed: number = 0; // seconds elapsed in spring phase
     // Use ω/ζ form for squash spring to match side spring formulation.
@@ -50,12 +61,14 @@ namespace Jamble {
     private readonly squashZeta: number = 0.15;
     private readonly squashHoldTimeS: number = 0.15; // seconds (was 150ms)
 
-    constructor(id: string, x: number = 0, y: number = 0) {
+    constructor(id: string, x: number = 0, y: number = 0, slotManager: SlotManager, slotId: string) {
       // Anchor the knob at the given position (slot). We'll use
       // bottom-center as the anchor so the slot aligns with the base.
       super(id, x, y);
       
       this.economyManager = EconomyManager.getInstance();
+      this.slotManager = slotManager;
+      this.currentSlotId = slotId;
       
       // Canvas rendering with custom knob drawing
       this.render = {
@@ -83,22 +96,34 @@ namespace Jamble {
     }
 
     update(deltaTime: number): void {
-      // Update deflection target deterministically using timers
-      if (this.isDeflecting) {
-        this.deflectTimer -= deltaTime;
-        if (this.deflectTimer <= 0) {
-          this.isDeflecting = false;
-          this.thetaTarget = 0; // Return to center
-        } else {
-          const maxAngle = (this.config.maxAngleDeg * Math.PI) / 180;
-          this.thetaTarget = this.deflectionDirection * maxAngle;
+      // Handle respawn timer
+      if (this.knobState === 'hidden') {
+        this.respawnTimer -= deltaTime;
+        if (this.respawnTimer <= 0) {
+          this.respawn();
         }
+        return; // Skip physics while hidden
       }
+      
+      // Only update physics when active
+      if (this.knobState === 'active') {
+        // Update deflection target deterministically using timers
+        if (this.isDeflecting) {
+          this.deflectTimer -= deltaTime;
+          if (this.deflectTimer <= 0) {
+            this.isDeflecting = false;
+            this.thetaTarget = 0; // Return to center
+          } else {
+            const maxAngle = (this.config.maxAngleDeg * Math.PI) / 180;
+            this.thetaTarget = this.deflectionDirection * maxAngle;
+          }
+        }
 
-      this.updateSpringPhysics(deltaTime);
-      this.updateSquashPhysics(deltaTime); // Separate physics system for top collisions
-      // Update geometry after all physics updates
-      this.updateSpringPoints();
+        this.updateSpringPhysics(deltaTime);
+        this.updateSquashPhysics(deltaTime); // Separate physics system for top collisions
+        // Update geometry after all physics updates
+        this.updateSpringPoints();
+      }
     }
 
     private updateSpringPhysics(deltaTime: number): void {
@@ -197,6 +222,9 @@ namespace Jamble {
     }
 
     onCollected(player: Player): number {
+      // Only process if active
+      if (this.knobState !== 'active') return 0;
+      
       const collisionType = this.detectCollisionType(player);
       let currencyAmount = this.currencyValue; // Default side collision value (1)
       
@@ -208,6 +236,13 @@ namespace Jamble {
       }
       
       this.economyManager.addCurrency(currencyAmount);
+      
+      // Increment hit counter and check tolerance
+      this.currentHits++;
+      if (this.currentHits >= this.hitTolerance) {
+        this.startRelocation();
+      }
+      
       return currencyAmount;
     }
 
@@ -316,6 +351,51 @@ namespace Jamble {
       if (other instanceof Player) {
         // Collect currency when player touches knob (handles animation internally)
         this.onCollected(other as Player);
+      }
+    }
+
+    private startRelocation(): void {
+      this.knobState = 'hidden';
+      this.respawnTimer = this.respawnDelay;
+      
+      // Hide knob
+      this.render.visible = false;
+      if (this.collisionBox) {
+        this.collisionBox.category = 'deadly'; // Use existing category to disable normal collision
+      }
+      
+      // Find new slot
+      this.relocateToNewSlot();
+    }
+
+    private relocateToNewSlot(): void {
+      // Get available ground slots (excluding current)
+      const availableSlots = this.slotManager.getAvailableSlots('ground')
+        .filter(slot => slot.id !== this.currentSlotId);
+      
+      if (availableSlots.length > 0) {
+        // Pick random available slot
+        const newSlot = availableSlots[Math.floor(Math.random() * availableSlots.length)];
+        
+        // Update position and slot tracking
+        this.transform.x = newSlot.x;
+        this.transform.y = newSlot.y;
+        
+        // Update slot occupancy
+        this.slotManager.freeSlot(this.currentSlotId);
+        this.slotManager.occupySlot(newSlot.id, this.id);
+        this.currentSlotId = newSlot.id;
+      }
+    }
+
+    private respawn(): void {
+      this.knobState = 'active';
+      this.currentHits = 0;
+      
+      // Re-enable knob
+      this.render.visible = true;
+      if (this.collisionBox) {
+        this.collisionBox.category = 'kinematic';
       }
     }
   }
