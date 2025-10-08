@@ -1,4 +1,4 @@
-/// <reference path="../entities/player.ts" />
+/// <reference path="../entities/player/player.ts" />
 
 namespace Jamble {
   export interface CurrencyCollectible {

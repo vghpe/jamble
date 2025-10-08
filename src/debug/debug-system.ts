@@ -1,4 +1,4 @@
-/// <reference path="../entities/player.ts" />
+/// <reference path="../entities/player/player.ts" />
 /// <reference path="../systems/state-manager.ts" />
 /// <reference path="../systems/economy-manager.ts" />
 

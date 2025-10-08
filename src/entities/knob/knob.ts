@@ -1,13 +1,17 @@
-/// <reference path="../core/game-object.ts" />
-/// <reference path="../systems/economy-manager.ts" />
-/// <reference path="../slots/slot-manager.ts" />
+/// <reference path="../../core/game-object.ts" />
+/// <reference path="../../systems/economy-manager.ts" />
+/// <reference path="../../slots/slot-manager.ts" />
+/// <reference path="knob-anim.ts" />
 
 namespace Jamble {
   export class Knob extends GameObject implements CurrencyCollectible {
     public currencyValue = 1; // Base value for collisions
+    private readonly topHitValue: number = 5; // Currency for top collisions
+
     private economyManager: EconomyManager;
-    // Original knob configuration (from archive)
-    private config = {
+    private anim: KnobAnim;
+    //  knob configuration 
+    public config = {
       length: 10,           // Spring length in pixels
       segments: 6,          // Number of curve segments  
       omega: 18.0,          // Spring frequency
@@ -22,28 +26,13 @@ namespace Jamble {
     };
 
     // Spring physics state (original archive physics)
-    private theta: number = 0;           // Current angle
-    private thetaDot: number = 0;        // Angular velocity  
-    private thetaTarget: number = 0;     // Target angle
+    public theta: number = 0;           // Current angle
+    public thetaDot: number = 0;        // Angular velocity  
+    public thetaTarget: number = 0;     // Target angle
     
     // Cached calculations
     private basePos: { x: number; y: number } = { x: 0, y: 0 };
     private springPoints: { x: number; y: number }[] = [];
-    
-    // Animation state
-    private isDeflecting: boolean = false;
-    private deflectionDirection: number = 1; // 1 for right, -1 for left
-    private deflectTimer: number = 0;    // seconds remaining for deflection hold
-    private readonly deflectDuration: number = 0.2; // seconds (was 200ms timeout)
-    
-        // Squash animation state (separate physics system)
-    private isSquashing: boolean = false;
-    private squashStartTime: number = 0;
-    private squashPhase: 'compress' | 'hold' | 'spring' = 'compress';
-    private originalLength: number = 0;
-    private squashVelocity: number = 0;
-    private originalLineWidth: number = 0;
-    private currentLineWidth: number = 0;
     
     // Hit tolerance and relocation system
     private hitTolerance: number = 3;           // Hits before relocation
@@ -53,13 +42,7 @@ namespace Jamble {
     private readonly respawnDelay: number = 2.0; // 2 seconds
     private slotManager: SlotManager;           // Reference to slot system
     private currentSlotId: string = '';         // Track which slot we occupy
-    private squashPhaseTimer: number = 0; // seconds for compress/hold phases
-    private squashSpringElapsed: number = 0; // seconds elapsed in spring phase
-    // Use ω/ζ form for squash spring to match side spring formulation.
-    // Values chosen to preserve prior K=605, D=7.5 behavior: ω≈sqrt(605)≈24.6, ζ≈D/(2ω)≈0.15
-    private readonly squashOmega: number = 24.6;
-    private readonly squashZeta: number = 0.15;
-    private readonly squashHoldTimeS: number = 0.15; // seconds (was 150ms)
+
 
     constructor(id: string, x: number = 0, y: number = 0, slotManager: SlotManager, slotId: string) {
       // Anchor the knob at the given position (slot). We'll use
@@ -67,6 +50,7 @@ namespace Jamble {
       super(id, x, y);
       
       this.economyManager = EconomyManager.getInstance();
+      this.anim = new KnobAnim(this);
       this.slotManager = slotManager;
       this.currentSlotId = slotId;
       
@@ -107,34 +91,14 @@ namespace Jamble {
       
       // Only update physics when active
       if (this.knobState === 'active') {
-        // Update deflection target deterministically using timers
-        if (this.isDeflecting) {
-          this.deflectTimer -= deltaTime;
-          if (this.deflectTimer <= 0) {
-            this.isDeflecting = false;
-            this.thetaTarget = 0; // Return to center
-          } else {
-            const maxAngle = (this.config.maxAngleDeg * Math.PI) / 180;
-            this.thetaTarget = this.deflectionDirection * maxAngle;
-          }
-        }
-
-        this.updateSpringPhysics(deltaTime);
-        this.updateSquashPhysics(deltaTime); // Separate physics system for top collisions
+        // Delegate to animation/physics system
+        this.anim.update(deltaTime);
         // Update geometry after all physics updates
         this.updateSpringPoints();
       }
     }
 
-    private updateSpringPhysics(deltaTime: number): void {
-      // Original archive spring physics: F = -k*x - c*v where k = omega^2, c = 2*zeta*omega
-      const acceleration = 
-        -2 * this.config.zeta * this.config.omega * this.thetaDot -
-        this.config.omega * this.config.omega * (this.theta - this.thetaTarget);
-      
-      this.thetaDot += acceleration * deltaTime;
-      this.theta += this.thetaDot * deltaTime;
-    }
+    // Angular spring handled by KnobAnim
 
     // Collider world position is derived on demand by systems that need it.
 
@@ -213,12 +177,7 @@ namespace Jamble {
     }
 
     deflect(direction: number): void {
-      this.isDeflecting = true;
-      this.deflectionDirection = direction >= 0 ? 1 : -1;
-      // Set target deflection angle (use original maxAngleDeg)
-      const maxAngle = (this.config.maxAngleDeg * Math.PI) / 180;
-      this.thetaTarget = this.deflectionDirection * maxAngle;
-      this.deflectTimer = this.deflectDuration;
+      this.anim.triggerDeflect(direction);
     }
 
     onCollected(player: Player): number {
@@ -229,10 +188,10 @@ namespace Jamble {
       let currencyAmount = this.currencyValue; // Default side collision value (1)
       
       if (collisionType === 'top') {
-        currencyAmount = 5; // Top collision gives 5 points
-        this.squashAnimation();
+        currencyAmount = this.topHitValue; // Top collision gives more points
+        this.anim.triggerSquash();
       } else {
-        this.deflectAnimation();
+        this.anim.triggerDeflect(Math.random() > 0.5 ? 1 : -1);
       }
       
       this.economyManager.addCurrency(currencyAmount);
@@ -264,89 +223,10 @@ namespace Jamble {
       return 'side';
     }
 
-    private squashAnimation(): void {
-      // Start physics-based squash animation (deterministic timers)
-      this.isSquashing = true;
-      this.squashPhase = 'compress';
-      this.originalLength = this.config.length;
-      this.originalLineWidth = this.config.lineWidth;
-      this.squashVelocity = 0;
-      this.squashSpringElapsed = 0;
-      
-      // Tuned squash amount (preserve current look)
-      const squashPercent = 4;
-      this.config.length = this.originalLength * (squashPercent / 100);
-      
-      // Make it wider when squashed - tuned value
-      const widthMultiplier = 1.3;
-      this.config.lineWidth = this.originalLineWidth * widthMultiplier;
-      this.currentLineWidth = this.config.lineWidth;
-      
-      // Hold the compressed state briefly, then proceed to 'hold' and 'spring'
-      this.squashPhaseTimer = this.squashHoldTimeS;
-    }
-    
-    private updateSquashPhysics(deltaTime: number): void {
-      if (!this.isSquashing) return;
-
-      if (this.squashPhase === 'compress') {
-        this.squashPhaseTimer -= deltaTime;
-        if (this.squashPhaseTimer <= 0) {
-          this.squashPhase = 'hold';
-          this.squashPhaseTimer = this.squashHoldTimeS;
-        }
-        return;
-      }
-
-      if (this.squashPhase === 'hold') {
-        this.squashPhaseTimer -= deltaTime;
-        if (this.squashPhaseTimer <= 0) {
-          this.squashPhase = 'spring';
-          this.squashSpringElapsed = 0;
-        }
-        return;
-      }
-
-      if (this.squashPhase === 'spring') {
-        // ω/ζ spring back to original length
-        const targetLength = this.originalLength;
-        const displacement = this.config.length - targetLength;
-        const omega = this.squashOmega;
-        const zeta = this.squashZeta;
-        const acceleration = -2 * zeta * omega * this.squashVelocity - (omega * omega) * displacement;
-
-        // Integrate
-        this.squashVelocity += acceleration * deltaTime;
-        this.config.length += this.squashVelocity * deltaTime;
-        this.squashSpringElapsed += deltaTime;
-
-        // Animate line width back proportionally to recovery
-        const lengthProgress = 1 - Math.abs(displacement) / Math.abs(this.originalLength * 0.9);
-        const clampedProgress = Math.max(0, Math.min(1, lengthProgress));
-        const widthMultiplier = 1.3;
-        this.config.lineWidth = this.originalLineWidth * widthMultiplier - (this.originalLineWidth * (widthMultiplier - 1.0) * clampedProgress);
-
-        // Stop when settled or after safety timeout
-        const isSettled = Math.abs(displacement) < 0.01 && Math.abs(this.squashVelocity) < 0.01;
-        if (isSettled || this.squashSpringElapsed > 1.5) {
-          this.config.length = this.originalLength;
-          this.config.lineWidth = this.originalLineWidth;
-          this.isSquashing = false;
-          this.squashVelocity = 0;
-        }
-      }
-    }
-
-    private deflectAnimation(): void {
-      // Original deflection animation for side collisions (deterministic timer)
-      this.isDeflecting = true;
-      this.deflectionDirection = Math.random() > 0.5 ? 1 : -1;
-      const maxAngle = (this.config.maxAngleDeg * Math.PI) / 180;
-      this.thetaTarget = this.deflectionDirection * maxAngle;
-      this.deflectTimer = this.deflectDuration;
-    }
+    // Animation handled by KnobAnim
 
     onTriggerEnter(other: GameObject): void {
+      if (this.knobState !== 'active') return; // Ignore while hidden
       // Only react to player
       if (other instanceof Player) {
         // Collect currency when player touches knob (handles animation internally)
