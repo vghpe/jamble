@@ -18,7 +18,7 @@
     "src/entities/platform.ts",
     "src/skills/skill-system.ts",
     "src/systems/canvas-renderer.ts",
-    "src/systems/debug-renderer.ts",
+    "src/debug/debug-renderer.ts",
     "src/systems/collision-manager.ts",
     "src/systems/input-manager.ts",
     "src/systems/state-manager.ts",
