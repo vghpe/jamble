@@ -34,7 +34,7 @@ namespace Jamble {
         this.debugContainer.innerHTML = `
           <div class="debug-container">
             <div class="debug-header">
-              <h2>🎮 Jamble Debug</h2>
+              <h2>Debug</h2>
               <p class="debug-info">Rebuilt Architecture</p>
               <p class="build-info">Build: ${DebugSystem.BUILD_VERSION}</p>
             </div>
@@ -65,13 +65,11 @@ namespace Jamble {
                   <span class="checkmark"></span>
                   Show Colliders
                 </label>
-                <br><br>
                 <label class="debug-checkbox-label">
                   <input type="checkbox" id="toggle-origins" class="debug-checkbox">
                   <span class="checkmark"></span>
                   Show Origins
                 </label>
-                <br><br>
                 <label class="debug-checkbox-label">
                   <input type="checkbox" id="toggle-slots" class="debug-checkbox">
                   <span class="checkmark"></span>
@@ -116,6 +114,7 @@ namespace Jamble {
             margin-bottom: 12px;
           }
           
+    
           .debug-header h2 {
             margin: 0 0 8px 0;
             font-size: 16px;
