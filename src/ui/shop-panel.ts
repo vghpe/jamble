@@ -6,9 +6,11 @@ namespace Jamble {
   export class ShopPanel extends UIComponent {
     private shopManager: ShopManager;
     private stateManager: StateManager | null = null;
+    private shellNode: HTMLElement;
 
-    constructor(gameElement: HTMLElement) {
-      super(gameElement);
+    constructor(rootElement: HTMLElement, shellElement: HTMLElement) {
+      super(shellElement, { mountNode: rootElement, autoReposition: false });
+      this.shellNode = shellElement;
       this.shopManager = ShopManager.getInstance();
       this.setupShopStyles();
       this.createShopItems();
@@ -25,12 +27,8 @@ namespace Jamble {
       return container;
     }
 
-    protected calculatePosition(gameRect: DOMRect): { left: number; top: number } {
-      const containerWidth = this.container.offsetWidth || 0;
-      const left = gameRect.left + gameRect.width / 2 - containerWidth / 2;
-      const top = gameRect.bottom + 16; // 16px below the game canvas
-
-      return { left, top };
+    protected calculatePosition(_gameRect: DOMRect): { left: number; top: number } {
+      return { left: 0, top: 0 };
     }
 
     render(): void {
@@ -42,11 +40,15 @@ namespace Jamble {
      * Override show to maintain grid display instead of block
      */
     show(): void {
-      if (!this.getIsVisible()) {
-        this.isVisible = true;
-        this.container.style.display = 'grid'; // Keep grid layout
-        document.body.appendChild(this.container);
-        setTimeout(() => this.reposition(), 0);
+      if (this.isVisible) return;
+      this.isVisible = true;
+      this.container.style.display = 'grid';
+
+      const shell = this.shellNode;
+      if (shell.nextSibling) {
+        this.mountNode.insertBefore(this.container, shell.nextSibling);
+      } else {
+        this.mountNode.appendChild(this.container);
       }
     }
 
@@ -54,13 +56,14 @@ namespace Jamble {
       const style = document.createElement('style');
       style.textContent = `
         .shop-panel {
-          position: fixed;
+          position: static;
           display: grid;
           grid-template-columns: repeat(4, 50px);
           grid-template-rows: repeat(2, 50px);
           gap: 12px;
           width: max-content;
-          z-index: 1000;
+          margin: 16px auto 0;
+          justify-self: center;
           opacity: 0;
           visibility: hidden;
           transition: opacity 0.2s ease, visibility 0.2s ease;

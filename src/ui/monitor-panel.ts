@@ -8,14 +8,16 @@ namespace Jamble {
     private ctx: CanvasRenderingContext2D;
     private dataBuffer: number[] = [];
     private maxBufferSize: number;
-    private currentX: number = 0;
+    private pixelAccumulator: number = 0;
     
     // Parameters for the sine wave simulation and smoothing
     private time: number = 0;
-    private speed: number = 0.02;      // How fast the wave moves
-    private sampleRate: number = 2;    // How often to sample (pixels between samples)
-    private smooth: number = 0.3;      // EMA smoothing factor (0-1, higher = more responsive)
+    private frequency: number = 0.5;   // Wave oscillations per second
+    private amplitude: number = 0.3;   // Wave amplitude (0-0.5 range)
+    private sampleSpacing: number = 1; // Pixels between samples
+    private smoothing: number = 0.3;   // EMA smoothing factor
     private smoothedValue: number = 0; // Current smoothed value
+    private scrollSpeed: number = 50;  // Pixels per second for the graph advance
     
     constructor(parent: HTMLElement, width: number, height: number) {
       this.canvas = document.createElement('canvas');
@@ -36,7 +38,7 @@ namespace Jamble {
       this.ctx = this.canvas.getContext('2d')!;
       this.ctx.scale(dpr, dpr);
       
-      this.maxBufferSize = Math.ceil(width / this.sampleRate) + 10; // Buffer size based on width
+      this.maxBufferSize = Math.ceil(width / this.sampleSpacing) + 10; // Buffer size based on width
       
       parent.appendChild(this.canvas);
       
@@ -58,7 +60,7 @@ namespace Jamble {
       const clampedValue = Math.max(0, Math.min(1, value));
       
       // Apply EMA smoothing
-      this.smoothedValue = this.smooth * clampedValue + (1 - this.smooth) * this.smoothedValue;
+      this.smoothedValue = this.smoothing * clampedValue + (1 - this.smoothing) * this.smoothedValue;
       
       this.dataBuffer.push(this.smoothedValue);
       
@@ -69,15 +71,14 @@ namespace Jamble {
     }
     
     update(deltaTime: number): void {
-      this.time += this.speed;
-      
-      // Generate sine wave data for continuous scrolling effect
-      if (Math.floor(this.currentX) % this.sampleRate === 0) {
-        const sineValue = Math.sin(this.time) * 0.3 + 0.5; // Sine wave between 0.2-0.8
+      this.time += this.frequency * deltaTime;
+      this.pixelAccumulator += this.scrollSpeed * deltaTime;
+
+      while (this.pixelAccumulator >= this.sampleSpacing) {
+        this.pixelAccumulator -= this.sampleSpacing;
+        const sineValue = Math.sin(this.time * Math.PI * 2) * this.amplitude + 0.5; // Between 0-1
         this.pushData(sineValue);
       }
-      
-      this.currentX += 0.5; // Scroll speed
     }
     
     render(): void {
@@ -94,13 +95,13 @@ namespace Jamble {
       this.ctx.strokeStyle = '#757575';
       this.ctx.lineWidth = 1;
 
-      const totalWidth = totalSegments * this.sampleRate;
+      const totalWidth = totalSegments * this.sampleSpacing;
       const startX = width - totalWidth;
 
       for (let i = 0; i < totalSegments; i++) {
-        const x1 = startX + i * this.sampleRate;
+        const x1 = startX + i * this.sampleSpacing;
         const y1 = height - (this.dataBuffer[i] * height * 0.8) - height * 0.1; // 10% padding
-        const x2 = startX + (i + 1) * this.sampleRate;
+        const x2 = startX + (i + 1) * this.sampleSpacing;
         const y2 = height - (this.dataBuffer[i + 1] * height * 0.8) - height * 0.1;
 
         const age = (i + 1) / totalSegments; // 0 (old) → 1 (new)
@@ -117,26 +118,36 @@ namespace Jamble {
     }
     
     // Getters for debugging
-    getSampleRate(): number { return this.sampleRate; }
-    getSpeed(): number { return this.speed; }
-    getSmooth(): number { return this.smooth; }
+    getSampleSpacing(): number { return this.sampleSpacing; }
+    getScrollSpeed(): number { return this.scrollSpeed; }
+    getFrequency(): number { return this.frequency; }
+    getAmplitude(): number { return this.amplitude; }
+    getSmoothing(): number { return this.smoothing; }
     
     // Setters for debugging
-    setSampleRate(value: number): void {
-      this.sampleRate = Math.max(1, Math.min(10, value)); // Clamp between 1-10
-      this.maxBufferSize = Math.ceil((this.canvas.width / (window.devicePixelRatio || 1)) / this.sampleRate) + 10;
+    setSampleSpacing(value: number): void {
+      this.sampleSpacing = Math.max(1, Math.min(10, value)); // Clamp between 1-10
+      this.maxBufferSize = Math.ceil((this.canvas.width / (window.devicePixelRatio || 1)) / this.sampleSpacing) + 10;
       // Trim buffer if it's now too large
       while (this.dataBuffer.length > this.maxBufferSize) {
         this.dataBuffer.shift();
       }
     }
-    
-    setSpeed(value: number): void {
-      this.speed = Math.max(0.001, Math.min(0.1, value)); // Clamp between 0.001-0.1
+
+    setScrollSpeed(value: number): void {
+      this.scrollSpeed = Math.max(5, Math.min(200, value));
     }
-    
-    setSmooth(value: number): void {
-      this.smooth = Math.max(0.1, Math.min(1.0, value)); // Clamp between 0.1-1.0
+
+    setFrequency(value: number): void {
+      this.frequency = Math.max(0.05, Math.min(5, value));
+    }
+
+    setAmplitude(value: number): void {
+      this.amplitude = Math.max(0.05, Math.min(0.45, value));
+    }
+
+    setSmoothing(value: number): void {
+      this.smoothing = Math.max(0.1, Math.min(1.0, value));
     }
   }
 }

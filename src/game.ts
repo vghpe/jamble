@@ -21,7 +21,9 @@ namespace Jamble {
   }
 
   export class Game {
-    private gameElement: HTMLElement;
+    private rootElement: HTMLElement;
+    private gameShell: HTMLElement;
+    private canvasHost: HTMLElement;
     private renderer: CanvasRenderer;
     private debugRenderer: DebugRenderer;
     private stateManager: StateManager;
@@ -48,15 +50,24 @@ namespace Jamble {
           options = optionsOrContainer;
         }
 
-        this.gameElement = gameElement;
-        this.renderer = new CanvasRenderer(gameElement, this.gameWidth, this.gameHeight);
-        this.debugRenderer = new DebugRenderer(gameElement);
+        this.rootElement = gameElement;
+        this.rootElement.innerHTML = '';
+        this.gameShell = document.createElement('div');
+        this.gameShell.className = 'game-shell';
+        this.rootElement.appendChild(this.gameShell);
+
+        this.canvasHost = document.createElement('div');
+        this.canvasHost.className = 'game-canvas';
+        this.gameShell.appendChild(this.canvasHost);
+
+        this.renderer = new CanvasRenderer(this.canvasHost, this.gameWidth, this.gameHeight);
+        this.debugRenderer = new DebugRenderer(this.canvasHost);
         this.stateManager = new StateManager();
         this.inputManager = new InputManager();
         this.slotManager = new SlotManager(this.gameWidth, this.gameHeight);
         this.skillManager = new SkillManager();
         this.collisionManager = new CollisionManager(this.gameWidth, this.gameHeight);
-        this.hudManager = new HUDManager(gameElement, this.gameWidth, this.gameHeight);
+        this.hudManager = new HUDManager(this.gameShell, this.gameWidth, this.gameHeight);
         this.hudManager.setStateManager(this.stateManager);
 
         const debugContainer = options.container;
@@ -90,13 +101,20 @@ namespace Jamble {
     }
 
     private setupGameElement() {
-      this.gameElement.style.cssText = `
-        position: relative;
+      this.gameShell.style.cssText = `
         width: ${this.gameWidth}px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin: 0 auto;
+      `;
+
+      this.canvasHost.style.cssText = `
+        position: relative;
+        width: 100%;
         height: ${this.gameHeight}px;
         background: #e8f5e9;
-        overflow: visible;
-        margin: 0 auto;
+        overflow: hidden;
       `;
     }
 

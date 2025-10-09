@@ -3,16 +3,27 @@ namespace Jamble {
    * Base class for UI components that need positioning relative to the game canvas.
    * Provides shared functionality for positioning, lifecycle management, and styling.
    */
+  interface UIComponentOptions {
+    mountNode?: HTMLElement;
+    autoReposition?: boolean;
+  }
+
   export abstract class UIComponent {
     protected container: HTMLElement;
     protected gameElement: HTMLElement;
     protected isVisible: boolean = false;
+    protected mountNode: HTMLElement;
+    private autoReposition: boolean;
     
-    constructor(gameElement: HTMLElement) {
+    constructor(gameElement: HTMLElement, options: UIComponentOptions = {}) {
       this.gameElement = gameElement;
       this.container = this.createContainer();
+      this.mountNode = options.mountNode ?? document.body;
+      this.autoReposition = options.autoReposition ?? true;
       this.setupInitialStyles();
-      this.setupResizeListener();
+      if (this.autoReposition) {
+        this.setupResizeListener();
+      }
     }
     
     /**
@@ -26,8 +37,12 @@ namespace Jamble {
      * Subclasses can override to add specific styling.
      */
     protected setupInitialStyles(): void {
-      this.container.style.position = 'fixed';
-      this.container.style.zIndex = '10';
+      if (!this.container.style.position) {
+        this.container.style.position = 'fixed';
+      }
+      if (!this.container.style.zIndex) {
+        this.container.style.zIndex = '10';
+      }
     }
     
     /**
@@ -68,8 +83,10 @@ namespace Jamble {
       if (!this.isVisible) {
         this.isVisible = true;
         this.container.style.display = 'block';
-        document.body.appendChild(this.container);
-        setTimeout(() => this.reposition(), 0); // Wait for DOM update
+        this.mountNode.appendChild(this.container);
+        if (this.autoReposition) {
+          setTimeout(() => this.reposition(), 0); // Wait for DOM update
+        }
       }
     }
     
@@ -90,10 +107,9 @@ namespace Jamble {
      * Update the component (called from game loop).
      * Subclasses can override to add update logic.
      */
-    update(deltaTime: number): void {
-      if (this.isVisible) {
-        this.reposition();
-      }
+    update(_deltaTime: number): void {
+      // Default UI components don't require per-frame work.
+      // Subclasses can override when they need animation or polling.
     }
     
     /**

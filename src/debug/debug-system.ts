@@ -356,17 +356,25 @@ namespace Jamble {
             <input type="range" id="portrait-size-slider" min="40" max="120" value="${portraitSize}" style="width: 100px;">
             <span class="stat-value">${portraitSize}px</span>
             
-            <span class="stat-label">Activity Sample Rate:</span>
-            <input type="range" id="sample-rate-slider" min="1" max="10" step="1" value="${activityParams.sampleRate}" style="width: 100px;">
-            <span class="stat-value">${activityParams.sampleRate}Hz</span>
+            <span class="stat-label">Sample Spacing:</span>
+            <input type="range" id="sample-spacing-slider" min="1" max="10" step="1" value="${activityParams.sampleSpacing}" style="width: 100px;">
+            <span class="stat-value">${activityParams.sampleSpacing}px</span>
             
-            <span class="stat-label">Activity Speed:</span>
-            <input type="range" id="speed-slider" min="0.001" max="0.1" step="0.001" value="${activityParams.speed}" style="width: 100px;">
-            <span class="stat-value">${activityParams.speed.toFixed(3)}px/s</span>
+            <span class="stat-label">Scroll Speed:</span>
+            <input type="range" id="scroll-speed-slider" min="5" max="200" step="5" value="${activityParams.scrollSpeed}" style="width: 100px;">
+            <span class="stat-value">${activityParams.scrollSpeed.toFixed(0)}px/s</span>
+
+            <span class="stat-label">Wave Frequency:</span>
+            <input type="range" id="frequency-slider" min="0.05" max="5" step="0.05" value="${activityParams.frequency}" style="width: 100px;">
+            <span class="stat-value">${activityParams.frequency.toFixed(2)} Hz</span>
+
+            <span class="stat-label">Wave Amplitude:</span>
+            <input type="range" id="amplitude-slider" min="0.05" max="0.45" step="0.05" value="${activityParams.amplitude}" style="width: 100px;">
+            <span class="stat-value">${activityParams.amplitude.toFixed(2)}</span>
             
-            <span class="stat-label">Activity Smoothing:</span>
-            <input type="range" id="smooth-slider" min="0.1" max="1.0" step="0.05" value="${activityParams.smooth}" style="width: 100px;">
-            <span class="stat-value">${activityParams.smooth.toFixed(2)}</span>
+            <span class="stat-label">Smoothing:</span>
+            <input type="range" id="smoothing-slider" min="0.1" max="1.0" step="0.05" value="${activityParams.smoothing}" style="width: 100px;">
+            <span class="stat-value">${activityParams.smoothing.toFixed(2)}</span>
           `;
           
           // Add event listeners for all sliders
@@ -378,27 +386,43 @@ namespace Jamble {
             });
           }
           
-          const sampleRateSlider = uiContainer.querySelector('#sample-rate-slider') as HTMLInputElement;
-          if (sampleRateSlider) {
-            sampleRateSlider.addEventListener('input', (e) => {
+          const sampleSpacingSlider = uiContainer.querySelector('#sample-spacing-slider') as HTMLInputElement;
+          if (sampleSpacingSlider) {
+            sampleSpacingSlider.addEventListener('input', (e) => {
               const target = e.target as HTMLInputElement;
-              this.hudManager!.setActivitySampleRate(parseInt(target.value));
+              this.hudManager!.setActivitySampleSpacing(parseInt(target.value));
             });
           }
           
-          const speedSlider = uiContainer.querySelector('#speed-slider') as HTMLInputElement;
-          if (speedSlider) {
-            speedSlider.addEventListener('input', (e) => {
+          const scrollSpeedSlider = uiContainer.querySelector('#scroll-speed-slider') as HTMLInputElement;
+          if (scrollSpeedSlider) {
+            scrollSpeedSlider.addEventListener('input', (e) => {
               const target = e.target as HTMLInputElement;
-              this.hudManager!.setActivitySpeed(parseFloat(target.value));
+              this.hudManager!.setActivityScrollSpeed(parseFloat(target.value));
+            });
+          }
+
+          const frequencySlider = uiContainer.querySelector('#frequency-slider') as HTMLInputElement;
+          if (frequencySlider) {
+            frequencySlider.addEventListener('input', (e) => {
+              const target = e.target as HTMLInputElement;
+              this.hudManager!.setActivityFrequency(parseFloat(target.value));
+            });
+          }
+
+          const amplitudeSlider = uiContainer.querySelector('#amplitude-slider') as HTMLInputElement;
+          if (amplitudeSlider) {
+            amplitudeSlider.addEventListener('input', (e) => {
+              const target = e.target as HTMLInputElement;
+              this.hudManager!.setActivityAmplitude(parseFloat(target.value));
             });
           }
           
-          const smoothSlider = uiContainer.querySelector('#smooth-slider') as HTMLInputElement;
-          if (smoothSlider) {
-            smoothSlider.addEventListener('input', (e) => {
+          const smoothingSlider = uiContainer.querySelector('#smoothing-slider') as HTMLInputElement;
+          if (smoothingSlider) {
+            smoothingSlider.addEventListener('input', (e) => {
               const target = e.target as HTMLInputElement;
-              this.hudManager!.setActivitySmooth(parseFloat(target.value));
+              this.hudManager!.setActivitySmoothing(parseFloat(target.value));
             });
           }
         }
