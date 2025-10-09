@@ -12,7 +12,7 @@
 /// <reference path="skills/skill-system.ts" />
 /// <reference path="debug/debug-system.ts" />
 /// <reference path="systems/collision-manager.ts" />
-/// <reference path="ui/shop-ui.ts" />
+/// <reference path="ui/hud-manager.ts" />
 
 namespace Jamble {
   export class Game {
@@ -25,7 +25,7 @@ namespace Jamble {
     private skillManager: SkillManager;
     private debugSystem: DebugSystem;
     private collisionManager: CollisionManager;
-    private shopUI: ShopUI;
+    private hudManager: HUDManager;
     
     private player!: Player; // Will be initialized in createPlayer()
     private gameObjects: GameObject[] = [];
@@ -45,8 +45,8 @@ namespace Jamble {
         this.skillManager = new SkillManager();
         this.debugSystem = new DebugSystem(debugContainer);
         this.collisionManager = new CollisionManager(this.gameWidth, this.gameHeight);
-        this.shopUI = new ShopUI();
-        this.shopUI.setStateManager(this.stateManager);
+        this.hudManager = new HUDManager(gameElement, this.gameWidth, this.gameHeight);
+        this.hudManager.setStateManager(this.stateManager);
 
         this.setupGameElement();
         this.createPlayer();
@@ -55,6 +55,7 @@ namespace Jamble {
         
         this.debugSystem.setPlayer(this.player);
         this.debugSystem.setStateManager(this.stateManager);
+        this.debugSystem.setHUDManager(this.hudManager);
       } catch (error) {
         console.error('Error during game initialization:', error);
         throw error;
@@ -67,7 +68,7 @@ namespace Jamble {
         width: ${this.gameWidth}px;
         height: ${this.gameHeight}px;
         background: #e8f5e9;
-        overflow: hidden;
+        overflow: visible;
         margin: 0 auto;
       `;
     }
@@ -178,7 +179,8 @@ namespace Jamble {
       
       // Update UI systems
       this.debugSystem.update();
-      this.shopUI.update();
+      this.hudManager.updateShop(); // Update shop visibility
+      this.hudManager.update(deltaTime);
     }
 
     // Render debug overlays and visuals
@@ -192,6 +194,7 @@ namespace Jamble {
         this.debugSystem.getShowSlots(), 
         this.slotManager.getAllSlots()
       );
+      this.hudManager.render();
     }
 
     start() {

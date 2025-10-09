@@ -22,7 +22,7 @@ namespace Jamble {
       this.collisionBox = {
         x: 0,
         y: 0,
-        width: 60,
+        width: 50,
         height: 20,
         anchor: { x: 0.5, y: 1 },
         category: 'environment'

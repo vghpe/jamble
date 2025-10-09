@@ -1,6 +1,9 @@
 /// <reference path="../entities/player/player.ts" />
 /// <reference path="../systems/state-manager.ts" />
 /// <reference path="../systems/economy-manager.ts" />
+/// <reference path="../ui/hud-manager.ts" /> <reference path="../entities/player/player.ts" />
+/// <reference path="../systems/state-manager.ts" />
+/// <reference path="../systems/economy-manager.ts" />
 
 namespace Jamble {
   export class DebugSystem {
@@ -12,6 +15,7 @@ namespace Jamble {
     private player: Player | null = null;
     private stateManager: StateManager | null = null;
     private economyManager: EconomyManager;
+    private hudManager: HUDManager | null = null;
 
     constructor(container?: HTMLElement) {
       this.economyManager = EconomyManager.getInstance();
@@ -75,6 +79,15 @@ namespace Jamble {
                   <span class="checkmark"></span>
                   Show Slots
                 </label>
+              </div>
+            </div>
+            
+            <div class="debug-section">
+              <div class="section-header">UI Controls</div>
+              <div class="section-content">
+                <div class="form-grid" id="ui-controls">
+                  <!-- UI controls will be populated here -->
+                </div>
               </div>
             </div>
             
@@ -279,6 +292,10 @@ namespace Jamble {
       this.stateManager = stateManager;
     }
 
+    setHUDManager(hudManager: HUDManager) {
+      this.hudManager = hudManager;
+    }
+
     update() {
       if (!this.player) return;
 
@@ -325,6 +342,66 @@ namespace Jamble {
           <span class="stat-label">Grounded:</span>
           <span class="stat-value">${this.player.grounded ? 'YES' : 'NO'}</span>
         `;
+      }
+
+      // Update HUD controls
+      if (this.hudManager) {
+        const uiContainer = this.debugContainer.querySelector('#ui-controls');
+        if (uiContainer) {
+          const portraitSize = this.hudManager.getPortraitSize();
+          const activityParams = this.hudManager.getActivityParameters();
+          
+          uiContainer.innerHTML = `
+            <span class="stat-label">Portrait Size:</span>
+            <input type="range" id="portrait-size-slider" min="40" max="120" value="${portraitSize}" style="width: 100px;">
+            <span class="stat-value">${portraitSize}px</span>
+            
+            <span class="stat-label">Activity Sample Rate:</span>
+            <input type="range" id="sample-rate-slider" min="1" max="10" step="1" value="${activityParams.sampleRate}" style="width: 100px;">
+            <span class="stat-value">${activityParams.sampleRate}Hz</span>
+            
+            <span class="stat-label">Activity Speed:</span>
+            <input type="range" id="speed-slider" min="0.001" max="0.1" step="0.001" value="${activityParams.speed}" style="width: 100px;">
+            <span class="stat-value">${activityParams.speed.toFixed(3)}px/s</span>
+            
+            <span class="stat-label">Activity Smoothing:</span>
+            <input type="range" id="smooth-slider" min="0.1" max="1.0" step="0.05" value="${activityParams.smooth}" style="width: 100px;">
+            <span class="stat-value">${activityParams.smooth.toFixed(2)}</span>
+          `;
+          
+          // Add event listeners for all sliders
+          const portraitSlider = uiContainer.querySelector('#portrait-size-slider') as HTMLInputElement;
+          if (portraitSlider) {
+            portraitSlider.addEventListener('input', (e) => {
+              const target = e.target as HTMLInputElement;
+              this.hudManager!.setPortraitSize(parseInt(target.value));
+            });
+          }
+          
+          const sampleRateSlider = uiContainer.querySelector('#sample-rate-slider') as HTMLInputElement;
+          if (sampleRateSlider) {
+            sampleRateSlider.addEventListener('input', (e) => {
+              const target = e.target as HTMLInputElement;
+              this.hudManager!.setActivitySampleRate(parseInt(target.value));
+            });
+          }
+          
+          const speedSlider = uiContainer.querySelector('#speed-slider') as HTMLInputElement;
+          if (speedSlider) {
+            speedSlider.addEventListener('input', (e) => {
+              const target = e.target as HTMLInputElement;
+              this.hudManager!.setActivitySpeed(parseFloat(target.value));
+            });
+          }
+          
+          const smoothSlider = uiContainer.querySelector('#smooth-slider') as HTMLInputElement;
+          if (smoothSlider) {
+            smoothSlider.addEventListener('input', (e) => {
+              const target = e.target as HTMLInputElement;
+              this.hudManager!.setActivitySmooth(parseFloat(target.value));
+            });
+          }
+        }
       }
 
       // Update game state display
