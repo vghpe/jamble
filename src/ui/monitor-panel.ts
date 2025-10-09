@@ -43,14 +43,11 @@ namespace Jamble {
       // Initialize buffer with some starting values
       this.initializeBuffer();
     }
-    
+
     private initializeBuffer(): void {
-      // Fill initial buffer with sine wave
-      for (let i = 0; i < this.maxBufferSize; i++) {
-        const value = Math.sin(i * 0.1) * 0.5 + 0.5; // Normalized sine wave
-        this.dataBuffer.push(value);
-      }
-      this.smoothedValue = this.dataBuffer[this.dataBuffer.length - 1];
+      // Start with an empty buffer so the graph appears only after data arrives
+      this.dataBuffer.length = 0;
+      this.smoothedValue = 0.5; // Neutral midpoint to seed smoothing
     }
     
     /**
@@ -90,24 +87,33 @@ namespace Jamble {
       // Clear canvas with transparent background
       this.ctx.clearRect(0, 0, width, height);
       
-      // Draw the scrolling line
-      this.ctx.strokeStyle = '#757575ff';
+      // Draw the scrolling line with fading trail (newest samples fully opaque)
+      const totalSegments = this.dataBuffer.length - 1;
+      if (totalSegments <= 0) return;
+
+      this.ctx.strokeStyle = '#757575';
       this.ctx.lineWidth = 1;
-      this.ctx.beginPath();
-      
-      for (let i = 0; i < this.dataBuffer.length - 1; i++) {
-        const x1 = i * this.sampleRate;
+
+      const totalWidth = totalSegments * this.sampleRate;
+      const startX = width - totalWidth;
+
+      for (let i = 0; i < totalSegments; i++) {
+        const x1 = startX + i * this.sampleRate;
         const y1 = height - (this.dataBuffer[i] * height * 0.8) - height * 0.1; // 10% padding
-        const x2 = (i + 1) * this.sampleRate;
+        const x2 = startX + (i + 1) * this.sampleRate;
         const y2 = height - (this.dataBuffer[i + 1] * height * 0.8) - height * 0.1;
-        
-        if (i === 0) {
-          this.ctx.moveTo(x1, y1);
-        }
+
+        const age = (i + 1) / totalSegments; // 0 (old) → 1 (new)
+        const opacity = Math.pow(age, 1.5); // Ease curve for nicer falloff
+
+        this.ctx.save();
+        this.ctx.globalAlpha = opacity;
+        this.ctx.beginPath();
+        this.ctx.moveTo(x1, y1);
         this.ctx.lineTo(x2, y2);
+        this.ctx.stroke();
+        this.ctx.restore();
       }
-      
-      this.ctx.stroke();
     }
     
     // Getters for debugging
