@@ -89,18 +89,35 @@
         document.addEventListener('DOMContentLoaded', function() {
             try {
                 console.log('DOM loaded, initializing game...');
+                const params = new URLSearchParams(window.location.search);
+                const debugEnabled = params.has('debug');
+
                 const gameContainer = document.getElementById('jamble-game');
-                const debugContainer = document.getElementById('debug-container');
-                
                 if (!gameContainer) {
                     throw new Error('Game container not found');
                 }
-                if (!debugContainer) {
-                    throw new Error('Debug container not found');
+
+                let options;
+                if (debugEnabled) {
+                    const debugContainer = document.getElementById('debug-container');
+                    if (!debugContainer) {
+                        throw new Error('Debug container not found');
+                    }
+                    console.log('Initializing with debug panel');
+                    options = {
+                        debug: true,
+                        container: debugContainer
+                    };
+                } else {
+                    console.log('Initializing with debug disabled');
+                    const debugPanel = document.querySelector('.debug-panel');
+                    if (debugPanel) {
+                        debugPanel.remove();
+                    }
+                    options = { debug: false };
                 }
-                
-                console.log('Containers found, creating game...');
-                const game = new Jamble.Game(gameContainer, debugContainer);
+
+                const game = new Jamble.Game(gameContainer, options);
                 console.log('Game created, starting...');
                 game.start();
                 console.log('Game started successfully');
@@ -110,6 +127,11 @@
                 const debugContainer = document.getElementById('debug-container');
                 if (debugContainer) {
                     debugContainer.innerHTML = '<div style="padding: 20px; color: red;"><h3>Error:</h3><pre>' + error.message + '</pre></div>';
+                } else {
+                    const errorBox = document.createElement('div');
+                    errorBox.style.cssText = 'position:absolute; top:20px; left:50%; transform:translateX(-50%); background:#fff0f0; border:1px solid #ff4d4f; color:#c0392b; padding:16px; max-width:320px; font-family:monospace; z-index:1000;';
+                    errorBox.innerHTML = '<strong>Error:</strong> ' + error.message;
+                    document.body.appendChild(errorBox);
                 }
             }
         });

@@ -15,6 +15,11 @@
 /// <reference path="ui/hud-manager.ts" />
 
 namespace Jamble {
+  interface GameOptions {
+    debug?: boolean;
+    container?: HTMLElement;
+  }
+
   export class Game {
     private gameElement: HTMLElement;
     private renderer: CanvasRenderer;
@@ -23,7 +28,7 @@ namespace Jamble {
     private inputManager: InputManager;
     private slotManager: SlotManager;
     private skillManager: SkillManager;
-    private debugSystem: DebugSystem;
+    private debugSystem: DebugSystem | null;
     private collisionManager: CollisionManager;
     private hudManager: HUDManager;
     
@@ -34,8 +39,15 @@ namespace Jamble {
     private gameWidth: number = 500;
     private gameHeight: number = 100;
 
-    constructor(gameElement: HTMLElement, debugContainer?: HTMLElement) {
+    constructor(gameElement: HTMLElement, optionsOrContainer?: HTMLElement | GameOptions) {
       try {
+        let options: GameOptions = {};
+        if (optionsOrContainer instanceof HTMLElement) {
+          options = { debug: true, container: optionsOrContainer };
+        } else if (optionsOrContainer) {
+          options = optionsOrContainer;
+        }
+
         this.gameElement = gameElement;
         this.renderer = new CanvasRenderer(gameElement, this.gameWidth, this.gameHeight);
         this.debugRenderer = new DebugRenderer(gameElement);
@@ -43,19 +55,34 @@ namespace Jamble {
         this.inputManager = new InputManager();
         this.slotManager = new SlotManager(this.gameWidth, this.gameHeight);
         this.skillManager = new SkillManager();
-        this.debugSystem = new DebugSystem(debugContainer);
         this.collisionManager = new CollisionManager(this.gameWidth, this.gameHeight);
         this.hudManager = new HUDManager(gameElement, this.gameWidth, this.gameHeight);
         this.hudManager.setStateManager(this.stateManager);
+
+        const debugContainer = options.container;
+        const debugRequested = options.debug ?? Boolean(debugContainer);
+
+        if (debugRequested) {
+          if (debugContainer) {
+            this.debugSystem = new DebugSystem(debugContainer);
+          } else {
+            console.warn('Debug requested but no container provided. Debug UI disabled.');
+            this.debugSystem = null;
+          }
+        } else {
+          this.debugSystem = null;
+        }
 
         this.setupGameElement();
         this.createPlayer();
         this.TempEntitiesLayout();
         this.setupInput();
-        
-        this.debugSystem.setPlayer(this.player);
-        this.debugSystem.setStateManager(this.stateManager);
-        this.debugSystem.setHUDManager(this.hudManager);
+
+        if (this.debugSystem) {
+          this.debugSystem.setPlayer(this.player);
+          this.debugSystem.setStateManager(this.stateManager);
+          this.debugSystem.setHUDManager(this.hudManager);
+        }
       } catch (error) {
         console.error('Error during game initialization:', error);
         throw error;
@@ -178,7 +205,9 @@ namespace Jamble {
       this.collisionManager.update(this.gameObjects);
       
       // Update UI systems
-      this.debugSystem.update();
+      if (this.debugSystem) {
+        this.debugSystem.update();
+      }
       this.hudManager.updateShop(); // Update shop visibility
       this.hudManager.update(deltaTime);
     }
@@ -189,9 +218,9 @@ namespace Jamble {
       this.renderer.render(this.gameObjects);
       this.debugRenderer.render(
         this.gameObjects, 
-        this.debugSystem.getShowColliders(), 
-        this.debugSystem.getShowOrigins(), 
-        this.debugSystem.getShowSlots(), 
+        this.debugSystem ? this.debugSystem.getShowColliders() : false,
+        this.debugSystem ? this.debugSystem.getShowOrigins() : false,
+        this.debugSystem ? this.debugSystem.getShowSlots() : false,
         this.slotManager.getAllSlots()
       );
       this.hudManager.render();
