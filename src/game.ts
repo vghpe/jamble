@@ -13,6 +13,7 @@
 /// <reference path="debug/debug-system.ts" />
 /// <reference path="systems/collision-manager.ts" />
 /// <reference path="ui/hud-manager.ts" />
+/// <reference path="npc/soma.ts" />
 
 namespace Jamble {
   interface GameOptions {
@@ -32,6 +33,7 @@ namespace Jamble {
     private skillManager: SkillManager;
     private debugSystem: DebugSystem | null;
     private collisionManager: CollisionManager;
+    private activeNPC: Soma;  // Current active NPC (Soma for now)
     private hudManager: HUDManager;
     
     private player!: Player; // Will be initialized in createPlayer()
@@ -66,6 +68,7 @@ namespace Jamble {
         this.inputManager = new InputManager();
         this.slotManager = new SlotManager(this.gameWidth, this.gameHeight);
         this.skillManager = new SkillManager();
+        this.activeNPC = new Soma();  // Initialize our active NPC
         this.collisionManager = new CollisionManager(this.gameWidth, this.gameHeight);
         this.hudManager = new HUDManager(this.gameShell, this.gameWidth, this.gameHeight);
         this.hudManager.setStateManager(this.stateManager);
@@ -88,6 +91,15 @@ namespace Jamble {
         this.createPlayer();
         this.TempEntitiesLayout();
         this.setupInput();
+        
+        // Initialize active NPC
+        this.activeNPC.initialize();
+        
+        // Connect NPC arousal impulses to HUD - when NPC receives impulse, forward to UI
+        this.activeNPC.onArousalImpulse((impulse, npc) => {
+          // Forward the actual impulse amount to the arousal panel
+          this.hudManager.applyArousalImpulse(impulse);
+        });
 
         if (this.debugSystem) {
           this.debugSystem.setPlayer(this.player);
@@ -159,7 +171,7 @@ namespace Jamble {
       // Place knob at the fourth available ground slot
       if (availableGroundSlots.length > 3) {
         const knobSlot = availableGroundSlots[3];
-        const knob = new Knob('knob1', knobSlot.x, knobSlot.y, this.slotManager, knobSlot.id);
+        const knob = new Knob('knob1', knobSlot.x, knobSlot.y, this.slotManager, knobSlot.id, this.activeNPC);
         this.gameObjects.push(knob);
         this.slotManager.occupySlot(knobSlot.id, knob.id);
       }
@@ -215,6 +227,9 @@ namespace Jamble {
 
     private update(deltaTime: number) {
       this.handleInput();
+      
+      // Update active NPC
+      this.activeNPC.update(deltaTime);
       
       // Update all game objects
       this.gameObjects.forEach(obj => obj.update(deltaTime));

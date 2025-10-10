@@ -1,6 +1,7 @@
 /// <reference path="../../core/game-object.ts" />
 /// <reference path="../../systems/economy-manager.ts" />
 /// <reference path="../../slots/slot-manager.ts" />
+/// <reference path="../../npc/base-npc.ts" />
 /// <reference path="knob-anim.ts" />
 
 namespace Jamble {
@@ -9,6 +10,7 @@ namespace Jamble {
     private readonly topHitValue: number = 5; // Currency for top collisions
 
     private economyManager: EconomyManager;
+    private activeNPC: BaseNPC;
     private anim: KnobAnim;
     //  knob configuration 
     public config = {
@@ -44,12 +46,13 @@ namespace Jamble {
     private currentSlotId: string = '';         // Track which slot we occupy
 
 
-    constructor(id: string, x: number = 0, y: number = 0, slotManager: SlotManager, slotId: string) {
+    constructor(id: string, x: number = 0, y: number = 0, slotManager: SlotManager, slotId: string, activeNPC: BaseNPC) {
       // Anchor the knob at the given position (slot). We'll use
       // bottom-center as the anchor so the slot aligns with the base.
       super(id, x, y);
       
       this.economyManager = EconomyManager.getInstance();
+      this.activeNPC = activeNPC;
       this.anim = new KnobAnim(this);
       this.slotManager = slotManager;
       this.currentSlotId = slotId;
@@ -186,21 +189,28 @@ namespace Jamble {
       
       const collisionType = this.detectCollisionType(player);
       let currencyAmount = this.currencyValue; // Default side collision value (1)
+      let arousalImpact: number;
       
       if (collisionType === 'top') {
         currencyAmount = this.topHitValue; // Top collision gives more points
+        arousalImpact = 0.5; // Strong pulse (top hits)
         this.anim.triggerSquash();
       } else {
+        arousalImpact = 0.3; // Mid pulse (side hits)  
         this.anim.triggerDeflect(Math.random() > 0.5 ? 1 : -1);
       }
       
       this.economyManager.addCurrency(currencyAmount);
       
+      // Add arousal impact to active NPC only - HUD will listen to NPC changes
+      this.activeNPC.applyArousalImpulse(arousalImpact);
+      
       // Increment hit counter and check tolerance
       this.currentHits++;
-      if (this.currentHits >= this.hitTolerance) {
-        this.startRelocation();
-      }
+      // TODO: Disabled relocation - knob will now hide/pop based on other conditions
+      // if (this.currentHits >= this.hitTolerance) {
+      //   this.startRelocation();
+      // }
       
       return currencyAmount;
     }
