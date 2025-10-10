@@ -25,7 +25,7 @@ namespace Jamble {
         height: ${height}px;
         flex: 1;
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         justify-content: stretch;
         align-items: stretch;
         gap: 2px;
@@ -34,14 +34,14 @@ namespace Jamble {
 
       parent.appendChild(this.container);
 
-      const firstPanelHeight = Math.floor(height / 2);
-      const secondPanelHeight = height - firstPanelHeight;
+      const halfWidth = Math.floor(width / 2);
+      const secondWidth = width - halfWidth;
 
-      this.heartRatePanel = new HeartRatePanel(this.container, width, firstPanelHeight, {
+      this.heartRatePanel = new HeartRatePanel(this.container, halfWidth, height, {
         strokeStyle: '#757575'
       });
 
-      this.arousalPanel = new ArousalPanel(this.container, width, secondPanelHeight, {
+      this.arousalPanel = new ArousalPanel(this.container, secondWidth, height, {
         strokeStyle: '#59a869',
         baselineValue: 0.2,
         maintainedValue: 0.85
@@ -64,6 +64,18 @@ namespace Jamble {
 
     setBalanceMaintained(value: boolean): void {
       this.arousalPanel.setBalanceMaintained(value);
+    }
+
+    applyArousalImpulse(amount: number): void {
+      this.arousalPanel.applyImpulse(amount);
+    }
+
+    setArousalDecayRate(value: number): void {
+      this.arousalPanel.setDecayRate(value);
+    }
+
+    getArousalDecayRate(): number {
+      return this.arousalPanel.getDecayRate();
     }
 
     // Debug accessors (legacy API passthroughs)

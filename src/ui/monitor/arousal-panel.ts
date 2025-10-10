@@ -44,6 +44,24 @@ namespace Jamble {
       this.maintainedValue = Math.max(this.baselineValue, clamped);
     }
 
+    setDecayRate(value: number): void {
+      this.decayRate = Math.max(0, Math.min(5, value));
+    }
+
+    getDecayRate(): number {
+      return this.decayRate;
+    }
+
+    setRiseRate(value: number): void {
+      this.riseRate = Math.max(0, Math.min(5, value));
+    }
+
+    applyImpulse(amount: number): void {
+      const clamped = Math.max(0, Math.min(1, this.currentValue + amount));
+      this.currentValue = clamped;
+      this.pushImmediate(clamped);
+    }
+
     protected generateSample(sampleIntervalSeconds: number): number | null {
       const target = this.balanceMaintained ? this.maintainedValue : this.baselineValue;
       const rate = this.balanceMaintained ? this.riseRate : this.decayRate;

@@ -142,7 +142,8 @@ namespace Jamble {
         scrollSpeed: this.monitorPanel.getScrollSpeed(),
         frequency: this.monitorPanel.getFrequency(),
         amplitude: this.monitorPanel.getAmplitude(),
-        smoothing: this.monitorPanel.getSmoothing()
+        smoothing: this.monitorPanel.getSmoothing(),
+        arousalDecayRate: this.monitorPanel.getArousalDecayRate()
       };
     }
 
@@ -167,6 +168,14 @@ namespace Jamble {
 
     setActivitySmoothing(value: number): void {
       this.monitorPanel.setSmoothing(value);
+    }
+
+    setArousalDecayRate(value: number): void {
+      this.monitorPanel.setArousalDecayRate(value);
+    }
+
+    applyArousalImpulse(amount: number): void {
+      this.monitorPanel.applyArousalImpulse(amount);
     }
     
     /**

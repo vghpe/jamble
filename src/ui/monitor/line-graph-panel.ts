@@ -130,6 +130,16 @@ namespace Jamble {
       }
     }
 
+    protected pushImmediate(value: number): void {
+      const clampedValue = Math.max(0, Math.min(1, value));
+      this.smoothedValue = clampedValue;
+      this.dataBuffer.push(clampedValue);
+
+      if (this.dataBuffer.length > this.maxBufferSize) {
+        this.dataBuffer.shift();
+      }
+    }
+
     setSampleSpacing(value: number): void {
       this.sampleSpacing = Math.max(1, Math.min(10, value));
       this.recalculateBufferSize();
@@ -176,6 +186,7 @@ namespace Jamble {
         height: ${height}px;
         display: block;
         flex: 1;
+        border: 1px solid #999;
         box-sizing: border-box;
       `;
 
