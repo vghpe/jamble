@@ -1,6 +1,6 @@
 /// <reference path="ui-component-base.ts" />
 /// <reference path="portrait-panel.ts" />
-/// <reference path="monitor-panel.ts" />
+/// <reference path="monitor/monitor-panel.ts" />
 /// <reference path="shop-panel.ts" />
 
 namespace Jamble {
