@@ -98,8 +98,6 @@ namespace Jamble {
       const totalWidth = totalSegments * this.sampleSpacing;
       const startX = width - totalWidth;
 
-      this.ctx.lineWidth = 1;
-
       for (let i = 0; i < totalSegments; i++) {
         const x1 = startX + i * this.sampleSpacing;
         const x2 = startX + (i + 1) * this.sampleSpacing;
@@ -108,10 +106,13 @@ namespace Jamble {
 
         const age = (i + 1) / totalSegments;
         const opacity = Math.pow(age, 1.5);
+        const segmentValue = this.dataBuffer[i + 1];
+        const strokeColor = this.getStrokeColor(segmentValue);
 
         this.ctx.save();
         this.ctx.globalAlpha = opacity;
-        this.ctx.strokeStyle = this.strokeStyle;
+        this.ctx.strokeStyle = strokeColor;
+        this.ctx.lineWidth = 3;
         this.ctx.beginPath();
         this.ctx.moveTo(x1, y1);
         this.ctx.lineTo(x2, y2);
@@ -203,6 +204,10 @@ namespace Jamble {
       while (this.dataBuffer.length > this.maxBufferSize) {
         this.dataBuffer.shift();
       }
+    }
+
+    protected getStrokeColor(_value: number): string {
+      return this.strokeStyle;
     }
   }
 }
