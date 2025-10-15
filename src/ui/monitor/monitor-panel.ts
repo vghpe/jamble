@@ -1,17 +1,17 @@
 /// <reference path="line-graph-panel.ts" />
 /// <reference path="heart-rate-panel.ts" />
-/// <reference path="arousal-panel.ts" />
+/// <reference path="sensation-panel.ts" />
 
 namespace Jamble {
   /**
-   * MonitorPanel orchestrates the heart-rate (legacy activity) and arousal graphs.
+   * MonitorPanel orchestrates the heart-rate (legacy activity) and sensation graphs.
    * It owns a flex column container that splits the allotted height evenly
    * between both child panels.
    */
   export class MonitorPanel {
     private container: HTMLElement;
     private heartRatePanel: HeartRatePanel;
-    private arousalPanel: ArousalPanel;
+    private sensationPanel: SensationPanel;
     private width: number;
     private height: number;
 
@@ -41,41 +41,38 @@ namespace Jamble {
         strokeStyle: '#757575'
       });
 
-      this.arousalPanel = new ArousalPanel(this.container, secondWidth, height, {
+      this.sensationPanel = new SensationPanel(this.container, secondWidth, height, {
         strokeStyle: '#59a869',
-        baselineValue: 0.2,
-        maintainedValue: 0.85
+        initialValue: 0.2
       });
     }
 
     update(deltaTime: number): void {
       this.heartRatePanel.update(deltaTime);
-      this.arousalPanel.update(deltaTime);
+      this.sensationPanel.update(deltaTime);
     }
 
     render(): void {
       this.heartRatePanel.render();
-      this.arousalPanel.render();
+      this.sensationPanel.render();
     }
 
     pushData(value: number): void {
       this.heartRatePanel.pushData(value);
     }
 
-    setBalanceMaintained(value: boolean): void {
-      this.arousalPanel.setBalanceMaintained(value);
+    /**
+     * Set the sensation value (0-1 normalized) from external source (e.g., NPC)
+     */
+    setSensationValue(value: number): void {
+      this.sensationPanel.setValue(value);
     }
 
-    applyArousalImpulse(amount: number): void {
-      this.arousalPanel.applyImpulse(amount);
-    }
-
-    setArousalDecayRate(value: number): void {
-      this.arousalPanel.setDecayRate(value);
-    }
-
-    getArousalDecayRate(): number {
-      return this.arousalPanel.getDecayRate();
+    /**
+     * Get the current sensation value
+     */
+    getSensationValue(): number {
+      return this.sensationPanel.getValue();
     }
 
     // Debug accessors (legacy API passthroughs)
@@ -101,12 +98,12 @@ namespace Jamble {
 
     setSampleSpacing(value: number): void {
       this.heartRatePanel.setSampleSpacing(value);
-      this.arousalPanel.setSampleSpacing(value);
+      this.sensationPanel.setSampleSpacing(value);
     }
 
     setScrollSpeed(value: number): void {
       this.heartRatePanel.setScrollSpeed(value);
-      this.arousalPanel.setScrollSpeed(value);
+      this.sensationPanel.setScrollSpeed(value);
     }
 
     setFrequency(value: number): void {
@@ -119,7 +116,7 @@ namespace Jamble {
 
     setSmoothing(value: number): void {
       this.heartRatePanel.setSmoothing(value);
-      this.arousalPanel.setSmoothing(value);
+      this.sensationPanel.setSmoothing(value);
     }
   }
 }

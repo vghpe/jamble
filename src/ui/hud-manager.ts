@@ -142,8 +142,7 @@ namespace Jamble {
         scrollSpeed: this.monitorPanel.getScrollSpeed(),
         frequency: this.monitorPanel.getFrequency(),
         amplitude: this.monitorPanel.getAmplitude(),
-        smoothing: this.monitorPanel.getSmoothing(),
-        arousalDecayRate: this.monitorPanel.getArousalDecayRate()
+        smoothing: this.monitorPanel.getSmoothing()
       };
     }
 
@@ -170,12 +169,18 @@ namespace Jamble {
       this.monitorPanel.setSmoothing(value);
     }
 
-    setArousalDecayRate(value: number): void {
-      this.monitorPanel.setArousalDecayRate(value);
+    /**
+     * Set sensation value (0-1) for the sensation panel from external source
+     */
+    setSensationValue(value: number): void {
+      this.monitorPanel.setSensationValue(value);
     }
 
-    applyArousalImpulse(amount: number): void {
-      this.monitorPanel.applyArousalImpulse(amount);
+    /**
+     * Get current sensation value
+     */
+    getSensationValue(): number {
+      return this.monitorPanel.getSensationValue();
     }
     
     /**

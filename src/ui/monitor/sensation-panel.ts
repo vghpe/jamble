@@ -1,21 +1,10 @@
 namespace Jamble {
-  export interface ArousalOptions extends LineGraphOptions {
-    baselineValue?: number;
-    maintainedValue?: number;
-    riseRate?: number;
-    decayRate?: number;
-  }
-
   /**
-   * Arousal panel – communicates progress toward sustaining a balance threshold.
-   * Default state is a low, steady line that rises while balance is maintained.
+   * Sensation panel – displays a normalized (0-1) sensation value.
+   * The panel is agnostic to what the value means; it just renders it with color mapping.
+   * External code (NPC) controls the value and its changes over time.
    */
-  export class ArousalPanel extends LineGraphPanel {
-    private balanceMaintained: boolean = false;
-    private baselineValue: number;
-    private maintainedValue: number;
-    private riseRate: number;
-    private decayRate: number;
+  export class SensationPanel extends LineGraphPanel {
     private currentValue: number;
     private readonly zoneCount: number = 6;
     private readonly intensityMin: number = -1;
@@ -27,69 +16,40 @@ namespace Jamble {
     private readonly highLightness: number = 12.0;
     private readonly zoneColors: string[];
 
-    constructor(parent: HTMLElement, width: number, height: number, options: ArousalOptions = {}) {
+    constructor(parent: HTMLElement, width: number, height: number, options: LineGraphOptions = {}) {
       super(parent, width, height, {
         ...options,
-        initialValue: options.initialValue ?? options.baselineValue ?? 0.2,
+        initialValue: options.initialValue ?? 0.2,
         strokeStyle: options.strokeStyle ?? '#59a869'
       });
 
-      this.baselineValue = Math.max(0, Math.min(1, options.baselineValue ?? 0.2));
-      this.maintainedValue = Math.max(this.baselineValue, Math.min(1, options.maintainedValue ?? 0.85));
-      this.riseRate = options.riseRate ?? 0.8;   // units per second
-      this.decayRate = options.decayRate ?? 0.4; // units per second
-      this.currentValue = this.baselineValue;
+      this.currentValue = options.initialValue ?? 0.2;
       this.zoneColors = this.buildZoneColors();
     }
 
-    setBalanceMaintained(value: boolean): void {
-      this.balanceMaintained = value;
+    /**
+     * Set the current sensation value (0-1 normalized).
+     * This should be called by external code (e.g., NPC system) to update the display.
+     */
+    setValue(value: number): void {
+      this.currentValue = Math.max(0, Math.min(1, value));
     }
 
     /**
-     * Optional external tuning of the arousal meter.
+     * Get the current sensation value.
      */
-    setMaintainedIntensity(amount: number): void {
-      const clamped = Math.max(0, Math.min(1, amount));
-      this.maintainedValue = Math.max(this.baselineValue, clamped);
+    getValue(): number {
+      return this.currentValue;
     }
 
-    setDecayRate(value: number): void {
-      this.decayRate = Math.max(0, Math.min(5, value));
-    }
-
-    getDecayRate(): number {
-      return this.decayRate;
-    }
-
-    setRiseRate(value: number): void {
-      this.riseRate = Math.max(0, Math.min(5, value));
-    }
-
-    applyImpulse(amount: number): void {
-      const clamped = Math.max(0, Math.min(1, this.currentValue + amount));
-      this.currentValue = clamped;
-      this.pushImmediate(clamped);
-    }
-
-    protected generateSample(sampleIntervalSeconds: number): number | null {
-      const target = this.balanceMaintained ? this.maintainedValue : this.baselineValue;
-      const rate = this.balanceMaintained ? this.riseRate : this.decayRate;
-
-      this.currentValue = this.moveTowards(this.currentValue, target, rate * sampleIntervalSeconds);
+    protected generateSample(_sampleIntervalSeconds: number): number | null {
+      // Simply return the current value - no internal state changes
       return this.currentValue;
     }
 
     protected getStrokeColor(value: number): string {
       const index = Math.min(this.zoneCount - 1, Math.max(0, Math.floor(value * this.zoneCount)));
       return this.zoneColors[index];
-    }
-
-    private moveTowards(current: number, target: number, maxDelta: number): number {
-      if (Math.abs(target - current) <= maxDelta) {
-        return target;
-      }
-      return current + Math.sign(target - current) * maxDelta;
     }
 
     private buildZoneColors(): string[] {

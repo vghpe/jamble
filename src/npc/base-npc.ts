@@ -6,6 +6,7 @@ namespace Jamble {
     decayRate: number;
     maxValue: number;
     minValue: number;
+    sensitivity: number;
   }
 
   export abstract class BaseNPC {
@@ -24,6 +25,7 @@ namespace Jamble {
         decayRate: 0.001,
         maxValue: 6.0,
         minValue: -1.0,
+        sensitivity: 1.0,
         ...config
       };
       
@@ -45,9 +47,10 @@ namespace Jamble {
      */
     applyArousalImpulse(intensity: number): void {
       const oldValue = this.arousalValue;
+      const adjustedIntensity = intensity * this.arousalConfig.sensitivity;
       this.arousalValue = Math.max(
         this.arousalConfig.minValue,
-        Math.min(this.arousalConfig.maxValue, this.arousalValue + intensity)
+        Math.min(this.arousalConfig.maxValue, this.arousalValue + adjustedIntensity)
       );
       
       // Notify impulse listeners with the actual applied intensity
@@ -84,6 +87,14 @@ namespace Jamble {
     }
     
     /**
+     * Get normalized sensation value (0-1) for sensation panel display.
+     * This is the raw sensation level independent of arousal interpretation.
+     */
+    getSensationNormalized(): number {
+      return this.getArousalNormalized();
+    }
+    
+    /**
      * Get arousal state based on thresholds
      */
     getArousalState(): ArousalState {
@@ -99,12 +110,19 @@ namespace Jamble {
      * Update arousal over time (decay towards baseline)
      */
     updateArousal(deltaTime: number): void {
+      const oldValue = this.arousalValue;
+      
       if (this.arousalValue > this.arousalConfig.baselineValue) {
         this.arousalValue -= this.arousalConfig.decayRate * deltaTime;
         this.arousalValue = Math.max(this.arousalConfig.baselineValue, this.arousalValue);
       } else if (this.arousalValue < this.arousalConfig.baselineValue) {
         this.arousalValue += this.arousalConfig.decayRate * deltaTime;
         this.arousalValue = Math.min(this.arousalConfig.baselineValue, this.arousalValue);
+      }
+      
+      // Notify listeners if value changed
+      if (oldValue !== this.arousalValue) {
+        this.notifyArousalListeners();
       }
     }
     

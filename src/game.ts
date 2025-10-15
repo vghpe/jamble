@@ -95,11 +95,14 @@ namespace Jamble {
         // Initialize active NPC
         this.activeNPC.initialize();
         
-        // Connect NPC arousal impulses to HUD - when NPC receives impulse, forward to UI
-        this.activeNPC.onArousalImpulse((impulse, npc) => {
-          // Forward the actual impulse amount to the arousal panel
-          this.hudManager.applyArousalImpulse(impulse);
+        // Connect NPC arousal changes to HUD - update sensation panel with normalized value
+        this.activeNPC.onArousalChange((value, npc) => {
+          // Update HUD with normalized sensation value (0-1)
+          this.hudManager.setSensationValue(npc.getSensationNormalized());
         });
+        
+        // Set initial sensation value
+        this.hudManager.setSensationValue(this.activeNPC.getSensationNormalized());
 
         if (this.debugSystem) {
           this.debugSystem.setPlayer(this.player);

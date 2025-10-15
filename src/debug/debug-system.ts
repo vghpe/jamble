@@ -395,17 +395,6 @@ namespace Jamble {
             <span class="stat-label">Smoothing:</span>
             <input type="range" id="smoothing-slider" min="0.1" max="1.0" step="0.05" value="${activityParams.smoothing}" style="width: 100px;">
             <span class="stat-value">${activityParams.smoothing.toFixed(2)}</span>
-
-            <span class="stat-label">Arousal Stabilization:</span>
-            <input type="range" id="arousal-decay-slider" min="0" max="2" step="0.05" value="${activityParams.arousalDecayRate}" style="width: 100px;">
-            <span class="stat-value">${activityParams.arousalDecayRate.toFixed(2)} u/s</span>
-
-            <span class="stat-label" style="grid-column: 1 / -1; margin-top: 8px;">Arousal Impulses:</span>
-            <div class="debug-button-row" style="grid-column: 1 / -1;">
-              <button type="button" class="debug-button" data-arousal-impulse="0.15">Mild Pulse</button>
-              <button type="button" class="debug-button" data-arousal-impulse="0.3">Strong Pulse</button>
-              <button type="button" class="debug-button" data-arousal-impulse="0.5">Surge Pulse</button>
-            </div>
           `;
           
           // Add event listeners for all sliders
@@ -456,24 +445,6 @@ namespace Jamble {
               this.hudManager!.setActivitySmoothing(parseFloat(target.value));
             });
           }
-
-          const arousalDecaySlider = uiContainer.querySelector('#arousal-decay-slider') as HTMLInputElement;
-          if (arousalDecaySlider) {
-            arousalDecaySlider.addEventListener('input', (e) => {
-              const target = e.target as HTMLInputElement;
-              this.hudManager!.setArousalDecayRate(parseFloat(target.value));
-            });
-          }
-
-          const arousalImpulseButtons = uiContainer.querySelectorAll('[data-arousal-impulse]');
-          arousalImpulseButtons.forEach((button) => {
-            button.addEventListener('click', () => {
-              const amount = parseFloat((button as HTMLElement).getAttribute('data-arousal-impulse') || '0');
-              if (!isNaN(amount)) {
-                this.hudManager!.applyArousalImpulse(amount);
-              }
-            });
-          });
         }
       }
 
