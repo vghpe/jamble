@@ -139,6 +139,11 @@ namespace Jamble {
           this.debugSystem.setStateManager(this.stateManager);
           this.debugSystem.setHUDManager(this.hudManager);
           this.debugSystem.setGame(this);
+          
+          // Register debug sections from systems
+          this.debugSystem.registerSection('hud', this.hudManager.getDebugSection());
+          this.debugSystem.registerSection('game', this.getDebugSection());
+          this.debugSystem.registerSection('npc', this.activeNPC.getDebugSection());
         }
       } catch (error) {
         console.error('Error during game initialization:', error);
@@ -164,6 +169,22 @@ namespace Jamble {
       }
       
       console.log(`Respawned ${respawnedCount} knob(s)`);
+    }
+    
+    /**
+     * Get debug section for registering with DebugSystem
+     */
+    getDebugSection(): Jamble.DebugSection {
+      return {
+        title: 'Game Controls',
+        controls: [
+          {
+            type: 'button',
+            label: 'Respawn All Knobs',
+            onClick: () => this.respawnAllKnobs()
+          }
+        ]
+      };
     }
 
     private setupGameElement() {

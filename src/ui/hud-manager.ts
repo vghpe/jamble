@@ -251,6 +251,71 @@ namespace Jamble {
     }
     
     /**
+     * Get debug section for registering with DebugSystem
+     */
+    getDebugSection(): Jamble.DebugSection {
+      return {
+        title: 'HUD Controls',
+        controls: [
+          {
+            type: 'slider',
+            label: 'Portrait Size',
+            min: 40,
+            max: 120,
+            step: 1,
+            getValue: () => this.portraitSize,
+            setValue: (value) => this.setPortraitSize(value)
+          },
+          {
+            type: 'slider',
+            label: 'Sample Spacing',
+            min: 1,
+            max: 10,
+            step: 1,
+            getValue: () => this.monitorPanel.getSampleSpacing(),
+            setValue: (value) => this.setActivitySampleSpacing(value)
+          },
+          {
+            type: 'slider',
+            label: 'Scroll Speed',
+            min: 5,
+            max: 200,
+            step: 5,
+            getValue: () => this.monitorPanel.getScrollSpeed(),
+            setValue: (value) => this.setActivityScrollSpeed(value)
+          },
+          {
+            type: 'slider',
+            label: 'Wave Frequency',
+            min: 0.05,
+            max: 5,
+            step: 0.05,
+            getValue: () => this.monitorPanel.getFrequency(),
+            setValue: (value) => this.setActivityFrequency(value)
+          },
+          {
+            type: 'slider',
+            label: 'Wave Amplitude',
+            min: 0.05,
+            max: 0.45,
+            step: 0.05,
+            getValue: () => this.monitorPanel.getAmplitude(),
+            setValue: (value) => this.setActivityAmplitude(value)
+          },
+          {
+            type: 'slider',
+            label: 'Smoothing',
+            min: 0.1,
+            max: 1.0,
+            step: 0.05,
+            getValue: () => this.monitorPanel.getSmoothing(),
+            setValue: (value) => this.setActivitySmoothing(value)
+          }
+        ]
+      };
+    }
+    
+    /**
      * Clean up resources
      */
     destroy(): void {

@@ -406,6 +406,101 @@ namespace Jamble {
       }
     }
     
+    /**
+     * Get debug section for NPC configuration
+     */
+    getDebugSection(): Jamble.DebugSection {
+      return {
+        title: `${this.name} Configuration`,
+        controls: [
+          // Arousal Config
+          {
+            type: 'display',
+            label: 'Arousal',
+            getValue: () => this.arousalValue.toFixed(2)
+          },
+          {
+            type: 'slider',
+            label: 'Baseline',
+            min: 0,
+            max: 5,
+            step: 0.1,
+            getValue: () => this.arousalConfig.baselineValue,
+            setValue: (value) => { this.arousalConfig.baselineValue = value; }
+          },
+          {
+            type: 'slider',
+            label: 'Decay Rate',
+            min: 0.1,
+            max: 2.0,
+            step: 0.1,
+            getValue: () => this.arousalConfig.decayRate,
+            setValue: (value) => { this.arousalConfig.decayRate = value; }
+          },
+          {
+            type: 'slider',
+            label: 'Sensitivity',
+            min: 0.5,
+            max: 5.0,
+            step: 0.1,
+            getValue: () => this.arousalConfig.sensitivity,
+            setValue: (value) => { this.arousalConfig.sensitivity = value; }
+          },
+          {
+            type: 'slider',
+            label: 'Pain Threshold',
+            min: 3.0,
+            max: 8.0,
+            step: 0.1,
+            getValue: () => this.arousalConfig.painThreshold,
+            setValue: (value) => { this.arousalConfig.painThreshold = value; }
+          },
+          // Crescendo Config
+          {
+            type: 'display',
+            label: 'Crescendo',
+            getValue: () => this.crescendoValue.toFixed(2)
+          },
+          {
+            type: 'slider',
+            label: 'Target Arousal',
+            min: 2.0,
+            max: 6.0,
+            step: 0.1,
+            getValue: () => this.crescendoConfig.targetArousalValue,
+            setValue: (value) => { this.crescendoConfig.targetArousalValue = value; }
+          },
+          {
+            type: 'slider',
+            label: 'Tolerance',
+            min: 0.1,
+            max: 2.0,
+            step: 0.1,
+            getValue: () => this.crescendoConfig.arousalTolerance,
+            setValue: (value) => { this.crescendoConfig.arousalTolerance = value; }
+          },
+          {
+            type: 'slider',
+            label: 'Rise Rate',
+            min: 0.05,
+            max: 0.5,
+            step: 0.05,
+            getValue: () => this.crescendoConfig.riseRate,
+            setValue: (value) => { this.crescendoConfig.riseRate = value; }
+          },
+          {
+            type: 'slider',
+            label: 'Decay Rate',
+            min: 0.05,
+            max: 0.5,
+            step: 0.05,
+            getValue: () => this.crescendoConfig.decayRate,
+            setValue: (value) => { this.crescendoConfig.decayRate = value; }
+          }
+        ]
+      };
+    }
+    
     // === ABSTRACT METHODS FOR SUBCLASSES ===
     
     /**

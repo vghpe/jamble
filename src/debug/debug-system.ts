@@ -1,11 +1,68 @@
 /// <reference path="../entities/player/player.ts" />
 /// <reference path="../systems/state-manager.ts" />
 /// <reference path="../systems/economy-manager.ts" />
-/// <reference path="../ui/hud-manager.ts" /> <reference path="../entities/player/player.ts" />
-/// <reference path="../systems/state-manager.ts" />
-/// <reference path="../systems/economy-manager.ts" />
+/// <reference path="../ui/hud-manager.ts" />
+/// <reference path="../game.ts" />
 
 namespace Jamble {
+  /**
+   * Debug control types supported by the registry system
+   */
+  export type DebugControlType = 'display' | 'slider' | 'button' | 'checkbox';
+  
+  /**
+   * Base interface for all debug controls
+   */
+  export interface DebugControl {
+    type: DebugControlType;
+    label: string;
+  }
+  
+  /**
+   * Display-only value (no interaction)
+   */
+  export interface DebugDisplay extends DebugControl {
+    type: 'display';
+    getValue: () => string | number;
+  }
+  
+  /**
+   * Slider control with min/max/step
+   */
+  export interface DebugSlider extends DebugControl {
+    type: 'slider';
+    min: number;
+    max: number;
+    step?: number;
+    getValue: () => number;
+    setValue: (value: number) => void;
+  }
+  
+  /**
+   * Button control
+   */
+  export interface DebugButton extends DebugControl {
+    type: 'button';
+    onClick: () => void;
+  }
+  
+  /**
+   * Checkbox control
+   */
+  export interface DebugCheckbox extends DebugControl {
+    type: 'checkbox';
+    getValue: () => boolean;
+    setValue: (value: boolean) => void;
+  }
+  
+  /**
+   * A section in the debug panel with multiple controls
+   */
+  export interface DebugSection {
+    title: string;
+    controls: (DebugDisplay | DebugSlider | DebugButton | DebugCheckbox)[];
+  }
+  
   export class DebugSystem {
     private static readonly BUILD_VERSION = "BUILD_VERSION_PLACEHOLDER";
     private debugContainer: HTMLElement | null = null;
@@ -17,6 +74,9 @@ namespace Jamble {
     private economyManager: EconomyManager;
     private hudManager: HUDManager | null = null;
     private game: Game | null = null;
+    
+    // Registry system
+    private sections: Map<string, DebugSection> = new Map();
 
     constructor(container?: HTMLElement) {
       this.economyManager = EconomyManager.getInstance();
@@ -39,74 +99,13 @@ namespace Jamble {
         this.debugContainer.innerHTML = `
           <div class="debug-container">
             <div class="debug-header">
-              <h2>Debug</h2>
-              <p class="debug-info">Rebuilt Architecture</p>
+              <h2>Debug Panel</h2>
+              <p class="debug-info">Registry-Based Architecture</p>
               <p class="build-info">Build: ${DebugSystem.BUILD_VERSION}</p>
             </div>
             
-            <div class="debug-section">
-              <div class="section-header">Economy</div>
-              <div class="section-content">
-                <div class="form-grid" id="economy-stats">
-                  <!-- Economy stats will be populated here -->
-                </div>
-              </div>
-            </div>
-            
-            <div class="debug-section">
-              <div class="section-header">Player Stats</div>
-              <div class="section-content">
-                <div class="form-grid" id="player-stats">
-                  <!-- Player stats will be populated here -->
-                </div>
-              </div>
-            </div>
-            
-            <div class="debug-section">
-              <div class="section-header">Debug Controls</div>
-              <div class="section-content">
-                <label class="debug-checkbox-label">
-                  <input type="checkbox" id="toggle-colliders" class="debug-checkbox">
-                  <span class="checkmark"></span>
-                  Show Colliders
-                </label>
-                <label class="debug-checkbox-label">
-                  <input type="checkbox" id="toggle-origins" class="debug-checkbox">
-                  <span class="checkmark"></span>
-                  Show Origins
-                </label>
-                <label class="debug-checkbox-label">
-                  <input type="checkbox" id="toggle-slots" class="debug-checkbox">
-                  <span class="checkmark"></span>
-                  Show Slots
-                </label>
-              </div>
-            </div>
-            
-            <div class="debug-section">
-              <div class="section-header">UI Controls</div>
-              <div class="section-content">
-                <div class="form-grid" id="ui-controls">
-                  <!-- UI controls will be populated here -->
-                </div>
-              </div>
-            </div>
-            
-            <div class="debug-section">
-              <div class="section-header">Game State</div>
-              <div class="section-content">
-                <div class="form-grid" id="game-state">
-                  <!-- Game state will be populated here -->
-                </div>
-              </div>
-            </div>
-            
-            <div class="debug-section">
-              <div class="section-header">Knob Controls</div>
-              <div class="section-content">
-                <button type="button" class="debug-button" id="respawn-knobs">Respawn All Knobs</button>
-              </div>
-            </div>
+            <!-- All sections are now registered dynamically -->
+            <div id="registered-sections"></div>
           </div>
         `;
       } catch (error) {
@@ -170,16 +169,51 @@ namespace Jamble {
             font-weight: 600;
             border-bottom: 1px solid #dee2e6;
             color: #212529;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            transition: background 0.2s;
+          }
+          
+          .section-header:hover {
+            background: #e9ecef;
+          }
+          
+          .section-header::before {
+            content: '▼';
+            display: inline-block;
+            margin-right: 8px;
+            transition: transform 0.2s;
+            font-size: 10px;
+          }
+          
+          .section-header.collapsed::before {
+            transform: rotate(-90deg);
           }
           
           .section-content {
             padding: 16px;
+            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+            max-height: 1000px;
+            overflow: hidden;
+          }
+          
+          .section-content.collapsed {
+            max-height: 0;
+            padding: 0 16px;
+          }
           }
           
           .form-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+          
+          .control-row {
             display: grid;
             grid-template-columns: 1fr auto;
-            gap: 8px 16px;
+            gap: 16px;
             align-items: center;
           }
           
@@ -218,13 +252,6 @@ namespace Jamble {
             width: 120px;
             margin-right: 8px;
           }
-          
-          .form-grid {
-            display: grid;
-            grid-template-columns: 1fr auto auto;
-            gap: 8px 12px;
-            align-items: center;
-          }
 
           .debug-button-row {
             display: flex;
@@ -248,51 +275,9 @@ namespace Jamble {
         `;
         document.head.appendChild(style);
 
-        // Setup checkbox events
-        const toggleCollidersCheckbox = this.debugContainer.querySelector('#toggle-colliders') as HTMLInputElement;
-        if (toggleCollidersCheckbox) {
-          toggleCollidersCheckbox.onchange = () => {
-            this.showColliders = toggleCollidersCheckbox.checked;
-          };
-        } else {
-          console.error('Could not find toggle-colliders checkbox');
-        }
-
-        const toggleOriginsCheckbox = this.debugContainer.querySelector('#toggle-origins') as HTMLInputElement;
-        if (toggleOriginsCheckbox) {
-          toggleOriginsCheckbox.onchange = () => {
-            this.showOrigins = toggleOriginsCheckbox.checked;
-          };
-        } else {
-          console.error('Could not find toggle-origins checkbox');
-        }
-
-        const toggleSlotsCheckbox = this.debugContainer.querySelector('#toggle-slots') as HTMLInputElement;
-        if (toggleSlotsCheckbox) {
-          toggleSlotsCheckbox.onchange = () => {
-            this.showSlots = toggleSlotsCheckbox.checked;
-          };
-        } else {
-          console.error('Could not find toggle-slots checkbox');
-        }
-        
-        // Setup knob respawn button
-        const respawnKnobsButton = this.debugContainer.querySelector('#respawn-knobs') as HTMLButtonElement;
-        if (respawnKnobsButton) {
-          respawnKnobsButton.onclick = () => {
-            if (this.game) {
-              this.game.respawnAllKnobs();
-            } else {
-              console.warn('Game reference not set in debug system');
-            }
-          };
-        } else {
-          console.error('Could not find respawn-knobs button');
-        }
-        
-
+        // All event listeners are now handled by the registry system
       } catch (error) {
-        console.error('Error setting up debug panel styles and events:', error);
+        console.error('Error setting up debug panel styles:', error);
       }
     }
 
@@ -325,9 +310,108 @@ namespace Jamble {
         };
       }
     }
+    
+    /**
+     * Get Economy debug section
+     */
+    private getEconomySection(): DebugSection {
+      return {
+        title: 'Economy',
+        controls: [
+          {
+            type: 'display',
+            label: 'Currency',
+            getValue: () => `$${this.economyManager.getCurrency()}`
+          }
+        ]
+      };
+    }
+    
+    /**
+     * Get Player Stats debug section
+     */
+    private getPlayerStatsSection(): DebugSection {
+      if (!this.player) {
+        return { title: 'Player Stats', controls: [] };
+      }
+      
+      return {
+        title: 'Player Stats',
+        controls: [
+          {
+            type: 'display',
+            label: 'Move Speed',
+            getValue: () => this.player!.moveSpeed
+          },
+          {
+            type: 'display',
+            label: 'Jump Height',
+            getValue: () => this.player!.jumpHeight
+          },
+          {
+            type: 'display',
+            label: 'Position X',
+            getValue: () => this.player!.transform.x.toFixed(1)
+          },
+          {
+            type: 'display',
+            label: 'Position Y',
+            getValue: () => this.player!.transform.y.toFixed(1)
+          },
+          {
+            type: 'display',
+            label: 'Velocity X',
+            getValue: () => this.player!.velocityX.toFixed(1)
+          },
+          {
+            type: 'display',
+            label: 'Velocity Y',
+            getValue: () => this.player!.velocityY.toFixed(1)
+          },
+          {
+            type: 'display',
+            label: 'Grounded',
+            getValue: () => this.player!.grounded ? 'YES' : 'NO'
+          }
+        ]
+      };
+    }
+    
+    /**
+     * Get Debug Controls section (checkboxes for visual debugging)
+     */
+    private getDebugControlsSection(): DebugSection {
+      return {
+        title: 'Debug Controls',
+        controls: [
+          {
+            type: 'checkbox',
+            label: 'Show Colliders',
+            getValue: () => this.showColliders,
+            setValue: (value) => { this.showColliders = value; }
+          },
+          {
+            type: 'checkbox',
+            label: 'Show Origins',
+            getValue: () => this.showOrigins,
+            setValue: (value) => { this.showOrigins = value; }
+          },
+          {
+            type: 'checkbox',
+            label: 'Show Slots',
+            getValue: () => this.showSlots,
+            setValue: (value) => { this.showSlots = value; }
+          }
+        ]
+      };
+    }
 
     setPlayer(player: Player) {
       this.player = player;
+      // Register built-in sections
+      this.registerSection('economy', this.getEconomySection());
+      this.registerSection('player-stats', this.getPlayerStatsSection());
+      this.registerSection('debug-controls', this.getDebugControlsSection());
     }
 
     setStateManager(stateManager: StateManager) {
@@ -341,156 +425,104 @@ namespace Jamble {
     setGame(game: Game) {
       this.game = game;
     }
+    
+    /**
+     * Register a debug section from any system
+     * @param id Unique identifier for this section
+     * @param section The section configuration with controls
+     */
+    registerSection(id: string, section: DebugSection) {
+      this.sections.set(id, section);
+      // Rebuild panel if it exists
+      if (this.debugContainer) {
+        this.rebuildRegisteredSections();
+      }
+    }
+    
+    /**
+     * Unregister a debug section
+     */
+    unregisterSection(id: string) {
+      this.sections.delete(id);
+    }
+    
+    /**
+     * Build HTML for all registered sections
+     */
+    private buildRegisteredSectionsHTML(): string {
+      let html = '';
+      
+      this.sections.forEach((section, id) => {
+        html += `
+          <div class="debug-section" id="section-${id}">
+            <div class="section-header">${section.title}</div>
+            <div class="section-content">
+              <div class="form-grid" id="content-${id}">
+                ${section.controls.map(control => 
+                  this.renderControl(control, `content-${id}`)
+                ).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      
+      return html;
+    }
+    
+    /**
+     * Attach listeners to all registered sections
+     */
+    private attachRegisteredSectionListeners() {
+      this.sections.forEach((section, id) => {
+        // Attach control listeners
+        section.controls.forEach(control => {
+          this.attachControlListeners(control, `content-${id}`);
+        });
+        
+        // Attach section header collapse/expand listener
+        const sectionElement = this.debugContainer?.querySelector(`#section-${id}`);
+        const headerElement = sectionElement?.querySelector('.section-header');
+        const contentElement = sectionElement?.querySelector('.section-content');
+        
+        if (headerElement && contentElement) {
+          headerElement.addEventListener('click', () => {
+            const isCollapsed = contentElement.classList.contains('collapsed');
+            contentElement.classList.toggle('collapsed');
+            headerElement.classList.toggle('collapsed');
+          });
+        }
+      });
+    }
+    
+    /**
+     * Rebuild the registered sections container
+     */
+    private rebuildRegisteredSections() {
+      if (!this.debugContainer) return;
+      
+      const container = this.debugContainer.querySelector('#registered-sections');
+      if (container) {
+        container.innerHTML = this.buildRegisteredSectionsHTML();
+        this.attachRegisteredSectionListeners();
+      }
+    }
 
     update() {
       if (!this.player) return;
 
       if (this.debugContainer) {
         this.updateSidePanelDebug();
+        // Update display values in registered sections
+        this.updateRegisteredDisplays();
       } else {
         this.updateOverlayDebug();
       }
     }
 
     private updateSidePanelDebug() {
-      if (!this.player || !this.debugContainer) return;
-
-      // Update economy stats
-      const economyContainer = this.debugContainer.querySelector('#economy-stats');
-      if (economyContainer) {
-        economyContainer.innerHTML = `
-          <span class="stat-label">Currency:</span>
-          <span class="stat-value">$${this.economyManager.getCurrency()}</span>
-        `;
-      }
-
-      const statsContainer = this.debugContainer.querySelector('#player-stats');
-      if (statsContainer) {
-        statsContainer.innerHTML = `
-          <span class="stat-label">Move Speed:</span>
-          <span class="stat-value">${this.player.moveSpeed}</span>
-          
-          <span class="stat-label">Jump Height:</span>
-          <span class="stat-value">${this.player.jumpHeight}</span>
-          
-          <span class="stat-label">Position X:</span>
-          <span class="stat-value">${this.player.transform.x.toFixed(1)}</span>
-          
-          <span class="stat-label">Position Y:</span>
-          <span class="stat-value">${this.player.transform.y.toFixed(1)}</span>
-          
-          <span class="stat-label">Velocity X:</span>
-          <span class="stat-value">${this.player.velocityX.toFixed(1)}</span>
-          
-          <span class="stat-label">Velocity Y:</span>
-          <span class="stat-value">${this.player.velocityY.toFixed(1)}</span>
-          
-          <span class="stat-label">Grounded:</span>
-          <span class="stat-value">${this.player.grounded ? 'YES' : 'NO'}</span>
-        `;
-      }
-
-      // Update HUD controls
-      if (this.hudManager) {
-        const uiContainer = this.debugContainer.querySelector('#ui-controls');
-        if (uiContainer) {
-          const portraitSize = this.hudManager.getPortraitSize();
-          const activityParams = this.hudManager.getActivityParameters();
-          
-          uiContainer.innerHTML = `
-            <span class="stat-label">Portrait Size:</span>
-            <input type="range" id="portrait-size-slider" min="40" max="120" value="${portraitSize}" style="width: 100px;">
-            <span class="stat-value">${portraitSize}px</span>
-            
-            <span class="stat-label">Sample Spacing:</span>
-            <input type="range" id="sample-spacing-slider" min="1" max="10" step="1" value="${activityParams.sampleSpacing}" style="width: 100px;">
-            <span class="stat-value">${activityParams.sampleSpacing}px</span>
-            
-            <span class="stat-label">Scroll Speed:</span>
-            <input type="range" id="scroll-speed-slider" min="5" max="200" step="5" value="${activityParams.scrollSpeed}" style="width: 100px;">
-            <span class="stat-value">${activityParams.scrollSpeed.toFixed(0)}px/s</span>
-
-            <span class="stat-label">Wave Frequency:</span>
-            <input type="range" id="frequency-slider" min="0.05" max="5" step="0.05" value="${activityParams.frequency}" style="width: 100px;">
-            <span class="stat-value">${activityParams.frequency.toFixed(2)} Hz</span>
-
-            <span class="stat-label">Wave Amplitude:</span>
-            <input type="range" id="amplitude-slider" min="0.05" max="0.45" step="0.05" value="${activityParams.amplitude}" style="width: 100px;">
-            <span class="stat-value">${activityParams.amplitude.toFixed(2)}</span>
-            
-            <span class="stat-label">Smoothing:</span>
-            <input type="range" id="smoothing-slider" min="0.1" max="1.0" step="0.05" value="${activityParams.smoothing}" style="width: 100px;">
-            <span class="stat-value">${activityParams.smoothing.toFixed(2)}</span>
-          `;
-          
-          // Add event listeners for all sliders
-          const portraitSlider = uiContainer.querySelector('#portrait-size-slider') as HTMLInputElement;
-          if (portraitSlider) {
-            portraitSlider.addEventListener('input', (e) => {
-              const target = e.target as HTMLInputElement;
-              this.hudManager!.setPortraitSize(parseInt(target.value));
-            });
-          }
-          
-          const sampleSpacingSlider = uiContainer.querySelector('#sample-spacing-slider') as HTMLInputElement;
-          if (sampleSpacingSlider) {
-            sampleSpacingSlider.addEventListener('input', (e) => {
-              const target = e.target as HTMLInputElement;
-              this.hudManager!.setActivitySampleSpacing(parseInt(target.value));
-            });
-          }
-          
-          const scrollSpeedSlider = uiContainer.querySelector('#scroll-speed-slider') as HTMLInputElement;
-          if (scrollSpeedSlider) {
-            scrollSpeedSlider.addEventListener('input', (e) => {
-              const target = e.target as HTMLInputElement;
-              this.hudManager!.setActivityScrollSpeed(parseFloat(target.value));
-            });
-          }
-
-          const frequencySlider = uiContainer.querySelector('#frequency-slider') as HTMLInputElement;
-          if (frequencySlider) {
-            frequencySlider.addEventListener('input', (e) => {
-              const target = e.target as HTMLInputElement;
-              this.hudManager!.setActivityFrequency(parseFloat(target.value));
-            });
-          }
-
-          const amplitudeSlider = uiContainer.querySelector('#amplitude-slider') as HTMLInputElement;
-          if (amplitudeSlider) {
-            amplitudeSlider.addEventListener('input', (e) => {
-              const target = e.target as HTMLInputElement;
-              this.hudManager!.setActivityAmplitude(parseFloat(target.value));
-            });
-          }
-          
-          const smoothingSlider = uiContainer.querySelector('#smoothing-slider') as HTMLInputElement;
-          if (smoothingSlider) {
-            smoothingSlider.addEventListener('input', (e) => {
-              const target = e.target as HTMLInputElement;
-              this.hudManager!.setActivitySmoothing(parseFloat(target.value));
-            });
-          }
-        }
-      }
-
-      // Update game state display
-      if (this.stateManager) {
-        const gameStateContainer = this.debugContainer.querySelector('#game-state');
-        if (gameStateContainer) {
-          const currentState = this.stateManager.getCurrentState();
-          
-          gameStateContainer.innerHTML = `
-            <span class="stat-label">Current State:</span>
-            <span class="stat-value">${currentState.toUpperCase()}</span>
-          `;
-        }
-      }
-
-      const colliderStatus = this.debugContainer.querySelector('#collider-status');
-      if (colliderStatus) {
-        colliderStatus.textContent = this.showColliders ? 'ON' : 'OFF';
-      }
+      // All updates now handled by updateRegisteredDisplays()
+      // This method kept for potential future non-registry updates
     }
 
     private updateOverlayDebug() {
@@ -513,6 +545,112 @@ namespace Jamble {
 
         infoElement.innerHTML = info.join('<br>');
       }
+    }
+    
+    /**
+     * Render a single control based on its type
+     */
+    private renderControl(control: DebugDisplay | DebugSlider | DebugButton | DebugCheckbox, containerId: string): string {
+      const controlId = `${containerId}-${control.label.replace(/\s+/g, '-').toLowerCase()}`;
+      
+      switch (control.type) {
+        case 'display':
+          return `
+            <div class="control-row">
+              <span class="stat-label">${control.label}:</span>
+              <span class="stat-value" id="${controlId}">${control.getValue()}</span>
+            </div>
+          `;
+          
+        case 'slider':
+          const sliderValue = control.getValue();
+          const step = control.step ?? 1;
+          return `
+            <div class="control-row">
+              <span class="stat-label">${control.label}:</span>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="range" id="${controlId}" 
+                  min="${control.min}" 
+                  max="${control.max}" 
+                  step="${step}" 
+                  value="${sliderValue}" 
+                  style="width: 100px;">
+                <span class="stat-value" id="${controlId}-value">${sliderValue}</span>
+              </div>
+            </div>
+          `;
+          
+        case 'button':
+          return `
+            <div class="control-row">
+              <button type="button" class="debug-button" id="${controlId}" style="grid-column: 1 / -1;">${control.label}</button>
+            </div>
+          `;
+          
+        case 'checkbox':
+          const checked = control.getValue();
+          return `
+            <div class="control-row" style="grid-template-columns: 1fr;">
+              <label class="debug-checkbox-label" id="${controlId}-label">
+                <input type="checkbox" id="${controlId}" class="debug-checkbox" ${checked ? 'checked' : ''}>
+                <span class="checkmark"></span>
+                ${control.label}
+              </label>
+            </div>
+          `;
+      }
+    }
+    
+    /**
+     * Attach event listeners to a control
+     */
+    private attachControlListeners(control: DebugDisplay | DebugSlider | DebugButton | DebugCheckbox, containerId: string) {
+      const controlId = `${containerId}-${control.label.replace(/\s+/g, '-').toLowerCase()}`;
+      const element = this.debugContainer?.querySelector(`#${controlId}`);
+      
+      if (!element) return;
+      
+      switch (control.type) {
+        case 'slider':
+          const slider = element as HTMLInputElement;
+          const valueDisplay = this.debugContainer?.querySelector(`#${controlId}-value`);
+          slider.addEventListener('input', (e) => {
+            const value = parseFloat((e.target as HTMLInputElement).value);
+            control.setValue(value);
+            if (valueDisplay) {
+              valueDisplay.textContent = value.toString();
+            }
+          });
+          break;
+          
+        case 'button':
+          element.addEventListener('click', () => control.onClick());
+          break;
+          
+        case 'checkbox':
+          const checkbox = element as HTMLInputElement;
+          checkbox.addEventListener('change', (e) => {
+            control.setValue((e.target as HTMLInputElement).checked);
+          });
+          break;
+      }
+    }
+    
+    /**
+     * Update display values for all registered sections
+     */
+    private updateRegisteredDisplays() {
+      this.sections.forEach((section, id) => {
+        section.controls.forEach(control => {
+          if (control.type === 'display') {
+            const controlId = `content-${id}-${control.label.replace(/\s+/g, '-').toLowerCase()}`;
+            const element = this.debugContainer?.querySelector(`#${controlId}`);
+            if (element) {
+              element.textContent = String(control.getValue());
+            }
+          }
+        });
+      });
     }
 
     getShowColliders(): boolean {
