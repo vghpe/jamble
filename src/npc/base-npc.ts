@@ -9,12 +9,26 @@ namespace Jamble {
     sensitivity: number;
   }
 
+  export interface NPCCrescendoConfig {
+    targetArousalValue: number;
+    arousalTolerance: number;
+    riseRate: number;
+    decayRate: number;
+    threshold: number;
+    maxValue: number;
+  }
+
   export abstract class BaseNPC {
     protected name: string;
     protected arousalValue: number;
     protected arousalConfig: NPCArousalConfig;
+    protected crescendoValue: number;
+    protected crescendoConfig: NPCCrescendoConfig;
+    protected crescendoThresholdReached: boolean = false;
     protected arousalChangeListeners: Array<(value: number, npc: BaseNPC) => void> = [];
     protected arousalImpulseListeners: Array<(impulse: number, npc: BaseNPC) => void> = [];
+    protected crescendoChangeListeners: Array<(value: number, npc: BaseNPC) => void> = [];
+    protected crescendoThresholdListeners: Array<(npc: BaseNPC) => void> = [];
 
     constructor(name: string, config?: Partial<NPCArousalConfig>) {
       this.name = name;
@@ -29,7 +43,18 @@ namespace Jamble {
         ...config
       };
       
+      // Default crescendo configuration
+      this.crescendoConfig = {
+        targetArousalValue: 4.0,
+        arousalTolerance: 0.5,
+        riseRate: 0.2,
+        decayRate: 0.1,
+        threshold: 1.0,
+        maxValue: 1.0
+      };
+      
       this.arousalValue = this.arousalConfig.baselineValue;
+      this.crescendoValue = 0;
     }
 
     // === AROUSAL MANAGEMENT ===
@@ -176,6 +201,119 @@ namespace Jamble {
           listener(impulse, this);
         } catch (error) {
           console.error(`Error in arousal impulse listener for ${this.name}:`, error);
+        }
+      }
+    }
+    
+    // === CRESCENDO MANAGEMENT ===
+    
+    getCrescendoValue(): number {
+      return this.crescendoValue;
+    }
+    
+    /**
+     * Get normalized crescendo value (0-1) for UI display
+     */
+    getCrescendoNormalized(): number {
+      return Math.max(0, Math.min(1, this.crescendoValue / this.crescendoConfig.maxValue));
+    }
+    
+    /**
+     * Check if arousal is in the target zone for crescendo growth
+     */
+    isInCrescendoZone(): boolean {
+      const target = this.crescendoConfig.targetArousalValue;
+      const tolerance = this.crescendoConfig.arousalTolerance;
+      return this.arousalValue >= (target - tolerance) && 
+             this.arousalValue <= (target + tolerance);
+    }
+    
+    /**
+     * Check if crescendo threshold has been reached
+     */
+    hasCrescendoThresholdReached(): boolean {
+      return this.crescendoThresholdReached;
+    }
+    
+    /**
+     * Update crescendo over time based on arousal zone
+     */
+    updateCrescendo(deltaTime: number): void {
+      // Don't update if threshold already reached
+      if (this.crescendoThresholdReached) {
+        return;
+      }
+      
+      const oldValue = this.crescendoValue;
+      const inZone = this.isInCrescendoZone();
+      const rate = inZone ? this.crescendoConfig.riseRate : -this.crescendoConfig.decayRate;
+      const change = rate * deltaTime;
+      
+      this.crescendoValue = Math.max(0, Math.min(this.crescendoConfig.maxValue, this.crescendoValue + change));
+      
+      // Check if threshold reached
+      if (!this.crescendoThresholdReached && this.crescendoValue >= this.crescendoConfig.threshold) {
+        this.crescendoThresholdReached = true;
+        this.crescendoValue = this.crescendoConfig.threshold; // Freeze at threshold
+        this.notifyCrescendoThresholdListeners();
+      }
+      
+      // Notify if value changed
+      if (oldValue !== this.crescendoValue) {
+        this.notifyCrescendoChangeListeners();
+      }
+    }
+    
+    /**
+     * Register listener for crescendo changes
+     */
+    onCrescendoChange(callback: (value: number, npc: BaseNPC) => void): void {
+      this.crescendoChangeListeners.push(callback);
+    }
+    
+    /**
+     * Remove crescendo change listener
+     */
+    removeCrescendoListener(callback: (value: number, npc: BaseNPC) => void): void {
+      const index = this.crescendoChangeListeners.indexOf(callback);
+      if (index !== -1) {
+        this.crescendoChangeListeners.splice(index, 1);
+      }
+    }
+    
+    /**
+     * Register listener for crescendo threshold reached
+     */
+    onCrescendoThreshold(callback: (npc: BaseNPC) => void): void {
+      this.crescendoThresholdListeners.push(callback);
+    }
+    
+    /**
+     * Remove crescendo threshold listener
+     */
+    removeCrescendoThresholdListener(callback: (npc: BaseNPC) => void): void {
+      const index = this.crescendoThresholdListeners.indexOf(callback);
+      if (index !== -1) {
+        this.crescendoThresholdListeners.splice(index, 1);
+      }
+    }
+    
+    private notifyCrescendoChangeListeners(): void {
+      for (const listener of this.crescendoChangeListeners) {
+        try {
+          listener(this.crescendoValue, this);
+        } catch (error) {
+          console.error(`Error in crescendo listener for ${this.name}:`, error);
+        }
+      }
+    }
+    
+    private notifyCrescendoThresholdListeners(): void {
+      for (const listener of this.crescendoThresholdListeners) {
+        try {
+          listener(this);
+        } catch (error) {
+          console.error(`Error in crescendo threshold listener for ${this.name}:`, error);
         }
       }
     }

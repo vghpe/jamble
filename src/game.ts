@@ -8,6 +8,7 @@
 /// <reference path="debug/debug-renderer.ts" />
 /// <reference path="systems/state-manager.ts" />
 /// <reference path="systems/input-manager.ts" />
+/// <reference path="systems/level-manager.ts" />
 /// <reference path="slots/slot-manager.ts" />
 /// <reference path="skills/skill-system.ts" />
 /// <reference path="debug/debug-system.ts" />
@@ -29,6 +30,7 @@ namespace Jamble {
     private debugRenderer: DebugRenderer;
     private stateManager: StateManager;
     private inputManager: InputManager;
+    private levelManager: LevelManager;
     private slotManager: SlotManager;
     private skillManager: SkillManager;
     private debugSystem: DebugSystem | null;
@@ -66,6 +68,7 @@ namespace Jamble {
         this.debugRenderer = new DebugRenderer(this.canvasHost);
         this.stateManager = new StateManager();
         this.inputManager = new InputManager();
+        this.levelManager = new LevelManager();
         this.slotManager = new SlotManager(this.gameWidth, this.gameHeight);
         this.skillManager = new SkillManager();
         this.activeNPC = new Soma();  // Initialize our active NPC
@@ -95,14 +98,30 @@ namespace Jamble {
         // Initialize active NPC
         this.activeNPC.initialize();
         
+        // Setup level manager with active NPC
+        this.levelManager.setActiveNPC(this.activeNPC);
+        
+        // Listen for level complete from level manager
+        this.levelManager.onLevelComplete((npc) => {
+          console.log(`Level complete! ${npc.getName()} reached crescendo!`);
+          // TODO: Show victory UI, transition to next level, etc.
+          // For now, just log it
+        });
+        
         // Connect NPC arousal changes to HUD - update sensation panel with normalized value
         this.activeNPC.onArousalChange((value, npc) => {
           // Update HUD with normalized sensation value (0-1)
           this.hudManager.setSensationValue(npc.getSensationNormalized());
         });
         
-        // Set initial sensation value
+        // Connect NPC crescendo changes to HUD
+        this.activeNPC.onCrescendoChange((value, npc) => {
+          this.hudManager.setCrescendoValue(npc.getCrescendoNormalized());
+        });
+        
+        // Set initial values
         this.hudManager.setSensationValue(this.activeNPC.getSensationNormalized());
+        this.hudManager.setCrescendoValue(this.activeNPC.getCrescendoNormalized());
 
         if (this.debugSystem) {
           this.debugSystem.setPlayer(this.player);

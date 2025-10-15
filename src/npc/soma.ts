@@ -5,10 +5,21 @@ namespace Jamble {
     constructor() {
       super('Soma', {
         baselineValue: 0.2,
-        decayRate: 0.8,       // Slightly slower decay
+        decayRate: 0.2,       // Slightly slower decay
         maxValue: 6.0,
-        minValue: -1.0
+        minValue: -1.0,
+        sensitivity: 1.0
       });
+      
+      // Configure Soma's crescendo zone (target arousal around 4.0)
+      this.crescendoConfig = {
+        targetArousalValue: 4.0,
+        arousalTolerance: 0.5,   // Zone is 3.5-4.5
+        riseRate: 0.15,           // Slow and steady rise
+        decayRate: 0.1,           // Decays if out of zone
+        threshold: 1.0,           // Win at 1.0
+        maxValue: 1.0
+      };
     }
 
     initialize(): void {
@@ -18,6 +29,9 @@ namespace Jamble {
     update(deltaTime: number): void {
       // Update base arousal decay
       super.updateArousal(deltaTime);
+      
+      // Update crescendo (rises when arousal in target zone)
+      super.updateCrescendo(deltaTime);
     }
 
     onGameEvent(event: string, data?: any): void {

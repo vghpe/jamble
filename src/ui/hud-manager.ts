@@ -1,6 +1,7 @@
 /// <reference path="ui-component-base.ts" />
 /// <reference path="portrait-panel.ts" />
 /// <reference path="monitor/monitor-panel.ts" />
+/// <reference path="crescendo-panel.ts" />
 /// <reference path="shop-panel.ts" />
 
 namespace Jamble {
@@ -12,6 +13,7 @@ namespace Jamble {
     private hudOverlay!: HTMLElement;
     private portraitPanel!: PortraitPanel;
     private monitorPanel!: MonitorPanel;
+    private crescendoPanel!: CrescendoPanel;
     private shopPanel!: ShopPanel;
     
     private gameWidth: number;
@@ -64,10 +66,17 @@ namespace Jamble {
     }
     
     private createHUDComponents(): void {
-      // Account for portrait border (1px on each side = 2px total)
+      // Calculate widths
+      // Crescendo panel is 1/5 of portrait width (e.g., 16px if portrait is 80px)
+      const crescendoPanelWidth = Math.floor(this.portraitSize / 5);
+      // Portrait has 1px border on each side = 2px total
       const portraitTotalWidth = this.portraitSize + 2;
+      // Monitor takes remaining space
+      const monitorWidth = this.gameWidth - portraitTotalWidth - crescendoPanelWidth;
       
-      this.monitorPanel = new MonitorPanel(this.container, this.gameWidth - portraitTotalWidth, this.portraitSize);
+      // Create components in order: monitor, crescendo panel, portrait
+      this.monitorPanel = new MonitorPanel(this.container, monitorWidth, this.portraitSize);
+      this.crescendoPanel = new CrescendoPanel(this.container, crescendoPanelWidth, this.portraitSize);
       this.portraitPanel = new PortraitPanel(this.container, this.portraitSize);
     }
     
@@ -181,6 +190,20 @@ namespace Jamble {
      */
     getSensationValue(): number {
       return this.monitorPanel.getSensationValue();
+    }
+
+    /**
+     * Set crescendo value (0-1) from external source (e.g., NPC)
+     */
+    setCrescendoValue(value: number): void {
+      this.crescendoPanel.setValue(value);
+    }
+
+    /**
+     * Get current crescendo value
+     */
+    getCrescendoValue(): number {
+      return this.crescendoPanel.getValue();
     }
     
     /**
