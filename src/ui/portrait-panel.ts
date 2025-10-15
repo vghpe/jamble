@@ -13,7 +13,8 @@ namespace Jamble {
     private emojis = {
       default: '😊',
       happy: '😄',
-      surprised: '😮'
+      surprised: '😮',
+      pain: '😖'  // Pain state for when NPC exceeds pain threshold
     };
     
     constructor(parent: HTMLElement, size: number) {
@@ -41,6 +42,16 @@ namespace Jamble {
     
     setState(state: string): void {
       this.currentState = state;
+    }
+    
+    /**
+     * Trigger pain state - placeholder for future animation/expression system
+     * TODO: Add temporary pain animation, auto-return to default state
+     * TODO: Consider adding screen shake or other feedback effects
+     */
+    showPainFeedback(): void {
+      this.setState('pain');
+      // TODO: Auto-return to default state after animation completes
     }
     
     update(deltaTime: number): void {

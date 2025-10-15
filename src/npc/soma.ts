@@ -8,7 +8,8 @@ namespace Jamble {
         decayRate: 0.2,       // Slightly slower decay
         maxValue: 6.0,
         minValue: -1.0,
-        sensitivity: 1.0
+        sensitivity: 3.0,
+        painThreshold: 5.0    // Pain zone starts at 5.0
       });
       
       // Configure Soma's crescendo zone (target arousal around 4.0)

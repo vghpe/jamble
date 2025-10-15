@@ -5,6 +5,13 @@
 /// <reference path="knob-anim.ts" />
 
 namespace Jamble {
+  export enum KnobState {
+    ACTIVE,      // Normal gameplay - can be hit
+    RETRACTING,  // Playing retract animation
+    RETRACTED,   // Hidden, no collision
+    SPAWNING     // Playing spawn animation
+  }
+
   export class Knob extends GameObject implements CurrencyCollectible {
     public currencyValue = 1; // Base value for collisions
     private readonly topHitValue: number = 5; // Currency for top collisions
@@ -39,7 +46,7 @@ namespace Jamble {
     // Hit tolerance and relocation system
     private hitTolerance: number = 3;           // Hits before relocation
     private currentHits: number = 0;            // Current hit count
-    private knobState: 'active' | 'hidden' = 'active'; // Simple state
+    private state: KnobState = KnobState.ACTIVE; // Current state
     private respawnTimer: number = 0;           // 2-second delay timer
     private readonly respawnDelay: number = 2.0; // 2 seconds
     private slotManager: SlotManager;           // Reference to slot system
@@ -83,8 +90,8 @@ namespace Jamble {
     }
 
     update(deltaTime: number): void {
-      // Handle respawn timer
-      if (this.knobState === 'hidden') {
+      // Handle respawn timer (old auto-respawn logic - will be replaced with manual respawn)
+      if (this.state === KnobState.RETRACTED) {
         this.respawnTimer -= deltaTime;
         if (this.respawnTimer <= 0) {
           this.respawn();
@@ -93,7 +100,7 @@ namespace Jamble {
       }
       
       // Only update physics when active
-      if (this.knobState === 'active') {
+      if (this.state === KnobState.ACTIVE) {
         // Delegate to animation/physics system
         this.anim.update(deltaTime);
         // Update geometry after all physics updates
@@ -139,6 +146,12 @@ namespace Jamble {
     }
 
     private drawKnob(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+      // Don't render when retracted
+      if (this.state === KnobState.RETRACTED) {
+        console.log(`${this.id} drawKnob() called but state is RETRACTED, skipping render`);
+        return;
+      }
+      
       // Draw spring curve (original archive style)
       ctx.save();
       ctx.lineCap = 'round';
@@ -185,7 +198,10 @@ namespace Jamble {
 
     onCollected(player: Player): number {
       // Only process if active
-      if (this.knobState !== 'active') return 0;
+      if (this.state !== KnobState.ACTIVE) {
+        console.log(`${this.id} onCollected() called but state is ${KnobState[this.state]}, returning 0`);
+        return 0;
+      }
       
       const collisionType = this.detectCollisionType(player);
       let currencyAmount = this.currencyValue; // Default side collision value (1)
@@ -236,7 +252,7 @@ namespace Jamble {
     // Animation handled by KnobAnim
 
     onTriggerEnter(other: GameObject): void {
-      if (this.knobState !== 'active') return; // Ignore while hidden
+      if (this.state !== KnobState.ACTIVE) return; // Ignore while not active
       // Only react to player
       if (other instanceof Player) {
         // Collect currency when player touches knob (handles animation internally)
@@ -245,7 +261,7 @@ namespace Jamble {
     }
 
     private startRelocation(): void {
-      this.knobState = 'hidden';
+      this.state = KnobState.RETRACTED;
       this.respawnTimer = this.respawnDelay;
       
       // Hide knob
@@ -279,14 +295,78 @@ namespace Jamble {
     }
 
     private respawn(): void {
-      this.knobState = 'active';
+      this.state = KnobState.ACTIVE;
       this.currentHits = 0;
       
       // Re-enable knob
       this.render.visible = true;
-      if (this.collisionBox) {
-        this.collisionBox.category = 'kinematic';
+      
+      // Restore collision box
+      this.collisionBox = {
+        x: 0,
+        y: 0,
+        width: 30,
+        height: 30,
+        anchor: { x: 0.5, y: 0.5 },
+        category: 'kinematic'
+      };
+    }
+    
+    /**
+     * Retract knob due to pain threshold
+     */
+    retract(): void {
+      if (this.state !== KnobState.ACTIVE) {
+        console.log(`${this.id} retract() called but state is ${KnobState[this.state]}, skipping`);
+        return;
       }
+      
+      console.log(`${this.id} retracting due to pain threshold`);
+      console.log(`  Before: state=${KnobState[this.state]}, visible=${this.render.visible}, collisionBox=${!!this.collisionBox}`);
+      
+      this.state = KnobState.RETRACTING;
+      
+      // TODO: Play retract animation here
+      // For now, immediately go to retracted state
+      this.state = KnobState.RETRACTED;
+      
+      // IMPORTANT: Set respawn timer to infinity to prevent auto-respawn
+      // Manual respawn only (via control station/hearts)
+      this.respawnTimer = Infinity;
+      
+      // Hide knob and disable collision
+      this.render.visible = false;
+      this.collisionBox = undefined;
+      
+      console.log(`  After: state=${KnobState[this.state]}, visible=${this.render.visible}, collisionBox=${!!this.collisionBox}`);
+    }
+    
+    /**
+     * Manually trigger respawn (called from control station/heart use)
+     */
+    manualRespawn(): void {
+      if (this.state !== KnobState.RETRACTED) return;
+      
+      console.log(`${this.id} respawning manually`);
+      this.state = KnobState.SPAWNING;
+      
+      // TODO: Play spawn animation here
+      // For now, immediately go to active state
+      this.respawn();
+    }
+    
+    /**
+     * Get current knob state
+     */
+    getState(): KnobState {
+      return this.state;
+    }
+    
+    /**
+     * Check if knob is currently active (can be hit)
+     */
+    isActive(): boolean {
+      return this.state === KnobState.ACTIVE;
     }
   }
 }

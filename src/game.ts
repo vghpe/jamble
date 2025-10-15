@@ -40,6 +40,7 @@ namespace Jamble {
     
     private player!: Player; // Will be initialized in createPlayer()
     private gameObjects: GameObject[] = [];
+    private knobs: Knob[] = [];  // Track all knobs for pain threshold retraction
     
     private lastTime: number = 0;
     private gameWidth: number = 500;
@@ -119,6 +120,16 @@ namespace Jamble {
           this.hudManager.setCrescendoValue(npc.getCrescendoNormalized());
         });
         
+        // Connect NPC pain threshold to retract all knobs
+        this.activeNPC.onPainThreshold(() => {
+          console.log('Pain threshold hit - retracting all knobs');
+          this.knobs.forEach(knob => knob.retract());
+          // Disable crescendo rise when knobs retract
+          this.activeNPC.disableCrescendo();
+          // Trigger portrait pain feedback
+          this.hudManager.showPortraitPain();
+        });
+        
         // Set initial values
         this.hudManager.setSensationValue(this.activeNPC.getSensationNormalized());
         this.hudManager.setCrescendoValue(this.activeNPC.getCrescendoNormalized());
@@ -127,11 +138,32 @@ namespace Jamble {
           this.debugSystem.setPlayer(this.player);
           this.debugSystem.setStateManager(this.stateManager);
           this.debugSystem.setHUDManager(this.hudManager);
+          this.debugSystem.setGame(this);
         }
       } catch (error) {
         console.error('Error during game initialization:', error);
         throw error;
       }
+    }
+    
+    /**
+     * Respawn all retracted knobs (called from debug panel or control station)
+     */
+    respawnAllKnobs(): void {
+      let respawnedCount = 0;
+      this.knobs.forEach(knob => {
+        if (knob.getState() === KnobState.RETRACTED) {
+          knob.manualRespawn();
+          respawnedCount++;
+        }
+      });
+      
+      // Re-enable crescendo if any knobs were respawned
+      if (respawnedCount > 0) {
+        this.activeNPC.enableCrescendo();
+      }
+      
+      console.log(`Respawned ${respawnedCount} knob(s)`);
     }
 
     private setupGameElement() {
@@ -195,6 +227,7 @@ namespace Jamble {
         const knobSlot = availableGroundSlots[3];
         const knob = new Knob('knob1', knobSlot.x, knobSlot.y, this.slotManager, knobSlot.id, this.activeNPC);
         this.gameObjects.push(knob);
+        this.knobs.push(knob);  // Track for pain threshold
         this.slotManager.occupySlot(knobSlot.id, knob.id);
       }
 

@@ -16,6 +16,7 @@ namespace Jamble {
     private stateManager: StateManager | null = null;
     private economyManager: EconomyManager;
     private hudManager: HUDManager | null = null;
+    private game: Game | null = null;
 
     constructor(container?: HTMLElement) {
       this.economyManager = EconomyManager.getInstance();
@@ -97,6 +98,13 @@ namespace Jamble {
                 <div class="form-grid" id="game-state">
                   <!-- Game state will be populated here -->
                 </div>
+              </div>
+            </div>
+            
+            <div class="debug-section">
+              <div class="section-header">Knob Controls</div>
+              <div class="section-content">
+                <button type="button" class="debug-button" id="respawn-knobs">Respawn All Knobs</button>
               </div>
             </div>
           </div>
@@ -268,6 +276,20 @@ namespace Jamble {
           console.error('Could not find toggle-slots checkbox');
         }
         
+        // Setup knob respawn button
+        const respawnKnobsButton = this.debugContainer.querySelector('#respawn-knobs') as HTMLButtonElement;
+        if (respawnKnobsButton) {
+          respawnKnobsButton.onclick = () => {
+            if (this.game) {
+              this.game.respawnAllKnobs();
+            } else {
+              console.warn('Game reference not set in debug system');
+            }
+          };
+        } else {
+          console.error('Could not find respawn-knobs button');
+        }
+        
 
       } catch (error) {
         console.error('Error setting up debug panel styles and events:', error);
@@ -314,6 +336,10 @@ namespace Jamble {
 
     setHUDManager(hudManager: HUDManager) {
       this.hudManager = hudManager;
+    }
+
+    setGame(game: Game) {
+      this.game = game;
     }
 
     update() {

@@ -7,6 +7,7 @@ namespace Jamble {
     maxValue: number;
     minValue: number;
     sensitivity: number;
+    painThreshold: number;
   }
 
   export interface NPCCrescendoConfig {
@@ -25,10 +26,13 @@ namespace Jamble {
     protected crescendoValue: number;
     protected crescendoConfig: NPCCrescendoConfig;
     protected crescendoThresholdReached: boolean = false;
+    protected crescendoEnabled: boolean = true;  // Can be disabled when knobs retract
+    protected inPainZone: boolean = false;
     protected arousalChangeListeners: Array<(value: number, npc: BaseNPC) => void> = [];
     protected arousalImpulseListeners: Array<(impulse: number, npc: BaseNPC) => void> = [];
     protected crescendoChangeListeners: Array<(value: number, npc: BaseNPC) => void> = [];
     protected crescendoThresholdListeners: Array<(npc: BaseNPC) => void> = [];
+    protected painThresholdListeners: Array<(npc: BaseNPC) => void> = [];
 
     constructor(name: string, config?: Partial<NPCArousalConfig>) {
       this.name = name;
@@ -40,6 +44,7 @@ namespace Jamble {
         maxValue: 6.0,
         minValue: -1.0,
         sensitivity: 1.0,
+        painThreshold: 5.0,
         ...config
       };
       
@@ -77,6 +82,9 @@ namespace Jamble {
         this.arousalConfig.minValue,
         Math.min(this.arousalConfig.maxValue, this.arousalValue + adjustedIntensity)
       );
+      
+      // Check for pain threshold crossing
+      this.checkPainThreshold();
       
       // Notify impulse listeners with the actual applied intensity
       const actualIntensity = this.arousalValue - oldValue;
@@ -205,6 +213,56 @@ namespace Jamble {
       }
     }
     
+    /**
+     * Check if pain threshold has been crossed
+     */
+    private checkPainThreshold(): void {
+      const wasInPain = this.inPainZone;
+      const isInPain = this.arousalValue > this.arousalConfig.painThreshold;
+      
+      // Fire event only on crossing into pain zone (not continuously)
+      if (isInPain && !wasInPain) {
+        this.inPainZone = true;
+        this.notifyPainThresholdListeners();
+      } else if (!isInPain && wasInPain) {
+        this.inPainZone = false;
+      }
+    }
+    
+    /**
+     * Check if currently in pain zone
+     */
+    isInPainZone(): boolean {
+      return this.inPainZone;
+    }
+    
+    /**
+     * Register listener for pain threshold crossed
+     */
+    onPainThreshold(callback: (npc: BaseNPC) => void): void {
+      this.painThresholdListeners.push(callback);
+    }
+    
+    /**
+     * Remove pain threshold listener
+     */
+    removePainThresholdListener(callback: (npc: BaseNPC) => void): void {
+      const index = this.painThresholdListeners.indexOf(callback);
+      if (index !== -1) {
+        this.painThresholdListeners.splice(index, 1);
+      }
+    }
+    
+    private notifyPainThresholdListeners(): void {
+      for (const listener of this.painThresholdListeners) {
+        try {
+          listener(this);
+        } catch (error) {
+          console.error(`Error in pain threshold listener for ${this.name}:`, error);
+        }
+      }
+    }
+    
     // === CRESCENDO MANAGEMENT ===
     
     getCrescendoValue(): number {
@@ -246,7 +304,16 @@ namespace Jamble {
       
       const oldValue = this.crescendoValue;
       const inZone = this.isInCrescendoZone();
-      const rate = inZone ? this.crescendoConfig.riseRate : -this.crescendoConfig.decayRate;
+      
+      // Only allow crescendo to rise if enabled (knobs are active)
+      // Crescendo can still decay when disabled
+      let rate: number;
+      if (inZone && this.crescendoEnabled) {
+        rate = this.crescendoConfig.riseRate;
+      } else {
+        rate = -this.crescendoConfig.decayRate;
+      }
+      
       const change = rate * deltaTime;
       
       this.crescendoValue = Math.max(0, Math.min(this.crescendoConfig.maxValue, this.crescendoValue + change));
@@ -262,6 +329,27 @@ namespace Jamble {
       if (oldValue !== this.crescendoValue) {
         this.notifyCrescendoChangeListeners();
       }
+    }
+    
+    /**
+     * Enable crescendo rise (called when knobs become active)
+     */
+    enableCrescendo(): void {
+      this.crescendoEnabled = true;
+    }
+    
+    /**
+     * Disable crescendo rise (called when knobs retract)
+     */
+    disableCrescendo(): void {
+      this.crescendoEnabled = false;
+    }
+    
+    /**
+     * Check if crescendo is currently enabled
+     */
+    isCrescendoEnabled(): boolean {
+      return this.crescendoEnabled;
     }
     
     /**

@@ -207,6 +207,14 @@ namespace Jamble {
     }
     
     /**
+     * Trigger portrait pain feedback
+     * Placeholder for future pain animation system
+     */
+    showPortraitPain(): void {
+      this.portraitPanel.showPainFeedback();
+    }
+    
+    /**
      * Set state manager for shop panel
      */
     setStateManager(stateManager: any): void {
