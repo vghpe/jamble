@@ -43,12 +43,8 @@ namespace Jamble {
     private basePos: { x: number; y: number } = { x: 0, y: 0 };
     private springPoints: { x: number; y: number }[] = [];
     
-    // Hit tolerance and relocation system
-    private hitTolerance: number = 3;           // Hits before relocation
-    private currentHits: number = 0;            // Current hit count
+    // State management
     private state: KnobState = KnobState.ACTIVE; // Current state
-    private respawnTimer: number = 0;           // 2-second delay timer
-    private readonly respawnDelay: number = 2.0; // 2 seconds
     private slotManager: SlotManager;           // Reference to slot system
     private currentSlotId: string = '';         // Track which slot we occupy
 
@@ -85,27 +81,19 @@ namespace Jamble {
         width: 30,
         height: 30,
         anchor: { x: 0.5, y: 0.5 },
-        category: 'kinematic'
+        category: 'kinematic',
+        enabled: true
       };
     }
 
     update(deltaTime: number): void {
-      // Handle respawn timer (old auto-respawn logic - will be replaced with manual respawn)
-      if (this.state === KnobState.RETRACTED) {
-        this.respawnTimer -= deltaTime;
-        if (this.respawnTimer <= 0) {
-          this.respawn();
-        }
-        return; // Skip physics while hidden
-      }
+      // Skip physics when not active (manual respawn only)
+      if (this.state !== KnobState.ACTIVE) return;
       
-      // Only update physics when active
-      if (this.state === KnobState.ACTIVE) {
-        // Delegate to animation/physics system
-        this.anim.update(deltaTime);
-        // Update geometry after all physics updates
-        this.updateSpringPoints();
-      }
+      // Delegate to animation/physics system
+      this.anim.update(deltaTime);
+      // Update geometry after all physics updates
+      this.updateSpringPoints();
     }
 
     // Angular spring handled by KnobAnim
@@ -147,10 +135,7 @@ namespace Jamble {
 
     private drawKnob(ctx: CanvasRenderingContext2D, x: number, y: number): void {
       // Don't render when retracted
-      if (this.state === KnobState.RETRACTED) {
-        console.log(`${this.id} drawKnob() called but state is RETRACTED, skipping render`);
-        return;
-      }
+      if (this.state === KnobState.RETRACTED) return;
       
       // Draw spring curve (original archive style)
       ctx.save();
@@ -198,10 +183,7 @@ namespace Jamble {
 
     onCollected(player: Player): number {
       // Only process if active
-      if (this.state !== KnobState.ACTIVE) {
-        console.log(`${this.id} onCollected() called but state is ${KnobState[this.state]}, returning 0`);
-        return 0;
-      }
+      if (this.state !== KnobState.ACTIVE) return 0;
       
       const collisionType = this.detectCollisionType(player);
       let currencyAmount = this.currencyValue; // Default side collision value (1)
@@ -220,13 +202,6 @@ namespace Jamble {
       
       // Add arousal impact to active NPC only - HUD will listen to NPC changes
       this.activeNPC.applyArousalImpulse(arousalImpact);
-      
-      // Increment hit counter and check tolerance
-      this.currentHits++;
-      // TODO: Disabled relocation - knob will now hide/pop based on other conditions
-      // if (this.currentHits >= this.hitTolerance) {
-      //   this.startRelocation();
-      // }
       
       return currencyAmount;
     }
@@ -259,70 +234,12 @@ namespace Jamble {
         this.onCollected(other as Player);
       }
     }
-
-    private startRelocation(): void {
-      this.state = KnobState.RETRACTED;
-      this.respawnTimer = this.respawnDelay;
-      
-      // Hide knob
-      this.render.visible = false;
-      if (this.collisionBox) {
-        this.collisionBox.category = 'deadly'; // Use existing category to disable normal collision
-      }
-      
-      // Find new slot
-      this.relocateToNewSlot();
-    }
-
-    private relocateToNewSlot(): void {
-      // Get available ground slots (excluding current)
-      const availableSlots = this.slotManager.getAvailableSlots('ground')
-        .filter(slot => slot.id !== this.currentSlotId);
-      
-      if (availableSlots.length > 0) {
-        // Pick random available slot
-        const newSlot = availableSlots[Math.floor(Math.random() * availableSlots.length)];
-        
-        // Update position and slot tracking
-        this.transform.x = newSlot.x;
-        this.transform.y = newSlot.y;
-        
-        // Update slot occupancy
-        this.slotManager.freeSlot(this.currentSlotId);
-        this.slotManager.occupySlot(newSlot.id, this.id);
-        this.currentSlotId = newSlot.id;
-      }
-    }
-
-    private respawn(): void {
-      this.state = KnobState.ACTIVE;
-      this.currentHits = 0;
-      
-      // Re-enable knob
-      this.render.visible = true;
-      
-      // Restore collision box
-      this.collisionBox = {
-        x: 0,
-        y: 0,
-        width: 30,
-        height: 30,
-        anchor: { x: 0.5, y: 0.5 },
-        category: 'kinematic'
-      };
-    }
     
     /**
      * Retract knob due to pain threshold
      */
     retract(): void {
-      if (this.state !== KnobState.ACTIVE) {
-        console.log(`${this.id} retract() called but state is ${KnobState[this.state]}, skipping`);
-        return;
-      }
-      
-      console.log(`${this.id} retracting due to pain threshold`);
-      console.log(`  Before: state=${KnobState[this.state]}, visible=${this.render.visible}, collisionBox=${!!this.collisionBox}`);
+      if (this.state !== KnobState.ACTIVE) return;
       
       this.state = KnobState.RETRACTING;
       
@@ -330,15 +247,11 @@ namespace Jamble {
       // For now, immediately go to retracted state
       this.state = KnobState.RETRACTED;
       
-      // IMPORTANT: Set respawn timer to infinity to prevent auto-respawn
-      // Manual respawn only (via control station/hearts)
-      this.respawnTimer = Infinity;
-      
       // Hide knob and disable collision
       this.render.visible = false;
-      this.collisionBox = undefined;
-      
-      console.log(`  After: state=${KnobState[this.state]}, visible=${this.render.visible}, collisionBox=${!!this.collisionBox}`);
+      if (this.collisionBox) {
+        this.collisionBox.enabled = false;
+      }
     }
     
     /**
@@ -347,12 +260,19 @@ namespace Jamble {
     manualRespawn(): void {
       if (this.state !== KnobState.RETRACTED) return;
       
-      console.log(`${this.id} respawning manually`);
       this.state = KnobState.SPAWNING;
       
       // TODO: Play spawn animation here
       // For now, immediately go to active state
-      this.respawn();
+      this.state = KnobState.ACTIVE;
+      
+      // Re-enable knob
+      this.render.visible = true;
+      
+      // Re-enable collision
+      if (this.collisionBox) {
+        this.collisionBox.enabled = true;
+      }
     }
     
     /**

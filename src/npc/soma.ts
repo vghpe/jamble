@@ -5,7 +5,7 @@ namespace Jamble {
     constructor() {
       super('Soma', {
         baselineValue: 0.2,
-        decayRate: 0.2,       // Slightly slower decay
+        decayRate: 0.8,       // Slightly slower decay
         maxValue: 6.0,
         minValue: -1.0,
         sensitivity: 3.0,

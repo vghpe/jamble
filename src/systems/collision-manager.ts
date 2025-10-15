@@ -34,7 +34,7 @@ export class CollisionManager {
       for (const obj of gameObjects) byId.set(obj.id, obj);
 
       for (const obj of gameObjects) {
-        if (!obj.collisionBox) continue;
+        if (!obj.collisionBox || obj.collisionBox.enabled === false) continue;
         const cat = obj.collisionBox.category;
         if (cat === 'player') dynamics.push(obj);
         if (cat === 'environment') solids.push(obj);
@@ -43,14 +43,14 @@ export class CollisionManager {
 
       // 1) Resolve against solids, then clamp to world
       for (const dyn of dynamics) {
-        if (!dyn.collisionBox) continue;
+        if (!dyn.collisionBox || dyn.collisionBox.enabled === false) continue;
         const wasGrounded = (dyn as any).grounded === true;
         // Capture vertical velocity BEFORE we potentially zero it during resolution/clamp
         const vyBefore: number = (dyn as any).velocityY ?? 0;
 
         // Resolve vs static solids (minimal translation along the smallest axis)
         for (const solid of solids) {
-          if (dyn === solid || !solid.collisionBox) continue;
+          if (dyn === solid || !solid.collisionBox || solid.collisionBox.enabled === false) continue;
           this.resolveAABB(dyn, solid);
         }
 
@@ -68,7 +68,7 @@ export class CollisionManager {
         } else {
           // Check top faces of solids directly beneath
           for (const solid of solids) {
-            if (!solid.collisionBox) continue;
+            if (!solid.collisionBox || solid.collisionBox.enabled === false) continue;
             const ob = this.getAABB(solid);
             const horizontalOverlap = pb.x < ob.x + ob.width && pb.x + pb.width > ob.x;
             const touchingTop = Math.abs((pb.y + pb.height) - ob.y) <= eps;
@@ -90,9 +90,9 @@ export class CollisionManager {
       // 3) Trigger handling (enter/stay/exit) for non‑blocking overlaps
       const currentPairs: Set<string> = new Set();
       for (const dyn of dynamics) {
-        if (!dyn.collisionBox) continue;
+        if (!dyn.collisionBox || dyn.collisionBox.enabled === false) continue;
         for (const other of triggers) {
-          if (!other.collisionBox) continue;
+          if (!other.collisionBox || other.collisionBox.enabled === false) continue;
           if (dyn === other) continue;
           if (this.aabbIntersects(dyn, other)) {
             const key = `${dyn.id}|${other.id}`;
@@ -150,7 +150,7 @@ export class CollisionManager {
 
     // Keep collider.x/y up to date for any consumers that read it directly
     private setColliderTopLeft(obj: GameObject, x: number, y: number) {
-      if (!obj.collisionBox) return;
+      if (!obj.collisionBox || obj.collisionBox.enabled === false) return;
       obj.collisionBox.x = x;
       obj.collisionBox.y = y;
     }
@@ -209,7 +209,7 @@ export class CollisionManager {
 
     // Clamp to world left/right and bottom ground using the collider AABB
     private clampToWorld(obj: GameObject) {
-      if (!obj.collisionBox) return;
+      if (!obj.collisionBox || obj.collisionBox.enabled === false) return;
       const pb = this.getAABB(obj);
       let dx = 0;
       let wallSide: 'left' | 'right' | null = null;

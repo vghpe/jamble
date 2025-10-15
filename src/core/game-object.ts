@@ -46,6 +46,7 @@ namespace Jamble {
     // - player: the player character
     category: 'player' | 'environment' | 'deadly' | 'kinematic';
     anchor?: Anchor; // Where the object's transform aligns within the box
+    enabled?: boolean; // Whether collision detection is active (default: true)
   }
 
   export abstract class GameObject {
