@@ -3,17 +3,29 @@
 namespace Jamble {
   /**
    * Softness Module - Horizontal slider controlling player roundness/squareness.
-   * Range: 0 (square) to 1 (round)
+   * Range: -1 (square) to +1 (circle), 0 is default
    */
   export class SoftnessModule extends ControlModule {
-    private static readonly DEFAULT_VALUE: number = 0.5;
+    private static readonly DEFAULT_VALUE: number = 0; // Center position = current player look
     private value!: number;
     private slider!: HTMLInputElement;
     private label!: HTMLElement;
     private valueDisplay!: HTMLElement;
+    private player: Player | null = null;
 
     constructor(config: ModuleConfig) {
       super(config);
+    }
+
+    /**
+     * Set the player reference so we can update it.
+     */
+    setPlayer(player: Player): void {
+      this.player = player;
+      // Set initial player value
+      if (this.player) {
+        this.player.setSoftness(this.value);
+      }
     }
 
     protected createElement(): HTMLElement {
@@ -32,7 +44,8 @@ namespace Jamble {
       this.slider.className = 'module-slider-input';
       this.slider.min = '0';
       this.slider.max = '100';
-      this.slider.value = String(this.value * 100);
+      // Map -1 to +1 range to 0-100 slider (0 = -1, 50 = 0, 100 = +1)
+      this.slider.value = String((this.value + 1) * 50);
       
       this.valueDisplay = document.createElement('div');
       this.valueDisplay.className = 'module-value';
@@ -56,8 +69,14 @@ namespace Jamble {
     }
 
     private handleInput(): void {
-      this.value = parseInt(this.slider.value) / 100;
+      // Map slider 0-100 to value -1 to +1
+      this.value = (parseInt(this.slider.value) / 50) - 1;
       this.updateValueDisplay();
+      
+      // Update player if connected
+      if (this.player) {
+        this.player.setSoftness(this.value);
+      }
     }
 
     private updateValueDisplay(): void {
@@ -66,12 +85,17 @@ namespace Jamble {
 
     protected resetState(): void {
       this.value = SoftnessModule.DEFAULT_VALUE;
-      this.slider.value = String(this.value * 100);
+      this.slider.value = String((this.value + 1) * 50);
       this.updateValueDisplay();
+      
+      // Update player if connected
+      if (this.player) {
+        this.player.setSoftness(this.value);
+      }
     }
 
     /**
-     * Get current softness value (0-1)
+     * Get current softness value (-1 to +1)
      */
     getValue(): number {
       return this.value;

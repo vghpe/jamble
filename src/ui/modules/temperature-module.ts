@@ -3,17 +3,29 @@
 namespace Jamble {
   /**
    * Temperature Module - Horizontal slider controlling player heat.
-   * Range: 0 (cold) to 1 (hot)
+   * Range: -1 (blue/cold) to +1 (yellow/hot), 0 is neutral
    */
   export class TemperatureModule extends ControlModule {
-    private static readonly DEFAULT_VALUE: number = 0.5;
+    private static readonly DEFAULT_VALUE: number = 0; // Center position = neutral
     private value!: number;
     private slider!: HTMLInputElement;
     private label!: HTMLElement;
     private valueDisplay!: HTMLElement;
+    private player: Player | null = null;
 
     constructor(config: ModuleConfig) {
       super(config);
+    }
+
+    /**
+     * Set the player reference so we can update it.
+     */
+    setPlayer(player: Player): void {
+      this.player = player;
+      // Set initial player value
+      if (this.player) {
+        this.player.setTemperature(this.value);
+      }
     }
 
     protected createElement(): HTMLElement {
@@ -32,7 +44,8 @@ namespace Jamble {
       this.slider.className = 'module-slider-input';
       this.slider.min = '0';
       this.slider.max = '100';
-      this.slider.value = String(this.value * 100);
+      // Map -1 to +1 range to 0-100 slider (0 = -1, 50 = 0, 100 = +1)
+      this.slider.value = String((this.value + 1) * 50);
       
       this.valueDisplay = document.createElement('div');
       this.valueDisplay.className = 'module-value';
@@ -56,8 +69,14 @@ namespace Jamble {
     }
 
     private handleInput(): void {
-      this.value = parseInt(this.slider.value) / 100;
+      // Map slider 0-100 to value -1 to +1
+      this.value = (parseInt(this.slider.value) / 50) - 1;
       this.updateValueDisplay();
+      
+      // Update player if connected
+      if (this.player) {
+        this.player.setTemperature(this.value);
+      }
     }
 
     private updateValueDisplay(): void {
@@ -66,12 +85,17 @@ namespace Jamble {
 
     protected resetState(): void {
       this.value = TemperatureModule.DEFAULT_VALUE;
-      this.slider.value = String(this.value * 100);
+      this.slider.value = String((this.value + 1) * 50);
       this.updateValueDisplay();
+      
+      // Update player if connected
+      if (this.player) {
+        this.player.setTemperature(this.value);
+      }
     }
 
     /**
-     * Get current temperature value (0-1)
+     * Get current temperature value (-1 to +1)
      */
     getValue(): number {
       return this.value;

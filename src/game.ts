@@ -96,6 +96,10 @@ namespace Jamble {
 
         this.setupGameElement();
         this.createPlayer();
+        
+        // Connect player to control panel so sliders can update player attributes
+        this.hudManager.getControlPanel().setPlayer(this.player);
+        
         this.TempEntitiesLayout();
         this.setupInput();
         

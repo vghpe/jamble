@@ -1,4 +1,5 @@
 /// <reference path="ui-component-base.ts" />
+/// <reference path="../entities/player/player.ts" />
 /// <reference path="modules/module-base.ts" />
 /// <reference path="modules/heart-module.ts" />
 /// <reference path="modules/tree-module.ts" />
@@ -258,6 +259,22 @@ namespace Jamble {
      */
     public setStateManager(stateManager: any): void {
       this.stateManager = stateManager;
+    }
+
+    /**
+     * Set player reference for modules that need to update player attributes.
+     */
+    public setPlayer(player: Player): void {
+      // Connect slider modules to player
+      const softnessModule = this.modules.get('softness') as SoftnessModule;
+      const temperatureModule = this.modules.get('temperature') as TemperatureModule;
+      
+      if (softnessModule) {
+        softnessModule.setPlayer(player);
+      }
+      if (temperatureModule) {
+        temperatureModule.setPlayer(player);
+      }
     }
 
     /**

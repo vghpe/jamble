@@ -1,4 +1,5 @@
 /// <reference path="../../core/game-object.ts" />
+/// <reference path="../../core/utils/color-utils.ts" />
 /// <reference path="player-anim.ts" />
 
 namespace Jamble {
@@ -17,6 +18,14 @@ namespace Jamble {
     // Visual positioning offsets for fine-tuning
     private readonly visualOffsetX: number = 0;
     private readonly visualOffsetY: number = 0;
+    
+    // Player attributes (controlled by control panel)
+    private softness: number = 0; // -1 (square) to +1 (circle), 0 is current default (radius 8)
+    private temperature: number = 0; // -1 (blue) to +1 (yellow), affects LAB B channel
+    
+    // LAB color constants
+    private readonly baseLightness: number = 72;
+    private readonly baseA: number = 60;
     
     // Animation driver
     private anim: PlayerAnim;
@@ -126,14 +135,73 @@ namespace Jamble {
 
     // Landing cancellation handled by PlayerAnim
 
+    /**
+     * Set player softness (-1 to +1).
+     * -1 = square (radius 0), 0 = default (radius 8), +1 = circle (radius 16)
+     */
+    setSoftness(value: number): void {
+      this.softness = Math.max(-1, Math.min(1, value));
+    }
+
+    getSoftness(): number {
+      return this.softness;
+    }
+
+    /**
+     * Set player temperature (-1 to +1).
+     * -1 = blue, 0 = neutral pink, +1 = yellow (affects LAB B channel)
+     */
+    setTemperature(value: number): void {
+      this.temperature = Math.max(-1, Math.min(1, value));
+    }
+
+    getTemperature(): number {
+      return this.temperature;
+    }
+
+    /**
+     * Calculate corner radius based on softness.
+     * Maps softness (-1 to +1) to radius (0 to 16).
+     */
+    private getCornerRadius(): number {
+      // softness: -1 → 0, 0 → 8, 1 → 16
+      return 8 + (this.softness * 8);
+    }
+
+    /**
+     * Get player color based on temperature using LAB color space.
+     */
+    private getPlayerColor(): string {
+      // Map temperature (-1 to +1) to LAB B channel (-128 to +128)
+      const b = this.temperature * 128;
+      return ColorUtils.labToRgb(this.baseLightness, this.baseA, b);
+    }
+
+    /**
+     * Get border color (20 points darker in lightness).
+     */
+    private getBorderColor(): string {
+      const b = this.temperature * 128;
+      return ColorUtils.getBorderColor(this.baseLightness, this.baseA, b, 20);
+    }
+
     private drawPlayer(ctx: CanvasRenderingContext2D, x: number, y: number): void {
       // Apply visual offsets for precise positioning
       const drawX = x + this.visualOffsetX;
       const drawY = y + this.visualOffsetY;
       
-      // Draw rounded rectangle player
-      ctx.fillStyle = '#4db6ac';
-      this.drawRoundedRect(ctx, drawX, drawY, 20, 20, 4);
+      // Get dynamic color and radius based on attributes
+      const radius = this.getCornerRadius();
+      const fillColor = this.getPlayerColor();
+      const borderColor = this.getBorderColor();
+      
+      // Draw border (slightly larger rounded rectangle)
+      ctx.fillStyle = borderColor;
+      this.drawRoundedRect(ctx, drawX - 1, drawY - 1, 22, 22, radius);
+      
+      // Draw main player body
+      ctx.fillStyle = fillColor;
+      this.drawRoundedRect(ctx, drawX, drawY, 20, 20, radius);
     }
 
     private drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number): void {
