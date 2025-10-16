@@ -2,7 +2,6 @@ namespace Jamble {
   export interface ModuleConfig {
     id: string;
     gridSize: { width: number; height: number };
-    label?: string;
   }
 
   /**
@@ -12,7 +11,6 @@ namespace Jamble {
   export abstract class ControlModule {
     protected element: HTMLElement;
     protected config: ModuleConfig;
-    protected enabled: boolean = true;
 
     constructor(config: ModuleConfig) {
       this.config = config;

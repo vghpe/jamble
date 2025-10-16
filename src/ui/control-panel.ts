@@ -205,26 +205,22 @@ namespace Jamble {
       
       const softness = new SoftnessModule({ 
         id: 'softness', 
-        gridSize: { width: 3, height: 1 },
-        label: 'Softness'
+        gridSize: { width: 3, height: 1 }
       });
       
       const heart = new HeartModule({ 
         id: 'heart', 
-        gridSize: { width: 1, height: 1 },
-        label: 'Heart'
+        gridSize: { width: 1, height: 1 }
       });
       
       const temperature = new TemperatureModule({ 
         id: 'temperature', 
-        gridSize: { width: 3, height: 1 },
-        label: 'Temperature'
+        gridSize: { width: 3, height: 1 }
       });
       
       const tree = new TreeModule({ 
         id: 'tree', 
-        gridSize: { width: 1, height: 1 },
-        label: 'Tree'
+        gridSize: { width: 1, height: 1 }
       });
 
       // Add modules in order (grid auto-flow)
@@ -290,7 +286,6 @@ namespace Jamble {
      */
     public resetAllModules(): void {
       window.dispatchEvent(new CustomEvent('jamble:reset'));
-      console.log('Control panel reset triggered');
     }
   }
 }

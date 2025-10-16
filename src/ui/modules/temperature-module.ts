@@ -58,7 +58,6 @@ namespace Jamble {
     private handleInput(): void {
       this.value = parseInt(this.slider.value) / 100;
       this.updateValueDisplay();
-      console.log(`Temperature: ${this.value.toFixed(2)}`);
     }
 
     private updateValueDisplay(): void {
@@ -69,7 +68,6 @@ namespace Jamble {
       this.value = TemperatureModule.DEFAULT_VALUE;
       this.slider.value = String(this.value * 100);
       this.updateValueDisplay();
-      console.log('Temperature module reset');
     }
 
     /**

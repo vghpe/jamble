@@ -19,7 +19,6 @@ namespace Jamble {
     protected createElement(): HTMLElement {
       // Initialize value before creating elements
       this.value = SoftnessModule.DEFAULT_VALUE;
-      console.log('SoftnessModule createElement - value initialized to:', this.value);
       
       const element = this.createBaseElement();
       element.classList.add('module-slider');
@@ -59,7 +58,6 @@ namespace Jamble {
     private handleInput(): void {
       this.value = parseInt(this.slider.value) / 100;
       this.updateValueDisplay();
-      console.log(`Softness: ${this.value.toFixed(2)}`);
     }
 
     private updateValueDisplay(): void {
@@ -70,7 +68,6 @@ namespace Jamble {
       this.value = SoftnessModule.DEFAULT_VALUE;
       this.slider.value = String(this.value * 100);
       this.updateValueDisplay();
-      console.log('Softness module reset');
     }
 
     /**

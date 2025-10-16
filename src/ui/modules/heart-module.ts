@@ -10,7 +10,6 @@ namespace Jamble {
     private usesRemaining!: number;
     private button!: HTMLElement;
     private usesDisplay!: HTMLElement;
-    private isPressed: boolean = false;
 
     constructor(config: ModuleConfig) {
       super(config);
@@ -47,13 +46,11 @@ namespace Jamble {
 
     private handlePress(): void {
       if (this.usesRemaining > 0) {
-        this.isPressed = true;
         this.button.classList.add('pressed');
       }
     }
 
     private handleRelease(): void {
-      this.isPressed = false;
       this.button.classList.remove('pressed');
     }
 
@@ -61,13 +58,10 @@ namespace Jamble {
       if (this.usesRemaining > 0) {
         this.usesRemaining--;
         this.updateUsesDisplay();
-        console.log(`Heart used! Remaining: ${this.usesRemaining}`);
         
         if (this.usesRemaining === 0) {
           this.button.classList.add('depleted');
         }
-      } else {
-        console.log('Heart depleted - no uses remaining');
       }
     }
 
@@ -79,7 +73,6 @@ namespace Jamble {
       this.usesRemaining = HeartModule.MAX_USES;
       this.updateUsesDisplay();
       this.button.classList.remove('depleted');
-      console.log('Heart module reset');
     }
   }
 }
