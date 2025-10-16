@@ -48,6 +48,9 @@ namespace Jamble {
 
     constructor(gameElement: HTMLElement, optionsOrContainer?: HTMLElement | GameOptions) {
       try {
+        // Log build version for debugging
+        console.log('🎮 Jamble Game Initializing - Build: BUILD_VERSION_PLACEHOLDER');
+        
         let options: GameOptions = {};
         if (optionsOrContainer instanceof HTMLElement) {
           options = { debug: true, container: optionsOrContainer };
@@ -317,7 +320,7 @@ namespace Jamble {
       if (this.debugSystem) {
         this.debugSystem.update();
       }
-      this.hudManager.updateShop(); // Update shop visibility
+      this.hudManager.updateControlPanel(); // Update control panel visibility
       this.hudManager.update(deltaTime);
     }
 

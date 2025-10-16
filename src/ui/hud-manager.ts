@@ -2,19 +2,19 @@
 /// <reference path="portrait-panel.ts" />
 /// <reference path="monitor/monitor-panel.ts" />
 /// <reference path="crescendo-panel.ts" />
-/// <reference path="shop-panel.ts" />
+/// <reference path="control-panel.ts" />
 
 namespace Jamble {
   /**
    * HUD (Heads Up Display) Manager for all UI components.
-   * Manages the top overlay (portrait + activity monitor) and shop panel.
+   * Manages the top overlay (portrait + activity monitor) and control panel.
    */
   export class HUDManager extends UIComponent {
     private hudOverlay!: HTMLElement;
     private portraitPanel!: PortraitPanel;
     private monitorPanel!: MonitorPanel;
     private crescendoPanel!: CrescendoPanel;
-    private shopPanel!: ShopPanel;
+    private controlPanel!: ControlPanel;
     
     private gameWidth: number;
     private gameHeight: number;
@@ -29,8 +29,8 @@ namespace Jamble {
       this.gameHeight = gameHeight;
       
       this.createHUDComponents();
-      this.createShopPanel();
-      this.show(); // Show HUD immediately (shop visibility controlled separately)
+      this.createControlPanel();
+      this.show(); // Show HUD immediately (control panel visibility controlled separately)
     }
     
     protected createContainer(): HTMLElement {
@@ -80,9 +80,9 @@ namespace Jamble {
       this.portraitPanel = new PortraitPanel(this.container, this.portraitSize);
     }
     
-    private createShopPanel(): void {
+    private createControlPanel(): void {
       const root = this.gameElement.parentElement || this.gameElement;
-      this.shopPanel = new ShopPanel(root, this.gameElement);
+      this.controlPanel = new ControlPanel(root);
     }
     
     /**
@@ -96,8 +96,8 @@ namespace Jamble {
         this.monitorPanel.update(deltaTime);
       }
       
-      // Shop panel updates independently (has its own visibility logic)
-      this.shopPanel.update(deltaTime);
+      // Control panel updates independently (has its own visibility logic)
+      this.controlPanel.update(deltaTime);
     }
     
     /**
@@ -109,8 +109,8 @@ namespace Jamble {
         this.monitorPanel.render();
       }
       
-      // Shop panel renders independently
-      this.shopPanel.render();
+      // Control panel renders independently
+      this.controlPanel.render();
     }
     
     /**
@@ -215,24 +215,24 @@ namespace Jamble {
     }
     
     /**
-     * Set state manager for shop panel
+     * Set state manager for control panel
      */
     setStateManager(stateManager: any): void {
-      this.shopPanel.setStateManager(stateManager);
+      this.controlPanel.setStateManager(stateManager);
     }
     
     /**
-     * Update shop visibility based on game state
+     * Update control panel visibility based on game state
      */
-    updateShop(): void {
-      this.shopPanel.updateShop();
+    updateControlPanel(): void {
+      this.controlPanel.updateVisibility();
     }
     
     /**
-     * Get shop panel for direct access if needed
+     * Get control panel for direct access if needed
      */
-    getShopPanel(): ShopPanel {
-      return this.shopPanel;
+    getControlPanel(): ControlPanel {
+      return this.controlPanel;
     }
     
     private recreateHUD(): void {
@@ -320,8 +320,8 @@ namespace Jamble {
      */
     destroy(): void {
       super.destroy();
-      if (this.shopPanel) {
-        this.shopPanel.destroy();
+      if (this.controlPanel) {
+        this.controlPanel.destroy();
       }
       // Additional cleanup for HUD-specific resources if needed
     }
