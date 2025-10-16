@@ -9,8 +9,8 @@
     "build:jamble": "mkdir -p dist && tsc -p tsconfig.json && node scripts/inject-version.js && cp src/jamble.css dist/jamble.css",
     "watch": "tsc -w -p tsconfig.json",
     "serve": "python3 devserver.py",
-    "kill-server": "lsof -ti:8000 | xargs kill -9 2>/dev/null || true",
-    "restart": "npm run kill-server && npm run build:jamble && npm run serve"
+    "kill-server": "lsof -ti:8080 | xargs kill -9 2>/dev/null || true",
+    "restart": "npm run kill-server && sleep 1 && npm run build:jamble && npm run serve"
   },
   "repository": {
     "type": "git",

@@ -72,6 +72,10 @@ if __name__ == '__main__':
         except Exception:
             pass
     os.chdir(ROOT)
+    
+    # Allow socket reuse to prevent "Address already in use" errors
+    socketserver.TCPServer.allow_reuse_address = True
+    
     with socketserver.TCPServer(('', port), Handler) as httpd:
         print(f"Serving at http://localhost:{port}")
         httpd.serve_forever()

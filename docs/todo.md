@@ -1,18 +1,22 @@
 
 
+## Recent Completed Work
+
+
 Cleanup: 
 - [ ] Consider the sensor object, do we need it or could it just be a gameobject. 
-- [ ] Consider adding enable disable to the gameobject. 
-- [ ] An easy way to enable / disable colliders. I think this works with rendered. 
 
 Features:
-- [ ] Design Arrousal goal
-- [ ] Create relevant shop menu. 
-- [ ] Create evolving tree 
-- [ ] Make it single buttton. 
-- [ ] Handle responsive width. 
-- [ ] Make it monochrome
-- [ ] Put in a sprite renderer for person
+- [ ] Add in growing trees element. 
+	- This need design considerations. 
+- [ ] Add in heart with a limited resets
+- [ ] Rework the shop into a control panel. 
+- [ ] Add in roundness balance to the control panel
+- [ ] Add ad a hot/cold balance to the control panel
+- [ ] Make it phone playable. 
+- [ ] Let the profile sprite update. 
+- [ ] Get stuff from game into level manager. 
+- [ ] npm run restart should always work, very often it stops of dor a duration with `OSError: [Errno 48] Address already in use`
 
 
 AI SUGGESTION: NPC System Enhancements (Future):
