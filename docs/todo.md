@@ -5,18 +5,19 @@
 
 Cleanup: 
 - [ ] Consider the sensor object, do we need it or could it just be a gameobject. 
+- [ ] Refactor control panel modules to use LevelManager instead of direct player references.
 
 Features:
 - [ ] Add in growing trees element. 
 	- This need design considerations. 
-- [ ] Add in heart with a limited resets
 - [ ] Rework the shop into a control panel. 
-- [ ] Add in roundness balance to the control panel
-- [ ] Add ad a hot/cold balance to the control panel
+	- [ ] Add in roundness balance to the control panel
+	- [ ] Add ad a hot/cold balance to the control panel
+	- [ ] Add in heart with a limited resets
 - [ ] Make it phone playable. 
 - [ ] Let the profile sprite update. 
-- [ ] Get stuff from game into level manager. 
-- [ ] npm run restart should always work, very often it stops of dor a duration with `OSError: [Errno 48] Address already in use`
+- [ ] Setup level manager.
+	- [ ] Move all this instantiation from game.ts into here. 
 
 
 AI SUGGESTION: NPC System Enhancements (Future):
