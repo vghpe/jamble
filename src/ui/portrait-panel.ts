@@ -73,5 +73,13 @@ namespace Jamble {
       
       this.ctx.fillText(emoji, size / 2, size / 2);
     }
+
+    /**
+     * Dim/undim panel for editor mode
+     */
+    setDimmed(dimmed: boolean): void {
+      this.canvas.style.opacity = dimmed ? '0.5' : '1';
+      this.canvas.style.pointerEvents = dimmed ? 'none' : 'auto';
+    }
   }
 }

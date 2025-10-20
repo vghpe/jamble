@@ -1,8 +1,10 @@
 namespace Jamble {
   export type GameState = 'idle' | 'countdown' | 'run';
+  export type EditorMode = 'none' | 'tree-placement';
 
   export class StateManager {
     private currentState: GameState = 'idle';
+    private editorMode: EditorMode = 'none';
     private stateStartTime: number = 0;
     private countdownDuration: number = 3000; // 3 seconds
 
@@ -65,6 +67,33 @@ namespace Jamble {
     // Debug method to directly set run state
     forceRunState(): void {
       this.setState('run');
+    }
+
+    // Editor mode methods
+    getEditorMode(): EditorMode {
+      return this.editorMode;
+    }
+
+    isInEditorMode(): boolean {
+      return this.editorMode !== 'none';
+    }
+
+    enterTreePlacementMode(): void {
+      if (this.editorMode !== 'tree-placement') {
+        this.editorMode = 'tree-placement';
+        window.dispatchEvent(new CustomEvent('jamble:editor-mode-change', {
+          detail: { mode: 'tree-placement' }
+        }));
+      }
+    }
+
+    exitEditorMode(): void {
+      if (this.editorMode !== 'none') {
+        this.editorMode = 'none';
+        window.dispatchEvent(new CustomEvent('jamble:editor-mode-change', {
+          detail: { mode: 'none' }
+        }));
+      }
     }
 
     private setState(newState: GameState): void {

@@ -30,6 +30,7 @@ namespace Jamble {
       
       this.createHUDComponents();
       this.createControlPanel();
+      this.setupEditorModeListener();
       this.show(); // Show HUD immediately (control panel visibility controlled separately)
     }
     
@@ -83,6 +84,18 @@ namespace Jamble {
     private createControlPanel(): void {
       const root = this.gameElement.parentElement || this.gameElement;
       this.controlPanel = new ControlPanel(root);
+    }
+
+    /**
+     * Listen for editor mode changes and dim HUD panels accordingly
+     */
+    private setupEditorModeListener(): void {
+      window.addEventListener('jamble:editor-mode-change', ((e: CustomEvent) => {
+        const dimmed = e.detail.mode !== 'none';
+        this.portraitPanel.setDimmed(dimmed);
+        this.monitorPanel.setDimmed(dimmed);
+        this.crescendoPanel.setDimmed(dimmed);
+      }) as EventListener);
     }
     
     /**

@@ -6,9 +6,13 @@ namespace Jamble {
     private readonly visualOffsetX: number = 5;
     private readonly visualOffsetY: number = 0;
     
-    constructor(id: string, x: number = 0, y: number = 0) {
+    private slotId: string; // Track which slot this tree occupies
+    
+    constructor(id: string, x: number = 0, y: number = 0, slotId: string = '') {
       // Keep the GameObject transform at the base position (origin point)
       super(id, x, y); 
+      
+      this.slotId = slotId; 
       
       // Canvas rendering with custom tree drawing
       this.render = {
@@ -69,6 +73,32 @@ namespace Jamble {
 
     update(deltaTime: number): void {
       // Static tree — nothing to update per frame.
+    }
+    
+    /**
+     * Get the slot ID this tree occupies
+     */
+    getSlotId(): string {
+      return this.slotId;
+    }
+    
+    /**
+     * Handle click/tap on tree in editor mode
+     */
+    onClick(): void {
+      window.dispatchEvent(new CustomEvent('jamble:tree-clicked', {
+        detail: { treeId: this.id, slotId: this.slotId }
+      }));
+    }
+    
+    /**
+     * Despawn tree instantly (remove from game)
+     */
+    despawn(): void {
+      this.render.visible = false;
+      if (this.collisionBox) {
+        this.collisionBox.enabled = false;
+      }
     }
   }
 }

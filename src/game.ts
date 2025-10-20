@@ -14,6 +14,7 @@
 /// <reference path="debug/debug-system.ts" />
 /// <reference path="systems/collision-manager.ts" />
 /// <reference path="ui/hud-manager.ts" />
+/// <reference path="ui/tree-placement-overlay.ts" />
 /// <reference path="npc/soma.ts" />
 
 namespace Jamble {
@@ -37,10 +38,13 @@ namespace Jamble {
     private collisionManager: CollisionManager;
     private activeNPC: Soma;  // Current active NPC (Soma for now)
     private hudManager: HUDManager;
+    private treePlacementOverlay: TreePlacementOverlay;
     
     private player!: Player; // Will be initialized in createPlayer()
     private gameObjects: GameObject[] = [];
     private knobs: Knob[] = [];  // Track all knobs for pain threshold retraction
+    private trees: Map<string, Tree> = new Map(); // Track trees by slot ID
+    private treeIdCounter: number = 0; // Counter for unique tree IDs
     
     private lastTime: number = 0;
     private gameWidth: number = 500;
@@ -79,6 +83,12 @@ namespace Jamble {
         this.collisionManager = new CollisionManager(this.gameWidth, this.gameHeight);
         this.hudManager = new HUDManager(this.gameShell, this.gameWidth, this.gameHeight);
         this.hudManager.setStateManager(this.stateManager);
+        this.treePlacementOverlay = new TreePlacementOverlay(
+          this.canvasHost,
+          this.slotManager,
+          this.gameWidth,
+          this.gameHeight
+        );
 
         const debugContainer = options.container;
         const debugRequested = options.debug ?? Boolean(debugContainer);
@@ -104,6 +114,9 @@ namespace Jamble {
         this.hudManager.getControlPanel().onHeartUsed(() => {
           this.respawnAllKnobs();
         });
+        
+        // Setup tree placement system
+        this.setupTreePlacement();
         
         this.TempEntitiesLayout();
         this.setupInput();
@@ -199,6 +212,118 @@ namespace Jamble {
       };
     }
 
+    /**
+     * Setup tree placement system - wire up all event listeners
+     */
+    private setupTreePlacement(): void {
+      const treeModule = this.hudManager.getControlPanel().getModule('tree') as TreeModule;
+      
+      // Listen for tree module clicks to toggle edit mode
+      window.addEventListener('jamble:tree-module-clicked', () => {
+        if (this.stateManager.isInEditorMode()) {
+          // Exit edit mode
+          this.exitTreeEditMode();
+        } else {
+          // Enter edit mode
+          this.enterTreeEditMode();
+        }
+      });
+      
+      // Listen for tree placement from overlay
+      window.addEventListener('jamble:tree-placed', ((e: CustomEvent) => {
+        const { slotId, x, y } = e.detail;
+        this.placeTree(slotId, x, y);
+      }) as EventListener);
+      
+      // Listen for tree removal from overlay
+      window.addEventListener('jamble:tree-removed', ((e: CustomEvent) => {
+        const { slotId } = e.detail;
+        this.removeTree(slotId);
+      }) as EventListener);
+      
+      // Listen for player input to exit edit mode
+      this.inputManager.onKeyDown('KeyW', () => this.exitTreeEditModeOnPlayerInput());
+      this.inputManager.onKeyDown('KeyA', () => this.exitTreeEditModeOnPlayerInput());
+      this.inputManager.onKeyDown('KeyS', () => this.exitTreeEditModeOnPlayerInput());
+      this.inputManager.onKeyDown('KeyD', () => this.exitTreeEditModeOnPlayerInput());
+      this.inputManager.onKeyDown('Space', () => this.exitTreeEditModeOnPlayerInput());
+    }
+
+    /**
+     * Enter tree placement edit mode
+     */
+    private enterTreeEditMode(): void {
+      this.stateManager.enterTreePlacementMode();
+      this.treePlacementOverlay.show();
+      
+      const treeModule = this.hudManager.getControlPanel().getModule('tree') as TreeModule;
+      treeModule.setEditMode(true);
+    }
+
+    /**
+     * Exit tree placement edit mode
+     */
+    private exitTreeEditMode(): void {
+      this.stateManager.exitEditorMode();
+      this.treePlacementOverlay.hide();
+      
+      const treeModule = this.hudManager.getControlPanel().getModule('tree') as TreeModule;
+      treeModule.setEditMode(false);
+    }
+
+    /**
+     * Exit tree edit mode when player inputs movement
+     */
+    private exitTreeEditModeOnPlayerInput(): void {
+      if (this.stateManager.isInEditorMode()) {
+        this.exitTreeEditMode();
+      }
+    }
+
+    /**
+     * Place a tree at the specified slot
+     */
+    private placeTree(slotId: string, x: number, y: number): void {
+      const treeModule = this.hudManager.getControlPanel().getModule('tree') as TreeModule;
+      
+      // Check if we have trees available and use one
+      if (treeModule.getUsesRemaining() === 0 || !treeModule.useTree()) {
+        return;
+      }
+      
+      // Create and add tree
+      const treeId = `tree_${this.treeIdCounter++}`;
+      const tree = new Tree(treeId, x, y, slotId);
+      
+      this.gameObjects.push(tree);
+      this.trees.set(slotId, tree);
+      this.slotManager.occupySlot(slotId, treeId);
+      this.treePlacementOverlay.setSlotOccupied(slotId, true);
+    }
+
+    /**
+     * Remove a tree from the specified slot
+     */
+    private removeTree(slotId: string): void {
+      const tree = this.trees.get(slotId);
+      if (!tree) return;
+      
+      // Remove tree from game
+      tree.despawn();
+      const index = this.gameObjects.indexOf(tree);
+      if (index > -1) {
+        this.gameObjects.splice(index, 1);
+      }
+      
+      this.trees.delete(slotId);
+      this.slotManager.freeSlot(slotId);
+      
+      // Return tree to module and update overlay
+      const treeModule = this.hudManager.getControlPanel().getModule('tree') as TreeModule;
+      treeModule.returnTree();
+      this.treePlacementOverlay.setSlotOccupied(slotId, false);
+    }
+
     private setupGameElement() {
       this.gameShell.style.cssText = `
         width: ${this.gameWidth}px;
@@ -247,13 +372,7 @@ namespace Jamble {
       // Get available slots after home placement
       const availableGroundSlots = this.slotManager.getAvailableSlots('ground');
 
-      // Place tree at the third available ground slot
-      if (availableGroundSlots.length > 2) {
-        const treeSlot = availableGroundSlots[2];
-        const tree = new Tree('tree1', treeSlot.x, treeSlot.y);
-        this.gameObjects.push(tree);
-        this.slotManager.occupySlot(treeSlot.id, tree.id);
-      }
+      // Trees are now placed via tree placement overlay (no default tree spawn)
 
       // Place knob at the fourth available ground slot
       if (availableGroundSlots.length > 3) {

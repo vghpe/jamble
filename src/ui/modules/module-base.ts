@@ -16,6 +16,7 @@ namespace Jamble {
       this.config = config;
       this.element = this.createElement();
       this.setupResetListener();
+      this.setupEditorModeListener();
     }
 
     /**
@@ -53,6 +54,35 @@ namespace Jamble {
       window.addEventListener('jamble:reset', () => {
         this.resetState();
       });
+    }
+
+    /**
+     * Listen for editor mode changes to dim/disable inactive modules.
+     */
+    private setupEditorModeListener(): void {
+      window.addEventListener('jamble:editor-mode-change', ((e: CustomEvent) => {
+        const mode = e.detail.mode;
+        const isActiveEditor = this.shouldStayActiveInEditorMode(mode);
+        
+        if (mode === 'none') {
+          // Exit editor mode - restore normal state
+          this.element.style.opacity = '1';
+          this.element.style.pointerEvents = 'auto';
+        } else {
+          // In editor mode - dim and disable unless this module is the active editor
+          this.element.style.opacity = isActiveEditor ? '1' : '0.5';
+          this.element.style.pointerEvents = isActiveEditor ? 'auto' : 'none';
+        }
+      }) as EventListener);
+    }
+
+    /**
+     * Override in subclasses to stay active during specific editor modes.
+     * @param mode The current editor mode ('tree-placement', etc.)
+     * @returns true if this module should stay active (not dimmed)
+     */
+    protected shouldStayActiveInEditorMode(mode: string): boolean {
+      return false; // Default: dim during any editor mode
     }
 
     /**

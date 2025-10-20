@@ -5,7 +5,7 @@ namespace Jamble {
    * Tree Module - Button for placing trees with limited uses.
    */
   export class TreeModule extends ControlModule {
-    private static readonly MAX_USES: number = 5;
+    private static readonly MAX_USES: number = 2;
     private usesRemaining!: number;
     private button!: HTMLElement;
     private usesDisplay!: HTMLElement;
@@ -54,14 +54,37 @@ namespace Jamble {
     }
 
     private handleClick(): void {
+      // Toggle tree placement edit mode
+      window.dispatchEvent(new CustomEvent('jamble:tree-module-clicked'));
+    }
+
+    /**
+     * Use a tree (decrement count)
+     */
+    public useTree(): boolean {
       if (this.usesRemaining > 0) {
         this.usesRemaining--;
         this.updateUsesDisplay();
-        
-        if (this.usesRemaining === 0) {
-          this.button.classList.add('depleted');
-        }
+        return true;
       }
+      return false;
+    }
+
+    /**
+     * Return a tree (increment count)
+     */
+    public returnTree(): void {
+      if (this.usesRemaining < TreeModule.MAX_USES) {
+        this.usesRemaining++;
+        this.updateUsesDisplay();
+      }
+    }
+
+    /**
+     * Get remaining tree count
+     */
+    public getUsesRemaining(): number {
+      return this.usesRemaining;
     }
 
     private updateUsesDisplay(): void {
@@ -71,7 +94,22 @@ namespace Jamble {
     protected resetState(): void {
       this.usesRemaining = TreeModule.MAX_USES;
       this.updateUsesDisplay();
-      this.button.classList.remove('depleted');
+    }
+
+    /**
+     * Stay active during tree placement mode
+     */
+    protected shouldStayActiveInEditorMode(mode: string): boolean {
+      return mode === 'tree-placement';
+    }
+
+    /**
+     * Update visual state when entering/exiting edit mode
+     */
+    public setEditMode(active: boolean): void {
+      this.button.style.borderColor = active ? '#ff0000' : '';
+      this.button.style.borderWidth = active ? '2px' : '';
+      this.button.style.borderStyle = active ? 'solid' : '';
     }
   }
 }

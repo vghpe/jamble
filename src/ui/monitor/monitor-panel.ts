@@ -118,5 +118,13 @@ namespace Jamble {
       this.heartRatePanel.setSmoothing(value);
       this.sensationPanel.setSmoothing(value);
     }
+
+    /**
+     * Dim/undim panel for editor mode
+     */
+    setDimmed(dimmed: boolean): void {
+      this.container.style.opacity = dimmed ? '0.5' : '1';
+      this.container.style.pointerEvents = dimmed ? 'none' : 'auto';
+    }
   }
 }
