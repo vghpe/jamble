@@ -128,6 +128,23 @@ namespace Jamble {
     }
     
     /**
+     * Get pain threshold value for UI visualization
+     */
+    getPainThreshold(): number {
+      return this.arousalConfig.painThreshold;
+    }
+    
+    /**
+     * Get min/max arousal range for UI visualization
+     */
+    getArousalRange(): { min: number; max: number } {
+      return {
+        min: this.arousalConfig.minValue,
+        max: this.arousalConfig.maxValue
+      };
+    }
+    
+    /**
      * Get arousal state based on thresholds
      */
     getArousalState(): ArousalState {

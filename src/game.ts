@@ -124,6 +124,9 @@ namespace Jamble {
         // Initialize active NPC
         this.activeNPC.initialize();
         
+        // Connect NPC to sensation panel for debug visualization
+        this.hudManager.setSensationNPC(this.activeNPC);
+        
         // Setup level manager with active NPC
         this.levelManager.setActiveNPC(this.activeNPC);
         

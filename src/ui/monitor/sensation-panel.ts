@@ -15,6 +15,8 @@ namespace Jamble {
     private readonly peakLightness: number = 52.1;
     private readonly highLightness: number = 12.0;
     private readonly zoneColors: string[];
+    private npc: BaseNPC | null = null;
+    private debugMode: boolean = false;
 
     constructor(parent: HTMLElement, width: number, height: number, options: LineGraphOptions = {}) {
       super(parent, width, height, {
@@ -42,6 +44,27 @@ namespace Jamble {
       return this.currentValue;
     }
 
+    /**
+     * Set the NPC reference for debug visualization
+     */
+    setNPC(npc: BaseNPC): void {
+      this.npc = npc;
+    }
+
+    /**
+     * Enable/disable debug mode (shows thresholds and zones)
+     */
+    setDebugMode(enabled: boolean): void {
+      this.debugMode = enabled;
+    }
+
+    /**
+     * Get debug mode state
+     */
+    getDebugMode(): boolean {
+      return this.debugMode;
+    }
+
     protected generateSample(_sampleIntervalSeconds: number): number | null {
       // Simply return the current value - no internal state changes
       return this.currentValue;
@@ -50,6 +73,67 @@ namespace Jamble {
     protected getStrokeColor(value: number): string {
       const index = Math.min(this.zoneCount - 1, Math.max(0, Math.floor(value * this.zoneCount)));
       return this.zoneColors[index];
+    }
+
+    /**
+     * Override render to add debug visualization
+     */
+    render(): void {
+      // Call parent render first to draw the line graph
+      super.render();
+      
+      // Add debug overlays if enabled
+      if (this.debugMode && this.npc) {
+        this.renderDebugOverlay();
+      }
+    }
+
+    /**
+     * Render debug overlay with pain threshold line
+     */
+    private renderDebugOverlay(): void {
+      if (!this.npc) return;
+      
+      const painThreshold = this.npc.getPainThreshold();
+      const arousalRange = this.npc.getArousalRange();
+      
+      // Convert pain threshold (arousal value) to normalized 0-1 value
+      const normalizedPainThreshold = this.mapArousalToNormalized(painThreshold, arousalRange);
+      
+      // Draw horizontal line at pain threshold
+      const y = this.computeYFromNormalized(normalizedPainThreshold);
+      
+      // Get canvas width from parent context
+      const canvasWidth = this.canvas.width / (window.devicePixelRatio || 1);
+      
+      this.ctx.save();
+      this.ctx.strokeStyle = '#ff0000';
+      this.ctx.lineWidth = 2;
+      this.ctx.setLineDash([5, 5]);
+      this.ctx.globalAlpha = 0.8;
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, y);
+      this.ctx.lineTo(canvasWidth, y);
+      this.ctx.stroke();
+      this.ctx.restore();
+    }
+
+    /**
+     * Map arousal value to normalized 0-1 value
+     */
+    private mapArousalToNormalized(arousalValue: number, range: { min: number; max: number }): number {
+      const clamped = Math.max(range.min, Math.min(range.max, arousalValue));
+      return (clamped - range.min) / (range.max - range.min);
+    }
+
+    /**
+     * Convert normalized value to Y coordinate on canvas
+     */
+    private computeYFromNormalized(value: number): number {
+      const canvasHeight = this.canvas.height / (window.devicePixelRatio || 1);
+      const padding = canvasHeight * 0.1; // verticalPaddingRatio from parent
+      const usableHeight = canvasHeight - padding * 2;
+      return canvasHeight - (value * usableHeight + padding);
     }
 
     private buildZoneColors(): string[] {

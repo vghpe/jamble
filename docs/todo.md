@@ -4,8 +4,12 @@
 
 
 Cleanup: 
+- [ ] Setup level manager.
+	- [ ] Move all this instantiation from game.ts into here. 
+	- [ ] Make it phone playable. 
+	- [ ] Refactor control panel modules to use LevelManager instead of direct player references.
 - [ ] Consider the sensor object, do we need it or could it just be a gameobject. 
-- [ ] Refactor control panel modules to use LevelManager instead of direct player references.
+
 
 Features:
 
@@ -13,19 +17,14 @@ Features:
 	- [X] Add in roundness balance to the control panel
 	- [X] Add ad a hot/cold balance to the control panel
 	- [ ] Let roundness. and hot and cold effect effect sensation
-	- [ ] Let the knob hide 
-		- [ ] Hide animation
-		- [ ] Spawn animation
-	- [ ] Add in heart with a limited resets
-- [ ] Add in trees element. 
-	- Can be placed in the level. 
+	- [X] Let the knob hide 
+		- [X] Hide animation
+		- [X] Spawn animation
+	- [X] Add in heart with a limited resets
+- [X] Add in trees element. 
 - [ ] Let the goal be clearly defined
-
 - [ ] Let the profile sprite update. 
-- [ ] Setup level manager.
-	- [ ] Move all this instantiation from game.ts into here. 
-	- [ ] Make it phone playable. 
-
+- [ ] Build for blog
 
 
 AI SUGGESTION: NPC System Enhancements (Future):

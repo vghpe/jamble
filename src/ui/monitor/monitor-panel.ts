@@ -75,6 +75,27 @@ namespace Jamble {
       return this.sensationPanel.getValue();
     }
 
+    /**
+     * Set the NPC reference for debug visualization
+     */
+    setSensationNPC(npc: any): void {
+      this.sensationPanel.setNPC(npc);
+    }
+
+    /**
+     * Enable/disable sensation debug mode
+     */
+    setSensationDebugMode(enabled: boolean): void {
+      this.sensationPanel.setDebugMode(enabled);
+    }
+
+    /**
+     * Get sensation debug mode state
+     */
+    getSensationDebugMode(): boolean {
+      return this.sensationPanel.getDebugMode();
+    }
+
     // Debug accessors (legacy API passthroughs)
     getSampleSpacing(): number {
       return this.heartRatePanel.getSampleSpacing();

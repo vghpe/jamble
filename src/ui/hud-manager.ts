@@ -220,6 +220,27 @@ namespace Jamble {
     }
     
     /**
+     * Set the NPC reference for sensation debug visualization
+     */
+    setSensationNPC(npc: any): void {
+      this.monitorPanel.setSensationNPC(npc);
+    }
+
+    /**
+     * Enable/disable sensation debug mode (shows pain threshold line)
+     */
+    setSensationDebugMode(enabled: boolean): void {
+      this.monitorPanel.setSensationDebugMode(enabled);
+    }
+
+    /**
+     * Get sensation debug mode state
+     */
+    getSensationDebugMode(): boolean {
+      return this.monitorPanel.getSensationDebugMode();
+    }
+    
+    /**
      * Trigger portrait pain feedback
      * Placeholder for future pain animation system
      */
@@ -270,6 +291,12 @@ namespace Jamble {
       return {
         title: 'HUD Controls',
         controls: [
+          {
+            type: 'checkbox',
+            label: 'Show Sensation Thresholds',
+            getValue: () => this.getSensationDebugMode(),
+            setValue: (value) => this.setSensationDebugMode(value)
+          },
           {
             type: 'slider',
             label: 'Portrait Size',
