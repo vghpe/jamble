@@ -182,7 +182,7 @@ namespace Jamble {
       this.anim.triggerDeflect(direction);
     }
 
-    onCollected(player: Player): number {
+    onPlayerContact(player: Player): number {
       // Only process if active
       if (this.state !== KnobState.ACTIVE) return 0;
       
@@ -201,8 +201,8 @@ namespace Jamble {
       
       this.economyManager.addCurrency(currencyAmount);
       
-      // Add arousal impact to active NPC - will check pain threshold
-      this.activeNPC.applyArousalImpulse(arousalImpact);
+      // Add arousal impact to active NPC - pass player for softness/temperature processing
+      this.activeNPC.applyArousalImpulse(arousalImpact, player, collisionType);
       
       return currencyAmount;
     }
@@ -231,8 +231,8 @@ namespace Jamble {
       if (this.state !== KnobState.ACTIVE) return; // Ignore while not active
       // Only react to player
       if (other instanceof Player) {
-        // Collect currency when player touches knob (handles animation internally)
-        this.onCollected(other as Player);
+        // Handle player contact (currency, arousal, animation)
+        this.onPlayerContact(other as Player);
       }
     }
     

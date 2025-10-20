@@ -27,9 +27,9 @@ namespace Jamble {
       console.log(`${this.name} initialized - baseline arousal: ${this.arousalValue}`);
     }
 
-    update(deltaTime: number): void {
-      // Update base arousal decay
-      super.updateArousal(deltaTime);
+    update(deltaTime: number, player?: Player): void {
+      // Update base arousal decay (pass player for temperature effects)
+      super.updateArousal(deltaTime, player);
       
       // Update crescendo (rises when arousal in target zone)
       super.updateCrescendo(deltaTime);

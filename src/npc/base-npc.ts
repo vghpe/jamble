@@ -33,6 +33,10 @@ namespace Jamble {
     protected crescendoChangeListeners: Array<(value: number, npc: BaseNPC) => void> = [];
     protected crescendoThresholdListeners: Array<(npc: BaseNPC) => void> = [];
     protected painThresholdListeners: Array<(npc: BaseNPC) => void> = [];
+    
+    // Momentum system for spreading impulses over time
+    protected arousalMomentum: number = 0;
+    protected momentumSpreadDuration: number = 0.3; // seconds to spread impulse
 
     constructor(name: string, config?: Partial<NPCArousalConfig>) {
       this.name = name;
@@ -74,14 +78,55 @@ namespace Jamble {
     
     /**
      * Apply an arousal impulse (from knob hits, events, etc.)
+     * @param intensity Base impulse intensity
+     * @param player Optional player reference for softness/temperature effects
+     * @param collisionType Optional collision type ('top' or 'side')
      */
-    applyArousalImpulse(intensity: number): void {
+    applyArousalImpulse(intensity: number, player?: Player, collisionType?: 'top' | 'side'): void {
       const oldValue = this.arousalValue;
-      const adjustedIntensity = intensity * this.arousalConfig.sensitivity;
+      let adjustedIntensity = intensity * this.arousalConfig.sensitivity;
+      let momentumAmount = 0;
+      
+      // Apply softness effect if player provided and it's a side collision
+      if (player && collisionType === 'side') {
+        const softness = player.getSoftness(); // 0-1 scale from UI
+        
+        // Softness 0.5 = baseline (current 0.3 side collision)
+        // Harder (0.0) = approaches top collision (0.5)
+        // Softer (1.0) = 30% of baseline (0.09 total)
+        
+        if (softness < 0.5) {
+          // Harder: scale from baseline (0.3) up toward top strength (0.5)
+          // At softness=0, we want to get close to 0.5 but not exceed it
+          // Linear interpolation: 0.0 → ~0.45, 0.5 → 0.3
+          const t = softness / 0.5; // 0 to 1
+          const maxHardImpulse = 0.45; // Close to top but not quite
+          adjustedIntensity = intensity * this.arousalConfig.sensitivity * (maxHardImpulse + t * (1.0 - maxHardImpulse));
+        } else {
+          // Softer: scale from baseline down, splitting into instant + momentum
+          // At softness=0.5, instant=100%, momentum=0%
+          // At softness=1.0, instant+momentum=30% of baseline
+          const t = (softness - 0.5) / 0.5; // 0 to 1
+          const totalScale = 1.0 - t * 0.7; // 1.0 → 0.3
+          adjustedIntensity = intensity * this.arousalConfig.sensitivity * totalScale;
+          
+          // Split into instant (60%) and momentum (40%)
+          const instantRatio = 0.6;
+          momentumAmount = adjustedIntensity * (1 - instantRatio);
+          adjustedIntensity *= instantRatio;
+        }
+      }
+      
+      // Apply instant impulse
       this.arousalValue = Math.max(
         this.arousalConfig.minValue,
         Math.min(this.arousalConfig.maxValue, this.arousalValue + adjustedIntensity)
       );
+      
+      // Add to momentum if applicable
+      if (momentumAmount > 0) {
+        this.arousalMomentum += momentumAmount;
+      }
       
       // Check for pain threshold crossing
       this.checkPainThreshold();
@@ -157,16 +202,45 @@ namespace Jamble {
     }
     
     /**
-     * Update arousal over time (decay towards baseline)
+     * Update arousal over time (decay towards baseline + apply momentum)
+     * @param deltaTime Time elapsed in seconds
+     * @param player Optional player reference for temperature-based decay
      */
-    updateArousal(deltaTime: number): void {
+    updateArousal(deltaTime: number, player?: Player): void {
       const oldValue = this.arousalValue;
       
+      // Apply momentum (spread arousal over time)
+      if (this.arousalMomentum > 0) {
+        const momentumPerSecond = this.arousalMomentum / this.momentumSpreadDuration;
+        const momentumThisFrame = Math.min(momentumPerSecond * deltaTime, this.arousalMomentum);
+        this.arousalMomentum -= momentumThisFrame;
+        
+        this.arousalValue = Math.max(
+          this.arousalConfig.minValue,
+          Math.min(this.arousalConfig.maxValue, this.arousalValue + momentumThisFrame)
+        );
+      }
+      
+      // Apply decay
+      let decay = this.arousalConfig.decayRate;
+      
+      // Temperature affects decay rate (unless in pain zone)
+      if (player && !this.inPainZone) {
+        const temperature = player.getTemperature(); // 0-1 scale from UI
+        // Cold (0) = 0.5x decay, Hot (1) = 1.0x decay
+        decay *= (0.5 + temperature * 0.5);
+      }
+      
+      // Pain zone: use hardcoded fast decay regardless of temperature
+      if (this.inPainZone) {
+        decay = 2.0; // Fast decay in pain zone
+      }
+      
       if (this.arousalValue > this.arousalConfig.baselineValue) {
-        this.arousalValue -= this.arousalConfig.decayRate * deltaTime;
+        this.arousalValue -= decay * deltaTime;
         this.arousalValue = Math.max(this.arousalConfig.baselineValue, this.arousalValue);
       } else if (this.arousalValue < this.arousalConfig.baselineValue) {
-        this.arousalValue += this.arousalConfig.decayRate * deltaTime;
+        this.arousalValue += decay * deltaTime;
         this.arousalValue = Math.min(this.arousalConfig.baselineValue, this.arousalValue);
       }
       
@@ -472,6 +546,21 @@ namespace Jamble {
             getValue: () => this.arousalConfig.painThreshold,
             setValue: (value) => { this.arousalConfig.painThreshold = value; }
           },
+          // Momentum Config
+          {
+            type: 'display',
+            label: 'Momentum',
+            getValue: () => this.arousalMomentum.toFixed(3)
+          },
+          {
+            type: 'slider',
+            label: 'Momentum Spread Sec',
+            min: 0.1,
+            max: 1.0,
+            step: 0.05,
+            getValue: () => this.momentumSpreadDuration,
+            setValue: (value) => { this.momentumSpreadDuration = value; }
+          },
           // Crescendo Config
           {
             type: 'display',
@@ -527,8 +616,10 @@ namespace Jamble {
     
     /**
      * Update NPC behavior each frame
+     * @param deltaTime Time elapsed in seconds
+     * @param player Optional player reference for temperature effects
      */
-    abstract update(deltaTime: number): void;
+    abstract update(deltaTime: number, player?: Player): void;
     
     /**
      * React to specific game events

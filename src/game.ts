@@ -438,8 +438,8 @@ namespace Jamble {
     private update(deltaTime: number) {
       this.handleInput();
       
-      // Update active NPC
-      this.activeNPC.update(deltaTime);
+      // Update active NPC (pass player for temperature-based decay)
+      this.activeNPC.update(deltaTime, this.player);
       
       // Update all game objects
       this.gameObjects.forEach(obj => obj.update(deltaTime));

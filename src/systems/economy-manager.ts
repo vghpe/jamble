@@ -3,7 +3,7 @@
 namespace Jamble {
   export interface CurrencyCollectible {
     currencyValue: number;
-    onCollected(player: Player): number; // Returns actual amount given
+    onPlayerContact(player: Player): number; // Returns actual amount given
     isCollected?: boolean; // For one-time collectibles
   }
 

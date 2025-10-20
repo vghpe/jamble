@@ -3,10 +3,10 @@
 namespace Jamble {
   /**
    * Temperature Module - Horizontal slider controlling player heat.
-   * Range: -1 (blue/cold) to +1 (yellow/hot), 0 is neutral
+   * Range: 0 (cold/blue) to 1 (hot/yellow), 0.5 is neutral
    */
   export class TemperatureModule extends ControlModule {
-    private static readonly DEFAULT_VALUE: number = 0; // Center position = neutral
+    private static readonly DEFAULT_VALUE: number = 0.5; // Center = neutral temperature
     private value!: number;
     private slider!: HTMLInputElement;
     private label!: HTMLElement;
@@ -44,8 +44,8 @@ namespace Jamble {
       this.slider.className = 'module-slider-input';
       this.slider.min = '0';
       this.slider.max = '100';
-      // Map -1 to +1 range to 0-100 slider (0 = -1, 50 = 0, 100 = +1)
-      this.slider.value = String((this.value + 1) * 50);
+      // Map 0 to 1 range to 0-100 slider (0 = 0, 50 = 0.5, 100 = 1)
+      this.slider.value = String(this.value * 100);
       
       this.valueDisplay = document.createElement('div');
       this.valueDisplay.className = 'module-value';
@@ -69,8 +69,8 @@ namespace Jamble {
     }
 
     private handleInput(): void {
-      // Map slider 0-100 to value -1 to +1
-      this.value = (parseInt(this.slider.value) / 50) - 1;
+      // Map slider 0-100 to value 0 to 1
+      this.value = parseInt(this.slider.value) / 100;
       this.updateValueDisplay();
       
       // Update player if connected
@@ -85,7 +85,7 @@ namespace Jamble {
 
     protected resetState(): void {
       this.value = TemperatureModule.DEFAULT_VALUE;
-      this.slider.value = String((this.value + 1) * 50);
+      this.slider.value = String(this.value * 100);
       this.updateValueDisplay();
       
       // Update player if connected
@@ -95,7 +95,7 @@ namespace Jamble {
     }
 
     /**
-     * Get current temperature value (-1 to +1)
+     * Get current temperature value (0 to 1)
      */
     getValue(): number {
       return this.value;

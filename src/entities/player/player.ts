@@ -20,8 +20,8 @@ namespace Jamble {
     private readonly visualOffsetY: number = 0;
     
     // Player attributes (controlled by control panel)
-    private softness: number = 0; // -1 (square) to +1 (circle), 0 is current default (radius 8)
-    private temperature: number = 0; // -1 (blue) to +1 (yellow), affects LAB B channel
+    private softness: number = 0.5; // 0 (hard/square) to 1 (soft/circle), 0.5 is current default
+    private temperature: number = 0.5; // 0 (cold/blue) to 1 (hot/yellow), 0.5 is neutral
     
     // LAB color constants
     private readonly baseLightness: number = 72;
@@ -136,11 +136,11 @@ namespace Jamble {
     // Landing cancellation handled by PlayerAnim
 
     /**
-     * Set player softness (-1 to +1).
-     * -1 = square (radius 0), 0 = default (radius 8), +1 = circle (radius 16)
+     * Set player softness (0 to 1).
+     * 0 = hard/square (radius 0), 0.5 = default (radius 8), 1 = soft/circle (radius 16)
      */
     setSoftness(value: number): void {
-      this.softness = Math.max(-1, Math.min(1, value));
+      this.softness = Math.max(0, Math.min(1, value));
     }
 
     getSoftness(): number {
@@ -148,11 +148,11 @@ namespace Jamble {
     }
 
     /**
-     * Set player temperature (-1 to +1).
-     * -1 = blue, 0 = neutral pink, +1 = yellow (affects LAB B channel)
+     * Set player temperature (0 to 1).
+     * 0 = cold/blue, 0.5 = neutral pink, 1 = hot/yellow (affects LAB B channel)
      */
     setTemperature(value: number): void {
-      this.temperature = Math.max(-1, Math.min(1, value));
+      this.temperature = Math.max(0, Math.min(1, value));
     }
 
     getTemperature(): number {
@@ -161,19 +161,20 @@ namespace Jamble {
 
     /**
      * Calculate corner radius based on softness.
-     * Maps softness (-1 to +1) to radius (0 to 16).
+     * Maps softness (0 to 1) to radius (0 to 16).
      */
     private getCornerRadius(): number {
-      // softness: -1 → 0, 0 → 8, 1 → 16
-      return 8 + (this.softness * 8);
+      // softness: 0 → 0, 0.5 → 8, 1 → 16
+      return this.softness * 16;
     }
 
     /**
      * Get player color based on temperature using LAB color space.
      */
     private getPlayerColor(): string {
-      // Map temperature (-1 to +1) to LAB B channel (-128 to +128)
-      const b = this.temperature * 128;
+      // Map temperature (0 to 1) to LAB B channel (-128 to +128)
+      // 0 → -128 (blue), 0.5 → 0 (neutral), 1 → +128 (yellow)
+      const b = (this.temperature - 0.5) * 256;
       return ColorUtils.labToRgb(this.baseLightness, this.baseA, b);
     }
 
@@ -181,7 +182,7 @@ namespace Jamble {
      * Get border color (20 points darker in lightness).
      */
     private getBorderColor(): string {
-      const b = this.temperature * 128;
+      const b = (this.temperature - 0.5) * 256;
       return ColorUtils.getBorderColor(this.baseLightness, this.baseA, b, 20);
     }
 
