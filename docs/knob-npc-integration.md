@@ -157,9 +157,57 @@ Current tuning values for the Soma NPC:
 
 ### Loss Condition
 - Arousal exceeds 5.0 (pain threshold)
-- All knobs immediately retract via `retract()`
+- Collision is disabled immediately on all knobs
+- Current collision animation finishes playing
+- Despawn animation plays (compress down, 0.15s)
+- Knobs become hidden and fully retracted
 - Crescendo stops growing (disabled)
-- Requires manual respawn via heart/control station
+- Requires manual respawn via heart (costs 1 heart)
+
+## Animation System
+
+### Collision Animations (Active State)
+
+**Side Collision:**
+- Deflects knob to max angle (85 degrees)
+- Holds deflection for 0.2 seconds
+- Springs back to center via damped oscillation
+- Arousal impact: 0.3
+
+**Top Collision:**
+- Three-phase squash animation:
+  1. **Compress**: Length reduced to 4%, width increased 1.3x (instant)
+  2. **Hold**: Maintain compressed state for 0.15 seconds
+  3. **Spring**: Damped spring back to original length (~1.5s max)
+- Arousal impact: 0.5
+
+### State Transition Animations
+
+**Despawn Animation** (RETRACTING → RETRACTED):
+1. Current collision animation completes (if any)
+2. Compress down (same as squash compress phase)
+3. Hold compressed state for 0.15 seconds
+4. Transition to RETRACTED, hide knob
+5. Animation state reset
+
+**Spawn Animation** (RETRACTED → SPAWNING → ACTIVE):
+1. Knob becomes visible
+2. Start from compressed state (4% length)
+3. Spring up to full length (damped oscillation, ~1.5s)
+4. On completion, transition to ACTIVE
+5. Collision enabled
+
+### Animation Priority
+
+Animations are processed in priority order:
+1. **Despawn** (highest - blocks all other animations)
+2. **Spawn** (blocks collision animations)
+3. **Deflect / Squash** (normal gameplay)
+
+The `isAnimating()` check prevents state bugs by ensuring:
+- No collision animations trigger during despawn
+- Current collision animation completes before despawn starts
+- Animation state is reset when transitioning to RETRACTED
 
 ## Knob State Machine
 
@@ -168,18 +216,30 @@ Current tuning values for the Soma NPC:
      │                           │
      ▼                           │
 RETRACTED ──[heart used]──> SPAWNING ──> ACTIVE ──[pain threshold]──> RETRACTING ──> RETRACTED
-                                           ^                                            |
-                                           │                                            │
-                                           └──────────[heart used]──────────────────────┘
+                             │             ^       [collision disabled]    │
+                             │             │                               │
+                             └─animation──┘                         animation finishes
+                                                                    then despawn anim
 ```
 
 **States:**
-- **RETRACTED**: Initial state, hidden, collision disabled
-- **SPAWNING**: Playing spawn animation (TODO)
-- **ACTIVE**: Normal gameplay, collision enabled
-- **RETRACTING**: Playing retraction animation (TODO)
+- **RETRACTED**: Initial state, hidden, collision disabled, animations reset
+- **SPAWNING**: Playing spawn animation (spring up from compressed)
+- **ACTIVE**: Normal gameplay, collision enabled, can trigger collision animations
+- **RETRACTING**: Collision disabled, waiting for current animation then despawning
 
 Only ACTIVE knobs process collisions and send arousal impulses.
+
+### Pain Threshold Retraction Flow
+
+When pain threshold is exceeded:
+1. State transitions to RETRACTING
+2. Collision disabled immediately (no new hits)
+3. Check if collision animation is playing
+4. If yes: wait for animation to complete
+5. If no: start despawn immediately
+6. Play despawn animation (compress + hold)
+7. On completion: transition to RETRACTED and hide
 
 ## Heart-Based Respawn System
 
@@ -214,10 +274,13 @@ Only ACTIVE knobs process collisions and send arousal impulses.
 5. **Knob.manualRespawn()** transitions state:
    ```typescript
    this.state = KnobState.SPAWNING;
-   // TODO: Play spawn animation
-   this.state = KnobState.ACTIVE;
    this.render.visible = true;
-   this.collisionBox.enabled = true;
+   
+   this.anim.triggerSpawn(() => {
+     // On animation complete
+     this.state = KnobState.ACTIVE;
+     this.collisionBox.enabled = true;
+   });
    ```
 
 ### Initial State
@@ -245,7 +308,7 @@ npc.onArousalChange((value, npc) => {
 
 ## Future Considerations
 
-1. **Animation System**: Retract/spawn animations are currently instant (marked with TODO)
-2. **Win State Handler**: Crescendo threshold callback needs implementation
-3. **Multiple NPCs**: System supports multiple NPCs but only one is active
-4. **Knob Respawn**: Manual respawn system needs integration with control station UI
+1. **Multiple NPCs**: System supports multiple NPCs but only one is active
+2. **Knob Slot System**: Knobs occupy slots in the level layout
+3. **Currency System**: Top hits give 5 currency, side hits give 1 currency
+4. **Animation Refinement**: Current animations use placeholder squash timing, can be tuned for feel

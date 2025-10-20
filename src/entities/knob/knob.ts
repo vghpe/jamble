@@ -87,13 +87,14 @@ namespace Jamble {
     }
 
     update(deltaTime: number): void {
-      // Skip physics when not active (manual respawn only)
-      if (this.state !== KnobState.ACTIVE) return;
-      
-      // Delegate to animation/physics system
+      // Always update animation system (handles despawn/spawn even when not ACTIVE)
       this.anim.update(deltaTime);
-      // Update geometry after all physics updates
-      this.updateSpringPoints();
+      
+      // Update geometry for ACTIVE and SPAWNING states (need to see the spring animation)
+      if (this.state === KnobState.ACTIVE || this.state === KnobState.SPAWNING || 
+          this.state === KnobState.RETRACTING) {
+        this.updateSpringPoints();
+      }
     }
 
     // Angular spring handled by KnobAnim
@@ -200,7 +201,7 @@ namespace Jamble {
       
       this.economyManager.addCurrency(currencyAmount);
       
-      // Add arousal impact to active NPC only - HUD will listen to NPC changes
+      // Add arousal impact to active NPC - will check pain threshold
       this.activeNPC.applyArousalImpulse(arousalImpact);
       
       return currencyAmount;
@@ -236,22 +237,53 @@ namespace Jamble {
     }
     
     /**
-     * Retract knob due to pain threshold
+     * Retract knob due to pain threshold.
+     * Disables collision immediately but lets current animation finish,
+     * then plays despawn animation before hiding.
      */
     retract(): void {
       if (this.state !== KnobState.ACTIVE) return;
       
       this.state = KnobState.RETRACTING;
       
-      // TODO: Play retract animation here
-      // For now, immediately go to retracted state
-      this.state = KnobState.RETRACTED;
-      
-      // Hide knob and disable collision
-      this.render.visible = false;
+      // Disable collision immediately so no more hits register
       if (this.collisionBox) {
         this.collisionBox.enabled = false;
       }
+      
+      // If an animation is playing, let it finish before despawning
+      if (this.anim.isAnimating()) {
+        // Wait for current animation, then trigger despawn
+        this.waitForAnimationThenDespawn();
+      } else {
+        // No animation playing, despawn immediately
+        this.startDespawn();
+      }
+    }
+    
+    /**
+     * Wait for current animation to finish, then start despawn
+     */
+    private waitForAnimationThenDespawn(): void {
+      // Check every frame if animation is done
+      const checkInterval = setInterval(() => {
+        if (!this.anim.isAnimating()) {
+          clearInterval(checkInterval);
+          this.startDespawn();
+        }
+      }, 16); // ~60fps check rate
+    }
+    
+    /**
+     * Start the despawn animation
+     */
+    private startDespawn(): void {
+      this.anim.triggerDespawn(() => {
+        // Animation complete - now hide the knob
+        this.state = KnobState.RETRACTED;
+        this.render.visible = false;
+        this.anim.reset(); // Clear animation state
+      });
     }
     
     /**
@@ -262,17 +294,18 @@ namespace Jamble {
       
       this.state = KnobState.SPAWNING;
       
-      // TODO: Play spawn animation here
-      // For now, immediately go to active state
-      this.state = KnobState.ACTIVE;
-      
-      // Re-enable knob
+      // Make visible and play spawn animation
       this.render.visible = true;
       
-      // Re-enable collision
-      if (this.collisionBox) {
-        this.collisionBox.enabled = true;
-      }
+      this.anim.triggerSpawn(() => {
+        // Animation complete - transition to active
+        this.state = KnobState.ACTIVE;
+        
+        // Re-enable collision
+        if (this.collisionBox) {
+          this.collisionBox.enabled = true;
+        }
+      });
     }
     
     /**
