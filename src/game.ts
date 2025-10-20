@@ -100,6 +100,11 @@ namespace Jamble {
         // Connect player to control panel so sliders can update player attributes
         this.hudManager.getControlPanel().setPlayer(this.player);
         
+        // Connect heart use to knob respawn
+        this.hudManager.getControlPanel().onHeartUsed(() => {
+          this.respawnAllKnobs();
+        });
+        
         this.TempEntitiesLayout();
         this.setupInput();
         

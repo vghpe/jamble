@@ -278,6 +278,13 @@ namespace Jamble {
     }
 
     /**
+     * Set up heart use listener for knob respawn.
+     */
+    public onHeartUsed(callback: () => void): void {
+      window.addEventListener('jamble:heart-used', () => callback());
+    }
+
+    /**
      * Update panel visibility based on game state.
      */
     public updateVisibility(): void {

@@ -44,7 +44,7 @@ namespace Jamble {
     private springPoints: { x: number; y: number }[] = [];
     
     // State management
-    private state: KnobState = KnobState.ACTIVE; // Current state
+    private state: KnobState = KnobState.RETRACTED; // Start retracted, need heart to spawn
     private slotManager: SlotManager;           // Reference to slot system
     private currentSlotId: string = '';         // Track which slot we occupy
 
@@ -63,7 +63,7 @@ namespace Jamble {
       // Canvas rendering with custom knob drawing
       this.render = {
         type: 'canvas',
-        visible: true,
+        visible: false, // Start hidden (retracted state)
         canvas: {
           color: '#ff6b35', // Knob color (not used directly due to custom draw)
           shape: 'custom',
@@ -82,7 +82,7 @@ namespace Jamble {
         height: 30,
         anchor: { x: 0.5, y: 0.5 },
         category: 'kinematic',
-        enabled: true
+        enabled: false // Start disabled (retracted state)
       };
     }
 

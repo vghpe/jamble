@@ -8,16 +8,24 @@ Cleanup:
 - [ ] Refactor control panel modules to use LevelManager instead of direct player references.
 
 Features:
-- [ ] Add in growing trees element. 
-	- This need design considerations. 
+
 - [ ] Rework the shop into a control panel. 
-	- [ ] Add in roundness balance to the control panel
-	- [ ] Add ad a hot/cold balance to the control panel
+	- [X] Add in roundness balance to the control panel
+	- [X] Add ad a hot/cold balance to the control panel
+	- [ ] Let roundness. and hot and cold effect effect sensation
+	- [ ] Let the knob hide 
+		- [ ] Hide animation
+		- [ ] Spawn animation
 	- [ ] Add in heart with a limited resets
-- [ ] Make it phone playable. 
+- [ ] Add in trees element. 
+	- Can be placed in the level. 
+- [ ] Let the goal be clearly defined
+
 - [ ] Let the profile sprite update. 
 - [ ] Setup level manager.
 	- [ ] Move all this instantiation from game.ts into here. 
+	- [ ] Make it phone playable. 
+
 
 
 AI SUGGESTION: NPC System Enhancements (Future):

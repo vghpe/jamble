@@ -62,6 +62,9 @@ namespace Jamble {
         if (this.usesRemaining === 0) {
           this.button.classList.add('depleted');
         }
+        
+        // Emit heart use event for knob respawn
+        window.dispatchEvent(new CustomEvent('jamble:heart-used'));
       }
     }
 
