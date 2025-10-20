@@ -44,7 +44,7 @@ namespace Jamble {
     private springPoints: { x: number; y: number }[] = [];
     
     // State management
-    private state: KnobState = KnobState.RETRACTED; // Start retracted, need heart to spawn
+    private state: KnobState = KnobState.SPAWNING; // Start spawning on game load
     private slotManager: SlotManager;           // Reference to slot system
     private currentSlotId: string = '';         // Track which slot we occupy
 
@@ -63,7 +63,7 @@ namespace Jamble {
       // Canvas rendering with custom knob drawing
       this.render = {
         type: 'canvas',
-        visible: false, // Start hidden (retracted state)
+        visible: true, // Visible for spawning animation
         canvas: {
           color: '#ff6b35', // Knob color (not used directly due to custom draw)
           shape: 'custom',
@@ -82,8 +82,19 @@ namespace Jamble {
         height: 30,
         anchor: { x: 0.5, y: 0.5 },
         category: 'kinematic',
-        enabled: false // Start disabled (retracted state)
+        enabled: false // Disabled until spawn completes
       };
+      
+      // Trigger initial spawn with 2 second delay
+      this.anim.triggerInitialSpawn(() => {
+        // Animation complete - transition to active
+        this.state = KnobState.ACTIVE;
+        
+        // Enable collision
+        if (this.collisionBox) {
+          this.collisionBox.enabled = true;
+        }
+      });
     }
 
     update(deltaTime: number): void {

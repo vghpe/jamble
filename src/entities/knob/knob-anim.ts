@@ -34,6 +34,9 @@ namespace Jamble {
     private isSpawning: boolean = false;
     private spawnSpringElapsed: number = 0;
     private spawnVelocity: number = 0;
+    private isInitialSpawnDelaying: boolean = false;
+    private initialSpawnDelayTimer: number = 0;
+    private readonly initialSpawnDelay: number = 0.75; // 2 second delay
     
     private onDespawnComplete?: () => void;
     private onSpawnComplete?: () => void;
@@ -45,7 +48,13 @@ namespace Jamble {
     }
 
     update(deltaTime: number): void {
-      // Handle despawn animation first (highest priority)
+      // Handle initial spawn delay (highest priority)
+      if (this.isInitialSpawnDelaying) {
+        this.updateInitialSpawnDelay(deltaTime);
+        return;
+      }
+
+      // Handle despawn animation
       if (this.isDespawning) {
         this.updateDespawn(deltaTime);
         return; // Don't run other animations during despawn
@@ -216,6 +225,34 @@ namespace Jamble {
     }
 
     /**
+     * Trigger initial spawn with 2 second delay (for game load)
+     */
+    triggerInitialSpawn(onComplete?: () => void): void {
+      this.isInitialSpawnDelaying = true;
+      this.initialSpawnDelayTimer = this.initialSpawnDelay;
+      this.onSpawnComplete = onComplete;
+      
+      // Start in compressed state during delay
+      this.applyCompression();
+    }
+
+    /**
+     * Update initial spawn delay timer
+     */
+    private updateInitialSpawnDelay(deltaTime: number): void {
+      this.initialSpawnDelayTimer -= deltaTime;
+      
+      if (this.initialSpawnDelayTimer <= 0) {
+        // Delay complete, start the actual spawn animation
+        this.isInitialSpawnDelaying = false;
+        this.isSpawning = true;
+        this.spawnSpringElapsed = 0;
+        this.spawnVelocity = 0;
+        // Already compressed from triggerInitialSpawn
+      }
+    }
+
+    /**
      * Stop all ongoing animations
      */
     private stopAllAnimations(): void {
@@ -274,7 +311,7 @@ namespace Jamble {
      * Check if any animation is currently playing
      */
     isAnimating(): boolean {
-      return this.isDeflecting || this.isSquashing || this.isDespawning || this.isSpawning;
+      return this.isDeflecting || this.isSquashing || this.isDespawning || this.isSpawning || this.isInitialSpawnDelaying;
     }
 
     /**
@@ -283,6 +320,7 @@ namespace Jamble {
     reset(): void {
       this.stopAllAnimations();
       this.isDespawning = false;
+      this.isInitialSpawnDelaying = false;
       this.squashVelocity = 0;
       this.spawnVelocity = 0;
       

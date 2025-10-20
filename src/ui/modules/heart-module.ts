@@ -10,6 +10,7 @@ namespace Jamble {
     private usesRemaining!: number;
     private button!: HTMLElement;
     private usesDisplay!: HTMLElement;
+    private isDisabled: boolean = false;
 
     constructor(config: ModuleConfig) {
       super(config);
@@ -55,26 +56,56 @@ namespace Jamble {
     }
 
     private handleClick(): void {
-      if (this.usesRemaining > 0) {
-        this.usesRemaining--;
-        this.updateUsesDisplay();
-        
-        if (this.usesRemaining === 0) {
-          this.button.classList.add('depleted');
-        }
-        
-        // Emit heart use event for knob respawn
-        window.dispatchEvent(new CustomEvent('jamble:heart-used'));
+      // Don't allow usage if disabled or depleted
+      if (this.isDisabled || this.usesRemaining <= 0) {
+        return;
       }
+      
+      this.usesRemaining--;
+      this.updateUsesDisplay();
+      
+      if (this.usesRemaining === 0) {
+        this.button.classList.add('depleted');
+      }
+      
+      // Emit heart use event for knob respawn
+      window.dispatchEvent(new CustomEvent('jamble:heart-used'));
     }
 
     private updateUsesDisplay(): void {
       this.usesDisplay.textContent = `${this.usesRemaining}`;
     }
 
+    /**
+     * Enable the heart module (knob is retracted)
+     */
+    enable(): void {
+      this.isDisabled = false;
+      this.button.classList.remove('depleted');
+      this.updateButtonState();
+    }
+
+    /**
+     * Disable the heart module (knob is present)
+     */
+    disable(): void {
+      this.isDisabled = true;
+      this.button.classList.add('depleted');
+    }
+
+    /**
+     * Update button visual state based on disabled/depleted status
+     */
+    private updateButtonState(): void {
+      if (this.usesRemaining === 0) {
+        this.button.classList.add('depleted');
+      }
+    }
+
     protected resetState(): void {
       this.usesRemaining = HeartModule.MAX_USES;
       this.updateUsesDisplay();
+      this.isDisabled = false;
       this.button.classList.remove('depleted');
     }
   }

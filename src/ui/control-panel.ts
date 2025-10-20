@@ -311,5 +311,25 @@ namespace Jamble {
     public resetAllModules(): void {
       window.dispatchEvent(new CustomEvent('jamble:reset'));
     }
+
+    /**
+     * Enable heart module (knob is retracted)
+     */
+    public enableHeart(): void {
+      const heartModule = this.modules.get('heart') as HeartModule;
+      if (heartModule) {
+        heartModule.enable();
+      }
+    }
+
+    /**
+     * Disable heart module (knob is present/active)
+     */
+    public disableHeart(): void {
+      const heartModule = this.modules.get('heart') as HeartModule;
+      if (heartModule) {
+        heartModule.disable();
+      }
+    }
   }
 }

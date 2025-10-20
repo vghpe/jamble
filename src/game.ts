@@ -115,6 +115,9 @@ namespace Jamble {
           this.respawnAllKnobs();
         });
         
+        // Disable heart initially (knob starts active)
+        this.hudManager.getControlPanel().disableHeart();
+        
         // Setup tree placement system
         this.setupTreePlacement();
         
@@ -156,6 +159,8 @@ namespace Jamble {
           this.activeNPC.disableCrescendo();
           // Trigger portrait pain feedback
           this.hudManager.showPortraitPain();
+          // Enable heart module (knob retracted)
+          this.hudManager.getControlPanel().enableHeart();
         });
         
         // Set initial values
@@ -194,6 +199,8 @@ namespace Jamble {
       // Re-enable crescendo if any knobs were respawned
       if (respawnedCount > 0) {
         this.activeNPC.enableCrescendo();
+        // Disable heart module (knob is now active)
+        this.hudManager.getControlPanel().disableHeart();
       }
       
       console.log(`Respawned ${respawnedCount} knob(s)`);
