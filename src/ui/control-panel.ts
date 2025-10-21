@@ -26,6 +26,8 @@ namespace Jamble {
       const container = document.createElement('div');
       container.id = 'control-panel';
       container.className = 'control-panel';
+      // Ensure UIComponent doesn't force position: fixed
+      container.style.position = 'relative';
       return container;
     }
 
@@ -47,7 +49,7 @@ namespace Jamble {
           position: relative;
           display: grid;
           grid-template-columns: repeat(4, 50px);
-          grid-template-rows: repeat(4, 50px);
+          grid-template-rows: repeat(2, 50px);
           gap: 12px;
           width: max-content;
           margin: 16px auto 0;

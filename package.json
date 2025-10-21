@@ -10,7 +10,8 @@
     "watch": "tsc -w -p tsconfig.json",
     "serve": "python3 devserver.py",
     "kill-server": "lsof -ti:8080 | xargs kill -9 2>/dev/null || true",
-    "restart": "npm run kill-server && sleep 1 && npm run build:jamble && npm run serve"
+    "restart": "npm run kill-server && sleep 1 && npm run build:jamble && npm run serve",
+    "export:blog": "node scripts/export-to-blog.js"
   },
   "repository": {
     "type": "git",
