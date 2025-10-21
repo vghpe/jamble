@@ -16,7 +16,7 @@ namespace Jamble {
     private readonly highLightness: number = 12.0;
     private readonly zoneColors: string[];
     private npc: BaseNPC | null = null;
-    private debugMode: boolean = false;
+    private debugMode: boolean = true;
 
     constructor(parent: HTMLElement, width: number, height: number, options: LineGraphOptions = {}) {
       super(parent, width, height, {
@@ -116,6 +116,8 @@ namespace Jamble {
       this.ctx.lineTo(canvasWidth, y);
       this.ctx.stroke();
       this.ctx.restore();
+      
+      this.drawPainThresholdLabel(y);
     }
 
     /**
@@ -134,6 +136,21 @@ namespace Jamble {
       const padding = canvasHeight * 0.1; // verticalPaddingRatio from parent
       const usableHeight = canvasHeight - padding * 2;
       return canvasHeight - (value * usableHeight + padding);
+    }
+    
+    private drawPainThresholdLabel(y: number): void {
+      const labelColor = '#ff6b35';
+      const label = 'Pain Threshold';
+      const offsetX = 6;
+      const offsetY = 6;
+      
+      this.ctx.save();
+      this.ctx.fillStyle = labelColor;
+      this.ctx.font = '8px monospace';
+      this.ctx.textAlign = 'left';
+      this.ctx.textBaseline = 'alphabetic';
+      this.ctx.fillText(label, offsetX, y - offsetY);
+      this.ctx.restore();
     }
 
     private buildZoneColors(): string[] {

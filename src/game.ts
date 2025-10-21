@@ -150,6 +150,11 @@ namespace Jamble {
         this.activeNPC.onCrescendoChange((value, npc) => {
           this.hudManager.setCrescendoValue(npc.getCrescendoNormalized());
         });
+
+        // Connect NPC expression changes to HUD portrait
+        this.activeNPC.onExpressionChange((expression) => {
+          this.hudManager.setPortraitExpression(expression);
+        });
         
         // Connect NPC pain threshold to retract all knobs
         this.activeNPC.onPainThreshold(() => {
@@ -166,6 +171,7 @@ namespace Jamble {
         // Set initial values
         this.hudManager.setSensationValue(this.activeNPC.getSensationNormalized());
         this.hudManager.setCrescendoValue(this.activeNPC.getCrescendoNormalized());
+        this.hudManager.setPortraitExpression(this.activeNPC.getExpressionDescriptor());
 
         if (this.debugSystem) {
           this.debugSystem.setPlayer(this.player);
@@ -199,6 +205,7 @@ namespace Jamble {
       // Re-enable crescendo if any knobs were respawned
       if (respawnedCount > 0) {
         this.activeNPC.enableCrescendo();
+        this.activeNPC.resetPainExpression();
         // Disable heart module (knob is now active)
         this.hudManager.getControlPanel().disableHeart();
       }

@@ -1,5 +1,15 @@
 namespace Jamble {
   export type ArousalState = 'default' | 'minimum' | 'medium' | 'high' | 'very-high' | 'pain';
+  export type NPCExpressionState = 'default' | 'enjoy' | 'aroused' | 'pain' | 'win';
+
+  export interface NPCExpressionDescriptor {
+    id: NPCExpressionState | string;
+    emoji?: string;
+    sprite?: {
+      atlasId: string;
+      frame: string;
+    };
+  }
 
   export interface NPCArousalConfig {
     baselineValue: number;
@@ -28,11 +38,15 @@ namespace Jamble {
     protected crescendoThresholdReached: boolean = false;
     protected crescendoEnabled: boolean = true;  // Can be disabled when knobs retract
     protected inPainZone: boolean = false;
+    protected painExpressionLocked: boolean = false;
+    protected winExpressionLocked: boolean = false;
     protected arousalChangeListeners: Array<(value: number, npc: BaseNPC) => void> = [];
     protected arousalImpulseListeners: Array<(impulse: number, npc: BaseNPC) => void> = [];
     protected crescendoChangeListeners: Array<(value: number, npc: BaseNPC) => void> = [];
     protected crescendoThresholdListeners: Array<(npc: BaseNPC) => void> = [];
     protected painThresholdListeners: Array<(npc: BaseNPC) => void> = [];
+    protected expressionChangeListeners: Array<(expression: NPCExpressionDescriptor, npc: BaseNPC) => void> = [];
+    protected expressionDescriptor: NPCExpressionDescriptor;
     
     // Momentum system for spreading impulses over time
     protected arousalMomentum: number = 0;
@@ -63,7 +77,8 @@ namespace Jamble {
       };
       
       this.arousalValue = this.arousalConfig.baselineValue;
-      this.crescendoValue = 0;
+      this.crescendoValue = 0.1;
+      this.expressionDescriptor = this.resolveExpression();
     }
 
     // === AROUSAL MANAGEMENT ===
@@ -292,6 +307,7 @@ namespace Jamble {
           console.error(`Error in arousal listener for ${this.name}:`, error);
         }
       }
+      this.evaluateExpression();
     }
     
     private notifyArousalImpulseListeners(impulse: number): void {
@@ -314,6 +330,10 @@ namespace Jamble {
       // Fire event only on crossing into pain zone (not continuously)
       if (isInPain && !wasInPain) {
         this.inPainZone = true;
+        if (!this.winExpressionLocked) {
+          this.painExpressionLocked = true;
+          this.evaluateExpression(true);
+        }
         this.notifyPainThresholdListeners();
       } else if (!isInPain && wasInPain) {
         this.inPainZone = false;
@@ -352,6 +372,101 @@ namespace Jamble {
           console.error(`Error in pain threshold listener for ${this.name}:`, error);
         }
       }
+    }
+    
+    getExpressionDescriptor(): NPCExpressionDescriptor {
+      return this.expressionDescriptor;
+    }
+    
+    onExpressionChange(callback: (expression: NPCExpressionDescriptor, npc: BaseNPC) => void): void {
+      this.expressionChangeListeners.push(callback);
+    }
+    
+    removeExpressionChangeListener(callback: (expression: NPCExpressionDescriptor, npc: BaseNPC) => void): void {
+      const index = this.expressionChangeListeners.indexOf(callback);
+      if (index !== -1) {
+        this.expressionChangeListeners.splice(index, 1);
+      }
+    }
+    
+    protected resolveExpression(): NPCExpressionDescriptor {
+      if (this.winExpressionLocked) {
+        return { id: 'win' };
+      }
+      
+      if (this.painExpressionLocked) {
+        return { id: 'pain' };
+      }
+      
+      return { id: 'default' };
+    }
+    
+    protected evaluateExpression(force: boolean = false): void {
+      const nextDescriptor = this.resolveExpression();
+      if (!nextDescriptor) {
+        return;
+      }
+      
+      if (force || !this.areExpressionsEqual(this.expressionDescriptor, nextDescriptor)) {
+        this.expressionDescriptor = nextDescriptor;
+        this.notifyExpressionChangeListeners();
+      }
+    }
+    
+    protected areExpressionsEqual(a: NPCExpressionDescriptor, b: NPCExpressionDescriptor): boolean {
+      if (!a || !b) {
+        return false;
+      }
+      
+      if (a.id !== b.id) {
+        return false;
+      }
+      
+      if (a.emoji !== b.emoji) {
+        return false;
+      }
+      
+      if (!a.sprite && !b.sprite) {
+        return true;
+      }
+      
+      if (!a.sprite || !b.sprite) {
+        return false;
+      }
+      
+      return a.sprite.atlasId === b.sprite.atlasId && a.sprite.frame === b.sprite.frame;
+    }
+    
+    protected notifyExpressionChangeListeners(): void {
+      for (const listener of this.expressionChangeListeners) {
+        try {
+          listener(this.expressionDescriptor, this);
+        } catch (error) {
+          console.error(`Error in expression listener for ${this.name}:`, error);
+        }
+      }
+    }
+    
+    resetPainExpression(): void {
+      if (this.painExpressionLocked) {
+        this.painExpressionLocked = false;
+        this.evaluateExpression(true);
+      }
+    }
+    
+    resetWinExpression(): void {
+      if (this.winExpressionLocked) {
+        this.winExpressionLocked = false;
+        this.evaluateExpression(true);
+      }
+    }
+    
+    protected isPainExpressionActive(): boolean {
+      return this.painExpressionLocked;
+    }
+    
+    protected isWinExpressionActive(): boolean {
+      return this.winExpressionLocked;
     }
     
     // === CRESCENDO MANAGEMENT ===
@@ -407,12 +522,14 @@ namespace Jamble {
       
       const change = rate * deltaTime;
       
-      this.crescendoValue = Math.max(0, Math.min(this.crescendoConfig.maxValue, this.crescendoValue + change));
+      this.crescendoValue = Math.max(0.1, Math.min(this.crescendoConfig.maxValue, this.crescendoValue + change));
       
       // Check if threshold reached
       if (!this.crescendoThresholdReached && this.crescendoValue >= this.crescendoConfig.threshold) {
         this.crescendoThresholdReached = true;
         this.crescendoValue = this.crescendoConfig.threshold; // Freeze at threshold
+        this.winExpressionLocked = true;
+        this.evaluateExpression(true);
         this.notifyCrescendoThresholdListeners();
       }
       
@@ -485,6 +602,7 @@ namespace Jamble {
           console.error(`Error in crescendo listener for ${this.name}:`, error);
         }
       }
+      this.evaluateExpression();
     }
     
     private notifyCrescendoThresholdListeners(): void {

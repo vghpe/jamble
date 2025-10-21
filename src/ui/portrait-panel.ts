@@ -7,15 +7,7 @@ namespace Jamble {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
     private size: number;
-    private currentState: string = 'default';
-    
-    // Emoji states for different player conditions
-    private emojis = {
-      default: '😊',
-      happy: '😄',
-      surprised: '😮',
-      pain: '😖'  // Pain state for when NPC exceeds pain threshold
-    };
+    private currentExpression: NPCExpressionDescriptor | null = null;
     
     constructor(parent: HTMLElement, size: number) {
       this.size = size;
@@ -40,23 +32,18 @@ namespace Jamble {
       parent.appendChild(this.canvas);
     }
     
-    setState(state: string): void {
-      this.currentState = state;
+    setExpression(expression: NPCExpressionDescriptor): void {
+      this.currentExpression = expression;
     }
     
-    /**
-     * Trigger pain state - placeholder for future animation/expression system
-     * TODO: Add temporary pain animation, auto-return to default state
-     * TODO: Consider adding screen shake or other feedback effects
-     */
+
     showPainFeedback(): void {
-      this.setState('pain');
-      // TODO: Auto-return to default state after animation completes
+      // Expression state is managed by the NPC; this is a hook for future sprite animation.
     }
     
     update(deltaTime: number): void {
       // Portrait doesn't need per-frame updates
-      // State changes are handled via setState()
+      // Expression changes are pushed via setExpression()
     }
     
     render(): void {
@@ -65,8 +52,18 @@ namespace Jamble {
       // Clear canvas with transparent background
       this.ctx.clearRect(0, 0, size, size);
       
+      // Nothing to draw until an expression is provided
+      if (!this.currentExpression) {
+        return;
+      }
+      
+      // TODO: Support sprite-based rendering when descriptors provide sprite definitions.
+      const emoji = this.currentExpression.emoji;
+      if (!emoji) {
+        return;
+      }
+      
       // Draw emoji
-      const emoji = this.emojis[this.currentState as keyof typeof this.emojis] || this.emojis.default;
       this.ctx.font = `${size * 0.6}px Arial`;
       this.ctx.textAlign = 'center';
       this.ctx.textBaseline = 'middle';

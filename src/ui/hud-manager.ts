@@ -136,9 +136,11 @@ namespace Jamble {
     /**
      * Update the portrait panel display (for future sprite animations)
      */
-    setPortraitState(state: string): void {
-      this.portraitPanel.setState(state);
-    }    /**
+    setPortraitExpression(expression: NPCExpressionDescriptor): void {
+      this.portraitPanel.setExpression(expression);
+    }
+    
+    /**
      * Get portrait size for debugging
      */
     getPortraitSize(): number {

@@ -2,6 +2,14 @@
 
 namespace Jamble {
   export class Soma extends BaseNPC {
+    private readonly expressionEmojis: Record<string, string> = {
+      default: '😒',
+      enjoy: '😌',
+      aroused: '😳',
+      pain: '😖',
+      win: '🫠'
+    };
+    
     constructor() {
       super('Soma', {
         baselineValue: 0.2,
@@ -14,13 +22,15 @@ namespace Jamble {
       
       // Configure Soma's crescendo zone (target arousal around 4.0)
       this.crescendoConfig = {
-        targetArousalValue: 4.0,
-        arousalTolerance: 0.5,   // Zone is 3.5-4.5
+        targetArousalValue: 4.3,
+        arousalTolerance: 0.7,   // Zone is 3.5-4.5
         riseRate: 0.15,           // Slow and steady rise
         decayRate: 0.1,           // Decays if out of zone
         threshold: 1.0,           // Win at 1.0
         maxValue: 1.0
       };
+
+      this.evaluateExpression(true);
     }
 
     initialize(): void {
@@ -72,6 +82,41 @@ namespace Jamble {
     wantsMoreStimulation(): boolean {
       const state = this.getArousalState();
       return state === 'default' || state === 'minimum';
+    }
+
+    protected resolveExpression(): NPCExpressionDescriptor {
+      if (this.isPainExpressionActive()) {
+        return {
+          id: 'pain',
+          emoji: this.expressionEmojis?.pain
+        };
+      }
+      
+      if (this.isWinExpressionActive()) {
+        return {
+          id: 'win',
+          emoji: this.expressionEmojis?.win
+        };
+      }
+      
+      if (this.isInCrescendoZone()) {
+        return {
+          id: 'aroused',
+          emoji: this.expressionEmojis?.aroused
+        };
+      }
+      
+      if (this.arousalValue <= 0.2) {
+        return {
+          id: 'default',
+          emoji: this.expressionEmojis?.default
+        };
+      }
+      
+      return {
+        id: 'enjoy',
+        emoji: this.expressionEmojis?.enjoy
+      };
     }
   }
 }
