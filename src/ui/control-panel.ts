@@ -53,6 +53,9 @@ namespace Jamble {
           gap: 12px;
           width: max-content;
           margin: 16px auto 0;
+          padding: 8px;
+          background: #fff;
+          box-sizing: border-box;
           justify-self: center;
           opacity: 0;
           visibility: hidden;
@@ -66,8 +69,8 @@ namespace Jamble {
 
         /* Base module styles */
         .control-module {
-          background: #666;
-          border-radius: 4px;
+          background: #fff;
+          border: 1px solid #ccc;
           position: relative;
           display: flex;
           flex-direction: column;
@@ -109,12 +112,12 @@ namespace Jamble {
         }
 
         .module-button:hover {
-          background: rgba(255, 255, 255, 0.1);
+          background: rgba(0, 0, 0, 0.05);
         }
 
         .module-button.pressed {
           transform: scale(0.95);
-          background: rgba(0, 0, 0, 0.2);
+          background: rgba(0, 0, 0, 0.12);
         }
 
         .module-button.depleted {
@@ -133,10 +136,10 @@ namespace Jamble {
           right: 4px;
           font-size: 10px;
           font-weight: bold;
-          color: #fff;
-          background: rgba(0, 0, 0, 0.5);
+          color: #333;
+          background: rgba(255, 255, 255, 0.9);
+          border: 1px solid #ccc;
           padding: 2px 4px;
-          border-radius: 2px;
           min-width: 12px;
           text-align: center;
         }
@@ -150,7 +153,7 @@ namespace Jamble {
         .module-label {
           font-size: 10px;
           font-weight: bold;
-          color: #fff;
+          color: #333;
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
@@ -168,7 +171,7 @@ namespace Jamble {
           height: 4px;
           -webkit-appearance: none;
           appearance: none;
-          background: #444;
+          background: #d5d5d5;
           outline: none;
           border-radius: 2px;
         }
@@ -178,7 +181,7 @@ namespace Jamble {
           appearance: none;
           width: 12px;
           height: 12px;
-          background: #fff;
+          background: #666;
           cursor: pointer;
           border-radius: 50%;
         }
@@ -186,7 +189,7 @@ namespace Jamble {
         .module-slider-input::-moz-range-thumb {
           width: 12px;
           height: 12px;
-          background: #fff;
+          background: #666;
           cursor: pointer;
           border-radius: 50%;
           border: none;
@@ -194,7 +197,7 @@ namespace Jamble {
 
         .module-value {
           font-size: 9px;
-          color: #fff;
+          color: #333;
           font-family: monospace;
         }
       `;
