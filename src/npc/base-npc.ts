@@ -106,17 +106,17 @@ namespace Jamble {
       if (player && collisionType === 'side') {
         const softness = player.getSoftness(); // 0-1 scale from UI
         
-        // Softness 0.5 = baseline (current 0.3 side collision)
-        // Harder (0.0) = approaches top collision (0.5)
+        // Softness 0.5 = baseline impulse (current 0.3 side collision)
+        // Harder (0.0) = lerps toward top collision strength (0.5)
         // Softer (1.0) = 30% of baseline (0.09 total)
         
         if (softness < 0.5) {
-          // Harder: scale from baseline (0.3) up toward top strength (0.5)
-          // At softness=0, we want to get close to 0.5 but not exceed it
-          // Linear interpolation: 0.0 → ~0.45, 0.5 → 0.3
-          const t = softness / 0.5; // 0 to 1
-          const maxHardImpulse = 0.45; // Close to top but not quite
-          adjustedIntensity = intensity * this.arousalConfig.sensitivity * (maxHardImpulse + t * (1.0 - maxHardImpulse));
+          // Harder: interpolate from baseline toward top collision strength (capped)
+          const hardnessFactor = (0.5 - softness) / 0.5; // 0 at 0.5 softness, 1 when fully hard
+          const baseImpulse = intensity * this.arousalConfig.sensitivity;
+          const topCollisionTarget = 0.5 * this.arousalConfig.sensitivity; // Matches top hit impulse
+          const targetImpulse = Math.max(baseImpulse, topCollisionTarget);
+          adjustedIntensity = baseImpulse + hardnessFactor * (targetImpulse - baseImpulse);
         } else {
           // Softer: scale from baseline down, splitting into instant + momentum
           // At softness=0.5, instant=100%, momentum=0%
