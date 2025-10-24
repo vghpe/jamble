@@ -70,7 +70,7 @@ namespace Jamble {
         /* Base module styles */
         .control-module {
           background: #fff;
-          border: 1px solid #ccc;
+          border: 2px dashed #2196f3;
           position: relative;
           display: flex;
           flex-direction: column;
@@ -130,6 +130,11 @@ namespace Jamble {
           transform: none;
         }
 
+        /* Fade module border when button is depleted */
+        .control-module:has(.module-button.depleted) {
+          opacity: 0.3;
+        }
+
         .module-uses {
           position: absolute;
           bottom: 4px;
@@ -138,7 +143,7 @@ namespace Jamble {
           font-weight: bold;
           color: #333;
           background: rgba(255, 255, 255, 0.9);
-          border: 1px solid #ccc;
+          border: 1px dashed #2196f3;
           padding: 2px 4px;
           min-width: 12px;
           text-align: center;
@@ -148,6 +153,7 @@ namespace Jamble {
         .module-slider {
           padding: 8px;
           gap: 4px;
+          border: 1px solid #ccc; /* Override blue dotted border with old border */
         }
 
         .module-label {
@@ -171,7 +177,7 @@ namespace Jamble {
           height: 4px;
           -webkit-appearance: none;
           appearance: none;
-          background: #d5d5d5;
+          background: #2196f3;
           outline: none;
           border-radius: 2px;
         }
@@ -181,7 +187,7 @@ namespace Jamble {
           appearance: none;
           width: 12px;
           height: 12px;
-          background: #666;
+          background: #2196f3;
           cursor: pointer;
           border-radius: 50%;
         }
@@ -189,7 +195,7 @@ namespace Jamble {
         .module-slider-input::-moz-range-thumb {
           width: 12px;
           height: 12px;
-          background: #666;
+          background: #2196f3;
           cursor: pointer;
           border-radius: 50%;
           border: none;

@@ -107,9 +107,8 @@ namespace Jamble {
      * Update visual state when entering/exiting edit mode
      */
     public setEditMode(active: boolean): void {
-      this.button.style.borderColor = active ? '#ff0000' : '';
-      this.button.style.borderWidth = active ? '2px' : '';
-      this.button.style.borderStyle = active ? 'solid' : '';
+      // No additional styling needed - the module already has blue dotted border
+      // Just keep the module visually consistent
     }
   }
 }

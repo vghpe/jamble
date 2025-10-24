@@ -100,7 +100,7 @@ namespace Jamble {
     startAutoRun() {
       if (!this.isAutoRunning) {
         this.isAutoRunning = true;
-        this.autoRunDirection = this.lastDirection;
+        this.autoRunDirection = 'right'; // Always start running to the right
       }
       this.velocityX = this.autoRunDirection === 'left' ? -this.moveSpeed : this.moveSpeed;
     }

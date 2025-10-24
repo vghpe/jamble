@@ -15,6 +15,7 @@
 /// <reference path="systems/collision-manager.ts" />
 /// <reference path="ui/hud-manager.ts" />
 /// <reference path="ui/tree-placement-overlay.ts" />
+/// <reference path="ui/tap-indicator.ts" />
 /// <reference path="npc/soma.ts" />
 
 namespace Jamble {
@@ -39,8 +40,12 @@ namespace Jamble {
     private activeNPC: Soma;  // Current active NPC (Soma for now)
     private hudManager: HUDManager;
     private treePlacementOverlay: TreePlacementOverlay;
+    private tapIndicator: TapIndicator;
     
     private player!: Player; // Will be initialized in createPlayer()
+    private home!: Home; // Reference to home object for centering logic
+    private homeSensor!: Sensor; // Reference to home sensor for enabling/disabling
+    private groundSensor!: Sensor; // Reference to ground sensor for enabling home
     private gameObjects: GameObject[] = [];
     private knobs: Knob[] = [];  // Track all knobs for pain threshold retraction
     private trees: Map<string, Tree> = new Map(); // Track trees by slot ID
@@ -89,6 +94,18 @@ namespace Jamble {
           this.gameWidth,
           this.gameHeight
         );
+        this.tapIndicator = new TapIndicator(this.canvasHost, this.gameWidth, this.gameHeight);
+        
+        // Setup tap indicator callback
+        this.tapIndicator.setOnTap(() => {
+          if (this.stateManager.isIdle()) {
+            // Tap detected! Start running to the right
+            this.stateManager.startRun();
+            this.tapIndicator.hide();
+            // Re-enable jump when entering run state
+            this.skillManager.setSkillEnabled('jump', true);
+          }
+        });
 
         const debugContainer = options.container;
         const debugRequested = options.debug ?? Boolean(debugContainer);
@@ -257,13 +274,6 @@ namespace Jamble {
         const { slotId } = e.detail;
         this.removeTree(slotId);
       }) as EventListener);
-      
-      // Listen for player input to exit edit mode
-      this.inputManager.onKeyDown('KeyW', () => this.exitTreeEditModeOnPlayerInput());
-      this.inputManager.onKeyDown('KeyA', () => this.exitTreeEditModeOnPlayerInput());
-      this.inputManager.onKeyDown('KeyS', () => this.exitTreeEditModeOnPlayerInput());
-      this.inputManager.onKeyDown('KeyD', () => this.exitTreeEditModeOnPlayerInput());
-      this.inputManager.onKeyDown('Space', () => this.exitTreeEditModeOnPlayerInput());
     }
 
     /**
@@ -286,15 +296,6 @@ namespace Jamble {
       
       const treeModule = this.hudManager.getControlPanel().getModule('tree') as TreeModule;
       treeModule.setEditMode(false);
-    }
-
-    /**
-     * Exit tree edit mode when player inputs movement
-     */
-    private exitTreeEditModeOnPlayerInput(): void {
-      if (this.stateManager.isInEditorMode()) {
-        this.exitTreeEditMode();
-      }
     }
 
     /**
@@ -406,19 +407,31 @@ namespace Jamble {
       // Place home at the first ground slot (leftmost)
       if (groundSlots.length > 0) {
         const homeSlot = groundSlots[0];
-        const home = new Home('home', homeSlot.x, homeSlot.y);
-        this.gameObjects.push(home);
-        this.slotManager.occupySlot(homeSlot.id, home.id);
+        this.home = new Home('home', homeSlot.x, homeSlot.y);
+        this.gameObjects.push(this.home);
+        this.slotManager.occupySlot(homeSlot.id, this.home.id);
         
         // Add home sensor - attached to home, just above it
-        const homeSensor = new Sensor('home-sensor', home, 0, -20);
-        homeSensor.setTriggerSize(70, 10); // Wider than home, thinner height
-        homeSensor.onTriggerEnter = (other: GameObject) => {
+        this.homeSensor = new Sensor('home-sensor', this.home, 0, -20);
+        this.homeSensor.setTriggerSize(30, 10); // Narrower point sensor
+        this.homeSensor.onTriggerEnter = (other: GameObject) => {
           if (other.id === 'player') {
-            this.stateManager.returnToIdle();
+            // Check if we're in the initial transition state (game start)
+            if (this.stateManager.isTransition() && this.player.velocityX === 0) {
+              // No movement at game start - go directly to idle
+              this.stateManager.enterIdle();
+              this.homeSensor.setEnabled(false);
+              this.skillManager.setSkillEnabled('jump', false);
+            } else if (!this.stateManager.isTransition() && !this.stateManager.isIdle()) {
+              // Coming from run state - enter transition
+              this.stateManager.enterTransition();
+              this.homeSensor.setEnabled(false);
+              // Disable jump during transition
+              this.skillManager.setSkillEnabled('jump', false);
+            }
           }
         };
-        this.gameObjects.push(homeSensor);
+        this.gameObjects.push(this.homeSensor);
       }
 
       // Get available slots after home placement
@@ -443,15 +456,16 @@ namespace Jamble {
         this.slotManager.occupySlot(platformSlot.id, platform.id);
       }
       
-      // Add ground sensor - static sensor just above ground level for run state
-      const groundSensor = new Sensor('ground-sensor', undefined, this.gameWidth / 2, this.gameHeight - 5);
-      groundSensor.setTriggerSize(this.gameWidth, 5); // Full width ground sensor, very thin
-      groundSensor.onTriggerEnter = (other: GameObject) => {
-        if (other.id === 'player') {
-          this.stateManager.forceRunState();
+      // Add ground sensor - static sensor just above ground level for re-enabling home
+      this.groundSensor = new Sensor('ground-sensor', undefined, this.gameWidth / 2, this.gameHeight - 5);
+      this.groundSensor.setTriggerSize(this.gameWidth, 5); // Full width ground sensor, very thin
+      this.groundSensor.onTriggerEnter = (other: GameObject) => {
+        if (other.id === 'player' && this.stateManager.isRunning()) {
+          // Re-enable home sensor when player touches ground while running
+          this.homeSensor.setEnabled(true);
         }
       };
-      this.gameObjects.push(groundSensor);
+      this.gameObjects.push(this.groundSensor);
     }
 
     private setupInput() {
@@ -467,21 +481,39 @@ namespace Jamble {
       if (!this.skillManager.hasSkill('move')) return;
 
       // Handle movement based on game state
-      if (this.stateManager.isRunning()) {
+      if (this.stateManager.isTransition()) {
+        // In transition state: continue current movement, check for horizontal alignment
+        this.handleTransitionState();
+      } else if (this.stateManager.isRunning()) {
         // In run state: auto-movement (player controls direction through collisions)
         this.player.startAutoRun();
       } else if (this.stateManager.isIdle()) {
-        // In idle state: stop autorun and use manual movement
+        // In idle state: stop autorun, wait for tap (no keyboard movement)
         this.player.stopAutoRun();
-        if (this.inputManager.isMovingLeft()) {
-          this.player.moveLeft();
-        } else if (this.inputManager.isMovingRight()) {
-          this.player.moveRight();
-        } else {
-          this.player.stopMoving();
-        }
+        this.player.stopMoving();
       }
-      // Note: In countdown state, no movement (could add countdown behavior later)
+    }
+
+    /**
+     * Handle transition state - auto-center player to home position
+     */
+    private handleTransitionState(): void {
+      if (!this.home || !this.player) return;
+      
+      const homeX = this.home.transform.x;
+      const playerX = this.player.transform.x;
+      const threshold = 2; // Alignment threshold in pixels
+      
+      // Check if aligned
+      if (Math.abs(playerX - homeX) < threshold) {
+        // Aligned! Enter idle state
+        this.player.stopMoving();
+        this.stateManager.enterIdle();
+        return;
+      }
+      
+      // Player continues its current movement (we don't change velocity)
+      // The player's existing velocity will naturally move them toward alignment
     }
 
     private update(deltaTime: number) {
@@ -502,6 +534,22 @@ namespace Jamble {
       }
       this.hudManager.updateControlPanel(); // Update control panel visibility
       this.hudManager.update(deltaTime);
+      
+      // Update tap indicator visibility and position
+      // Hide tap indicator when in editor mode
+      if (this.stateManager.isIdle() && !this.stateManager.isInEditorMode()) {
+        // Center the tap circle on the player's center (10px above anchor)
+        const playerCenterY = this.player.transform.y - 10;
+        if (!this.tapIndicator.isVisible()) {
+          this.tapIndicator.show(this.player.transform.x, playerCenterY);
+        } else {
+          this.tapIndicator.updatePosition(this.player.transform.x, playerCenterY);
+        }
+      } else {
+        if (this.tapIndicator.isVisible()) {
+          this.tapIndicator.hide();
+        }
+      }
     }
 
     // Render debug overlays and visuals
@@ -516,6 +564,11 @@ namespace Jamble {
         this.slotManager.getAllSlots()
       );
       this.hudManager.render();
+      
+      // Render tap indicator
+      if (this.tapIndicator.isVisible()) {
+        this.tapIndicator.render();
+      }
     }
 
     start() {

@@ -4,12 +4,14 @@ namespace Jamble {
   export interface Skill {
     id: string;
     name: string;
+    enabled?: boolean;
     execute(player: Player): void;
   }
 
   export class MoveSkill implements Skill {
     id = 'move';
     name = 'Move';
+    enabled = true;
     
     execute(player: Player) {
       // Movement is handled via input system
@@ -20,9 +22,12 @@ namespace Jamble {
   export class JumpSkill implements Skill {
     id = 'jump';
     name = 'Jump';
+    enabled = true;
     
     execute(player: Player) {
-      player.jump();
+      if (this.enabled) {
+        player.jump();
+      }
     }
   }
 
@@ -45,8 +50,15 @@ namespace Jamble {
 
     useSkill(id: string, player: Player) {
       const skill = this.equippedSkills.get(id);
-      if (skill) {
+      if (skill && skill.enabled !== false) {
         skill.execute(player);
+      }
+    }
+
+    setSkillEnabled(id: string, enabled: boolean) {
+      const skill = this.equippedSkills.get(id);
+      if (skill) {
+        skill.enabled = enabled;
       }
     }
 

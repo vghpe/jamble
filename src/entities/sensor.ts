@@ -5,6 +5,7 @@ namespace Jamble {
     private target?: GameObject;  // Optional - null for static sensors
     private offsetX: number;
     private offsetY: number;
+    private enabled: boolean = true;  // Sensors can be disabled
     
     constructor(id: string, target?: GameObject, offsetX: number = 0, offsetY: number = 0) {
       // Initial position - either from target or provided coordinates
@@ -45,6 +46,15 @@ namespace Jamble {
         this.collisionBox.width = width;
         this.collisionBox.height = height;
       }
+    }
+    
+    // Enable/disable sensor
+    setEnabled(enabled: boolean): void {
+      this.enabled = enabled;
+    }
+    
+    isEnabled(): boolean {
+      return this.enabled;
     }
   }
 }

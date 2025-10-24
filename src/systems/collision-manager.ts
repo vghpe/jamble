@@ -93,6 +93,8 @@ export class CollisionManager {
         if (!dyn.collisionBox || dyn.collisionBox.enabled === false) continue;
         for (const other of triggers) {
           if (!other.collisionBox || other.collisionBox.enabled === false) continue;
+          // Skip disabled sensors
+          if (other.id.includes('sensor') && (other as any).isEnabled && !(other as any).isEnabled()) continue;
           if (dyn === other) continue;
           if (this.aabbIntersects(dyn, other)) {
             const key = `${dyn.id}|${other.id}`;

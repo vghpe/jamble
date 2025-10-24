@@ -111,21 +111,18 @@ namespace Jamble {
     private drawHalfCircle(x: number, y: number, color: string): void {
       this.ctx.save();
       
-      // Draw filled half-circle (top half)
-      this.ctx.fillStyle = color;
-      this.ctx.globalAlpha = 0.6;
+      // Draw blue dotted outline only (no fill)
+      // Use the color parameter to distinguish available vs occupied
+      const strokeColor = color === this.occupiedColor ? '#FF9800' : '#2196f3'; // Orange for occupied, blue for available
+      this.ctx.strokeStyle = strokeColor;
+      this.ctx.lineWidth = 2;
+      this.ctx.setLineDash([4, 4]); // Dotted pattern
       this.ctx.beginPath();
       this.ctx.arc(x, y, this.circleRadius, Math.PI, 0, false); // Top half
-      this.ctx.closePath();
-      this.ctx.fill();
-      
-      // Draw stroke
-      this.ctx.globalAlpha = 1.0;
-      this.ctx.strokeStyle = this.strokeColor;
-      this.ctx.lineWidth = this.strokeWidth;
-      this.ctx.beginPath();
-      this.ctx.arc(x, y, this.circleRadius, Math.PI, 0, false);
       this.ctx.stroke();
+      
+      // Reset line dash
+      this.ctx.setLineDash([]);
       
       this.ctx.restore();
     }
@@ -135,13 +132,10 @@ namespace Jamble {
      */
     private handleClick(event: MouseEvent): void {
       const rect = this.canvas.getBoundingClientRect();
-      // Click coordinates are in scaled CSS pixels
       const clickXScaled = event.clientX - rect.left;
       const clickYScaled = event.clientY - rect.top;
       
-      // Convert to logical game coordinates (500×100 space)
-      // rect.width is the actual displayed width (e.g., 393px on mobile)
-      // this.gameWidth is the logical width (500px)
+      // Convert to logical game coordinates
       const scaleX = this.gameWidth / rect.width;
       const scaleY = this.gameHeight / rect.height;
       const clickX = clickXScaled * scaleX;

@@ -1,15 +1,14 @@
 namespace Jamble {
-  export type GameState = 'idle' | 'countdown' | 'run';
+  export type GameState = 'transition' | 'idle' | 'run';
   export type EditorMode = 'none' | 'tree-placement';
 
   export class StateManager {
-    private currentState: GameState = 'idle';
+    private currentState: GameState = 'transition';
     private editorMode: EditorMode = 'none';
     private stateStartTime: number = 0;
-    private countdownDuration: number = 3000; // 3 seconds
 
     constructor() {
-      this.currentState = 'idle';
+      this.currentState = 'transition';
       this.stateStartTime = Date.now();
     }
 
@@ -21,22 +20,13 @@ namespace Jamble {
       return Date.now() - this.stateStartTime;
     }
 
-    getCountdownTimeRemaining(): number {
-      if (this.currentState !== 'countdown') return 0;
-      return Math.max(0, this.countdownDuration - this.getStateTime());
-    }
-
-    getCountdownSeconds(): number {
-      return Math.ceil(this.getCountdownTimeRemaining() / 1000);
-    }
-
     // State check methods
+    isTransition(): boolean {
+      return this.currentState === 'transition';
+    }
+
     isIdle(): boolean {
       return this.currentState === 'idle';
-    }
-
-    isCountdown(): boolean {
-      return this.currentState === 'countdown';
     }
 
     isRunning(): boolean {
@@ -44,16 +34,16 @@ namespace Jamble {
     }
 
     // State transition methods
-    startCountdown(): boolean {
-      if (this.currentState === 'idle') {
-        this.setState('countdown');
-        return true;
-      }
-      return false;
+    enterTransition(): void {
+      this.setState('transition');
+    }
+
+    enterIdle(): void {
+      this.setState('idle');
     }
 
     startRun(): boolean {
-      if (this.currentState === 'countdown') {
+      if (this.currentState === 'idle') {
         this.setState('run');
         return true;
       }
@@ -61,7 +51,7 @@ namespace Jamble {
     }
 
     returnToIdle(): void {
-      this.setState('idle');
+      this.enterTransition();
     }
 
     // Debug method to directly set run state
