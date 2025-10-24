@@ -8,3 +8,54 @@ body {
 }
 
 /* Game container styles will be set by JavaScript */
+
+/* ============================================
+   Responsive Scaling Wrapper
+   ============================================ */
+
+/**
+ * Mobile-responsive wrapper for the Jamble game.
+ * 
+ * Strategy: The game is designed at a canonical 500px width.
+ * On viewports smaller than 500px (e.g., mobile phones in portrait),
+ * we scale the entire game proportionally using CSS transform.
+ * 
+ * This keeps the game logic simple (fixed 500x100 world) while
+ * providing a good mobile experience.
+ * 
+ * Touch target analysis at 393px (iPhone 14 Pro portrait):
+ * - Scale factor: ~0.786 (393/500)
+ * - Control buttons: 50px → ~39px (acceptable, min 44px recommended)
+ * - Tree slots: 44px → ~34px (acceptable for V1)
+ */
+
+.jamble-game-wrapper {
+  /* Center the game and prevent overflow */
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* Scale down proportionally on mobile devices */
+@media (max-width: 500px) {
+  .jamble-game-wrapper {
+    /* Scale from top-center so the game doesn't shift vertically */
+    transform-origin: top center;
+    /* Calculate scale: viewport-width / canonical-width */
+    transform: scale(calc(100vw / 500));
+    /* Prevent horizontal overflow during scaling */
+    width: 500px;
+    /* Adjust vertical space to account for scaling */
+    margin-bottom: calc((100vw / 500) * -50px);
+  }
+}
+
+/* Optional: Prevent scaling below a minimum size for very small screens */
+@media (max-width: 320px) {
+  .jamble-game-wrapper {
+    /* At 320px, scale is 0.64 - might be too small */
+    /* Consider setting a minimum scale if needed */
+    transform: scale(0.64);
+  }
+}

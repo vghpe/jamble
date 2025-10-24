@@ -72,13 +72,32 @@ namespace Jamble {
       const crescendoPanelWidth = Math.floor(this.portraitSize / 5);
       // Portrait has 1px border on each side = 2px total
       const portraitTotalWidth = this.portraitSize + 2;
+      // Portrait group = crescendo + portrait
+      const portraitGroupWidth = portraitTotalWidth + crescendoPanelWidth;
       // Monitor takes remaining space
-      const monitorWidth = this.gameWidth - portraitTotalWidth - crescendoPanelWidth;
+      const monitorWidth = this.gameWidth - portraitGroupWidth;
       
-      // Create components in order: monitor, crescendo panel, portrait
+      // Create monitor panel
       this.monitorPanel = new MonitorPanel(this.container, monitorWidth, this.portraitSize);
-      this.crescendoPanel = new CrescendoPanel(this.container, crescendoPanelWidth, this.portraitSize);
-      this.portraitPanel = new PortraitPanel(this.container, this.portraitSize);
+      
+      // Create wrapper for portrait group (crescendo + portrait)
+      const portraitGroup = document.createElement('div');
+      portraitGroup.className = 'portrait-group';
+      portraitGroup.style.cssText = `
+        width: ${portraitGroupWidth}px;
+        height: ${this.portraitSize}px;
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        gap: 0;
+        flex-shrink: 0;
+        pointer-events: none;
+      `;
+      this.container.appendChild(portraitGroup);
+      
+      // Create components in order within portrait group: crescendo panel, portrait
+      this.crescendoPanel = new CrescendoPanel(portraitGroup, crescendoPanelWidth, this.portraitSize);
+      this.portraitPanel = new PortraitPanel(portraitGroup, this.portraitSize);
     }
     
     private createControlPanel(): void {
@@ -96,6 +115,21 @@ namespace Jamble {
         this.monitorPanel.setDimmed(dimmed);
         this.crescendoPanel.setDimmed(dimmed);
       }) as EventListener);
+    }
+    
+    /**
+     * Set scale for HUD panels to match canvas scaling
+     * This ensures HUD panels scale proportionally with the game canvas
+     */
+    setScale(scale: number): void {
+      // Apply scale to the HUD overlay (portrait, monitor, crescendo panels)
+      this.container.style.transform = `scale(${scale})`;
+      this.container.style.transformOrigin = 'top left';
+      
+      // Adjust container height to account for scaling
+      // This prevents layout issues when scaled down
+      const scaledHeight = this.portraitSize * scale;
+      this.container.style.marginBottom = `${scaledHeight - this.portraitSize}px`;
     }
     
     /**

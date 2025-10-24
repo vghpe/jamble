@@ -31,14 +31,15 @@ namespace Jamble {
       
       // Create overlay canvas
       this.canvas = document.createElement('canvas');
-      this.canvas.width = gameWidth;
-      this.canvas.height = gameHeight;
+      const dpr = window.devicePixelRatio || 1;
+      this.canvas.width = gameWidth * dpr;
+      this.canvas.height = gameHeight * dpr;
       this.canvas.style.cssText = `
         position: absolute;
         top: 0;
         left: 0;
-        width: ${gameWidth}px;
-        height: ${gameHeight}px;
+        width: 100%;
+        height: 100%;
         pointer-events: auto;
         cursor: pointer;
         display: none;
@@ -46,6 +47,7 @@ namespace Jamble {
       `;
       
       this.ctx = this.canvas.getContext('2d')!;
+      this.ctx.scale(dpr, dpr);
       parent.appendChild(this.canvas);
       
       // Set up click handling
@@ -133,8 +135,17 @@ namespace Jamble {
      */
     private handleClick(event: MouseEvent): void {
       const rect = this.canvas.getBoundingClientRect();
-      const clickX = event.clientX - rect.left;
-      const clickY = event.clientY - rect.top;
+      // Click coordinates are in scaled CSS pixels
+      const clickXScaled = event.clientX - rect.left;
+      const clickYScaled = event.clientY - rect.top;
+      
+      // Convert to logical game coordinates (500×100 space)
+      // rect.width is the actual displayed width (e.g., 393px on mobile)
+      // this.gameWidth is the logical width (500px)
+      const scaleX = this.gameWidth / rect.width;
+      const scaleY = this.gameHeight / rect.height;
+      const clickX = clickXScaled * scaleX;
+      const clickY = clickYScaled * scaleY;
       
       const groundSlots = this.slotManager.getSlotsByType('ground');
       

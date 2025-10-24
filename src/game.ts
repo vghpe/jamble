@@ -343,7 +343,8 @@ namespace Jamble {
 
     private setupGameElement() {
       this.gameShell.style.cssText = `
-        width: ${this.gameWidth}px;
+        width: 100%;
+        max-width: ${this.gameWidth}px;
         display: flex;
         flex-direction: column;
         gap: 8px;
@@ -353,10 +354,44 @@ namespace Jamble {
       this.canvasHost.style.cssText = `
         position: relative;
         width: 100%;
-        height: ${this.gameHeight}px;
+        aspect-ratio: ${this.gameWidth} / ${this.gameHeight};
         background: #e8f5e9;
         overflow: hidden;
       `;
+      
+      // Setup resize listener to update HUD scaling
+      this.setupResizeListener();
+      // Apply initial scale
+      this.updateHUDScale();
+    }
+
+    /**
+     * Calculate current scale factor based on canvas actual size vs base size
+     */
+    private calculateCanvasScale(): number {
+      const canvasRect = this.canvasHost.getBoundingClientRect();
+      const actualWidth = canvasRect.width;
+      const scaleX = actualWidth / this.gameWidth;
+      
+      // Use scaleX since canvas scales uniformly (aspect-ratio maintains proportions)
+      return scaleX;
+    }
+
+    /**
+     * Update HUD panel scaling to match canvas scale
+     */
+    private updateHUDScale(): void {
+      const scale = this.calculateCanvasScale();
+      this.hudManager.setScale(scale);
+    }
+
+    /**
+     * Setup window resize listener to keep HUD scaled with canvas
+     */
+    private setupResizeListener(): void {
+      window.addEventListener('resize', () => {
+        this.updateHUDScale();
+      });
     }
 
     private createPlayer() {

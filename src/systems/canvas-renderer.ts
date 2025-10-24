@@ -59,9 +59,8 @@ namespace Jamble {
       this.canvas.width = this.gameWidth * pixelRatio;
       this.canvas.height = this.gameHeight * pixelRatio;
 
-      // Ensure CSS size matches logical game size
-      this.canvas.style.width = this.gameWidth + 'px';
-      this.canvas.style.height = this.gameHeight + 'px';
+      // CSS size is already set to 100% in setupCanvas(), which allows it to
+      // respond to the wrapper's scaling. We only set the backing store size here.
 
       // Apply DPR scaling so 1 logical unit = 1 CSS pixel
       this.scaleX = pixelRatio;
