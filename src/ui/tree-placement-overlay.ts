@@ -15,7 +15,7 @@ namespace Jamble {
     private isVisible: boolean = false;
     
     // Visual constants
-    private readonly circleRadius: number = 22; // 44px diameter touch target
+    private readonly circleRadius: number = 33; // 1.5x larger: 22 * 1.5 = 33 (66px diameter)
     private readonly availableColor: string = '#4CAF50'; // Green
     private readonly occupiedColor: string = '#FF9800'; // Orange
     private readonly strokeColor: string = '#ff0000'; // Red - matches tree icon border

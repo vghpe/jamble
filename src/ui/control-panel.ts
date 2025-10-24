@@ -38,8 +38,9 @@ namespace Jamble {
     show(): void {
       if (this.isVisible) return;
       this.isVisible = true;
-      this.container.style.display = 'grid';
-      this.mountNode.appendChild(this.container);
+      if (!this.container.parentNode) {
+        this.mountNode.appendChild(this.container);
+      }
     }
 
     private setupStyles(): void {
@@ -47,7 +48,7 @@ namespace Jamble {
       style.textContent = `
         .control-panel {
           position: relative;
-          display: grid;
+          display: none;
           grid-template-columns: repeat(4, 50px);
           grid-template-rows: repeat(2, 50px);
           gap: 12px;
@@ -58,13 +59,12 @@ namespace Jamble {
           box-sizing: border-box;
           justify-self: center;
           opacity: 0;
-          visibility: hidden;
-          transition: opacity 0.2s ease, visibility 0.2s ease;
+          transition: opacity 0.2s ease;
         }
 
         .control-panel.visible {
+          display: grid;
           opacity: 1;
-          visibility: visible;
         }
 
         /* Base module styles */
@@ -255,7 +255,9 @@ namespace Jamble {
      * Show the control panel with fade-in animation.
      */
     public showPanel(): void {
-      this.container.classList.add('visible');
+      requestAnimationFrame(() => {
+        this.container.classList.add('visible');
+      });
     }
 
     /**

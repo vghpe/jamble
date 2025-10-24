@@ -3,6 +3,7 @@
 /// <reference path="monitor/monitor-panel.ts" />
 /// <reference path="crescendo-panel.ts" />
 /// <reference path="control-panel.ts" />
+/// <reference path="jump-instruction-panel.ts" />
 
 namespace Jamble {
   /**
@@ -15,6 +16,8 @@ namespace Jamble {
     private monitorPanel!: MonitorPanel;
     private crescendoPanel!: CrescendoPanel;
     private controlPanel!: ControlPanel;
+    private jumpInstructionPanel!: JumpInstructionPanel;
+    private panelWrapper!: HTMLElement;
     
     private gameWidth: number;
     private gameHeight: number;
@@ -29,7 +32,9 @@ namespace Jamble {
       this.gameHeight = gameHeight;
       
       this.createHUDComponents();
+      this.createPanelWrapper();
       this.createControlPanel();
+      this.createJumpInstructionPanel();
       this.setupEditorModeListener();
       this.show(); // Show HUD immediately (control panel visibility controlled separately)
     }
@@ -99,12 +104,28 @@ namespace Jamble {
       this.crescendoPanel = new CrescendoPanel(portraitGroup, crescendoPanelWidth, this.portraitSize);
       this.portraitPanel = new PortraitPanel(portraitGroup, this.portraitSize);
     }
-    
-    private createControlPanel(): void {
+
+    private createPanelWrapper(): void {
       const root = this.gameElement.parentElement || this.gameElement;
-      this.controlPanel = new ControlPanel(root);
+      this.panelWrapper = document.createElement('div');
+      this.panelWrapper.style.cssText = `
+        position: relative;
+        width: 100%;
+        height: 144px;
+        margin: 0;
+        padding: 0;
+      `;
+      root.appendChild(this.panelWrapper);
     }
 
+    private createControlPanel(): void {
+      this.controlPanel = new ControlPanel(this.panelWrapper);
+    }
+
+    private createJumpInstructionPanel(): void {
+      this.jumpInstructionPanel = new JumpInstructionPanel(this.panelWrapper);
+    }
+    
     /**
      * Listen for editor mode changes and dim HUD panels accordingly
      */
@@ -303,6 +324,13 @@ namespace Jamble {
      */
     getControlPanel(): ControlPanel {
       return this.controlPanel;
+    }
+    
+    /**
+     * Get jump instruction panel for direct access if needed
+     */
+    getJumpInstructionPanel(): JumpInstructionPanel {
+      return this.jumpInstructionPanel;
     }
     
     private recreateHUD(): void {

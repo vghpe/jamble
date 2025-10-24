@@ -16,6 +16,7 @@
 /// <reference path="ui/hud-manager.ts" />
 /// <reference path="ui/tree-placement-overlay.ts" />
 /// <reference path="ui/tap-indicator.ts" />
+/// <reference path="ui/jump-instruction-panel.ts" />
 /// <reference path="npc/soma.ts" />
 
 namespace Jamble {
@@ -41,6 +42,7 @@ namespace Jamble {
     private hudManager: HUDManager;
     private treePlacementOverlay: TreePlacementOverlay;
     private tapIndicator: TapIndicator;
+    private jumpInstructionPanel: JumpInstructionPanel;
     
     private player!: Player; // Will be initialized in createPlayer()
     private home!: Home; // Reference to home object for centering logic
@@ -104,6 +106,15 @@ namespace Jamble {
             this.tapIndicator.hide();
             // Re-enable jump when entering run state
             this.skillManager.setSkillEnabled('jump', true);
+          }
+        });
+        
+        // Get jump instruction panel from HUDManager and wire it up
+        this.jumpInstructionPanel = this.hudManager.getJumpInstructionPanel();
+        this.jumpInstructionPanel.setStateManager(this.stateManager);
+        this.jumpInstructionPanel.setOnJump(() => {
+          if (this.stateManager.isRunning() && this.skillManager.hasSkill('jump')) {
+            this.skillManager.useSkill('jump', this.player);
           }
         });
 
@@ -475,6 +486,14 @@ namespace Jamble {
           this.skillManager.useSkill('jump', this.player);
         }
       });
+      
+      // Set up tap to jump (entire canvas area)
+      this.canvasHost.addEventListener('pointerdown', (e) => {
+        if (this.stateManager.isRunning() && this.skillManager.hasSkill('jump')) {
+          e.preventDefault();
+          this.skillManager.useSkill('jump', this.player);
+        }
+      });
     }
 
     private handleInput() {
@@ -533,6 +552,7 @@ namespace Jamble {
         this.debugSystem.update();
       }
       this.hudManager.updateControlPanel(); // Update control panel visibility
+      this.jumpInstructionPanel.updateVisibility(); // Update jump instruction panel visibility
       this.hudManager.update(deltaTime);
       
       // Update tap indicator visibility and position

@@ -7,7 +7,7 @@ namespace Jamble {
     private ctx: CanvasRenderingContext2D;
     private gameWidth: number;
     private gameHeight: number;
-    private readonly circleRadius: number = 22; // Match tree placement circle size (44px diameter)
+    private readonly circleRadius: number = 33; // 1.5x larger: 22 * 1.5 = 33 (66px diameter)
     private visible: boolean = false;
     private playerX: number = 0;
     private playerY: number = 0;
