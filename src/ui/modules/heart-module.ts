@@ -39,10 +39,13 @@ namespace Jamble {
     }
 
     private setupInteraction(): void {
-      this.button.addEventListener('mousedown', () => this.handlePress());
-      this.button.addEventListener('mouseup', () => this.handleRelease());
-      this.button.addEventListener('mouseleave', () => this.handleRelease());
-      this.button.addEventListener('click', () => this.handleClick());
+      this.button.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        this.handlePress();
+        this.handleClick();
+      });
+      this.button.addEventListener('pointerup', () => this.handleRelease());
+      this.button.addEventListener('pointerleave', () => this.handleRelease());
     }
 
     private handlePress(): void {
