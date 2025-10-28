@@ -86,9 +86,9 @@ namespace Jamble {
     }
 
     private applyTransform(obj: GameObject): void {
-      // Get pixel-perfect coordinates and anchor
-      const x = Math.round(obj.transform.x);
-      const y = Math.round(obj.transform.y);
+      // Use sub-pixel rendering for smooth movement
+      const x = obj.transform.x;
+      const y = obj.transform.y;
       const width = obj.render.canvas.width || 20;
       const height = obj.render.canvas.height || 20;
       const anchorX = (obj.render.anchor?.x ?? 0.5) * width;

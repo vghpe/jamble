@@ -593,7 +593,8 @@ namespace Jamble {
 
     start() {
       const gameLoop = (currentTime: number) => {
-        const deltaTime = this.lastTime ? (currentTime - this.lastTime) / 1000 : 0;
+        // Calculate delta time (capped to avoid huge jumps)
+        const deltaTime = this.lastTime ? Math.min((currentTime - this.lastTime) / 1000, 0.1) : 0;
         this.lastTime = currentTime;
 
         this.update(deltaTime);
