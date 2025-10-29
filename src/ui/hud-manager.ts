@@ -112,7 +112,7 @@ namespace Jamble {
         position: relative;
         width: 100%;
         height: 144px;
-        margin-top: 50px;
+        margin-top: 35px;
         padding: 0;
       `;
       root.appendChild(this.panelWrapper);
@@ -195,6 +195,13 @@ namespace Jamble {
      */
     setPortraitExpression(expression: NPCExpressionDescriptor): void {
       this.portraitPanel.setExpression(expression);
+    }
+    
+    /**
+     * Set the NPC reference for portrait panel stats
+     */
+    setNPC(npc: BaseNPC): void {
+      this.portraitPanel.setNPC(npc);
     }
     
     /**

@@ -90,6 +90,7 @@ namespace Jamble {
         this.collisionManager = new CollisionManager(this.gameWidth, this.gameHeight);
         this.hudManager = new HUDManager(this.gameShell, this.gameWidth, this.gameHeight);
         this.hudManager.setStateManager(this.stateManager);
+        this.hudManager.setNPC(this.activeNPC); // Pass NPC to HUD for portrait stats
         this.treePlacementOverlay = new TreePlacementOverlay(
           this.canvasHost,
           this.slotManager,

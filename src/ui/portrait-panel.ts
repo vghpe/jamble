@@ -8,6 +8,7 @@ namespace Jamble {
     private ctx: CanvasRenderingContext2D;
     private size: number;
     private currentExpression: NPCExpressionDescriptor | null = null;
+    private npc: BaseNPC | null = null;
     
     constructor(parent: HTMLElement, size: number) {
       this.size = size;
@@ -34,6 +35,13 @@ namespace Jamble {
     
     setExpression(expression: NPCExpressionDescriptor): void {
       this.currentExpression = expression;
+    }
+    
+    /**
+     * Set the NPC reference for stats display
+     */
+    setNPC(npc: BaseNPC): void {
+      this.npc = npc;
     }
     
 
@@ -69,6 +77,23 @@ namespace Jamble {
       this.ctx.textBaseline = 'middle';
       
       this.ctx.fillText(emoji, size / 2, size / 2);
+      
+      // Draw NPC stats
+      if (this.npc) {
+        const fontSize = 8;
+        const padding = 8;
+        
+        this.ctx.font = `${fontSize}px monospace`;
+        this.ctx.fillStyle = '#666'; // Dark gray for readability
+        this.ctx.textBaseline = 'top';
+        
+        // Client ID at top center
+        const clientName = this.npc.getName();
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(`Client ID: ${clientName}`, size / 2, size - padding);
+        
+
+      }
     }
 
     /**
