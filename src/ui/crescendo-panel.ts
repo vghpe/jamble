@@ -2,13 +2,19 @@ namespace Jamble {
   /**
    * Crescendo Panel - vertical progress bar showing crescendo level (0-1).
    * Simple display component - value is controlled externally by NPC system.
+   * Features a pink heart emoji above the bar for UX clarity.
    */
   export class CrescendoPanel {
     private container: HTMLElement;
+    private heartCanvas: HTMLCanvasElement;
+    private heartCtx: CanvasRenderingContext2D;
     private fillBar: HTMLElement;
     private currentValue: number = 0.1;  // Default to 0.1 so it's visible
     private width: number;
     private height: number;
+    
+    // Animation state (for future pulse animation)
+    private pulsePhase: number = 0;
 
     constructor(parent: HTMLElement, width: number, height: number) {
       this.width = width;
@@ -24,8 +30,31 @@ namespace Jamble {
         border-right: none;
         box-sizing: border-box;
         position: relative;
-        overflow: hidden;
+        overflow: visible;
       `;
+
+      // Create canvas for heart emoji above the bar
+      const heartSize = Math.round(width * 1.5);
+      this.heartCanvas = document.createElement('canvas');
+      this.heartCanvas.width = heartSize;
+      this.heartCanvas.height = heartSize;
+      this.heartCanvas.style.cssText = `
+        position: absolute;
+        top: -${heartSize * 1.1}px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: ${heartSize}px;
+        height: ${heartSize}px;
+        pointer-events: none;
+      `;
+      
+      // Set up high DPI rendering for heart canvas
+      const dpr = window.devicePixelRatio || 1;
+      this.heartCanvas.width = heartSize * dpr;
+      this.heartCanvas.height = heartSize * dpr;
+      
+      this.heartCtx = this.heartCanvas.getContext('2d')!;
+      this.heartCtx.scale(dpr, dpr);
 
       // Create fill bar (grows from bottom to top) - reddish pink
       this.fillBar = document.createElement('div');
@@ -44,6 +73,7 @@ namespace Jamble {
       `;
 
       this.container.appendChild(this.fillBar);
+      this.container.appendChild(this.heartCanvas);
       parent.appendChild(this.container);
     }
 
@@ -63,7 +93,42 @@ namespace Jamble {
     }
 
     /**
-     * Update visual display
+     * Update animation state (called per frame from HUDManager)
+     * Similar to portrait panel pattern - currently no per-frame updates needed
+     */
+    update(deltaTime: number): void {
+      // Future: Update pulse phase for animation
+      // this.pulsePhase += deltaTime * 2; // 2 Hz pulse
+    }
+
+    /**
+     * Render visual state (called per frame from HUDManager)
+     * Follows portrait panel pattern - canvas-based rendering
+     */
+    render(): void {
+      const size = this.heartCanvas.width / (window.devicePixelRatio || 1);
+      
+      // Clear canvas
+      this.heartCtx.clearRect(0, 0, size, size);
+      
+      // Draw heart emoji
+      this.heartCtx.font = `${size * 0.8}px Arial`;
+      this.heartCtx.textAlign = 'center';
+      this.heartCtx.textBaseline = 'middle';
+      
+      // Future: Apply pulse scale based on crescendo level
+      // const scale = 1 + Math.sin(this.pulsePhase) * 0.1 * this.currentValue;
+      // this.heartCtx.save();
+      // this.heartCtx.translate(size / 2, size / 2);
+      // this.heartCtx.scale(scale, scale);
+      // this.heartCtx.fillText('🩷', 0, 0);
+      // this.heartCtx.restore();
+      
+      this.heartCtx.fillText('🩷', size / 2, size / 2);
+    }
+
+    /**
+     * Update visual display of the progress bar
      */
     private updateDisplay(): void {
       // Always show at least 10% fill so the bar is visible
@@ -89,6 +154,16 @@ namespace Jamble {
       this.height = height;
       this.container.style.width = `${width}px`;
       this.container.style.height = `${height}px`;
+      
+      // Recreate heart canvas with new size
+      const heartSize = Math.round(width * 1.0);
+      const dpr = window.devicePixelRatio || 1;
+      this.heartCanvas.width = heartSize * dpr;
+      this.heartCanvas.height = heartSize * dpr;
+      this.heartCanvas.style.width = `${heartSize}px`;
+      this.heartCanvas.style.height = `${heartSize}px`;
+      this.heartCanvas.style.top = `-${heartSize * 1.1}px`;
+      this.heartCtx.scale(dpr, dpr);
     }
 
     /**

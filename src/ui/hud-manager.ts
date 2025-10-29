@@ -162,6 +162,7 @@ namespace Jamble {
       if (this.isVisible) {
         this.portraitPanel.update(deltaTime);
         this.monitorPanel.update(deltaTime);
+        this.crescendoPanel.update(deltaTime);
       }
       
       // Control panel updates independently (has its own visibility logic)
@@ -175,6 +176,7 @@ namespace Jamble {
       if (this.isVisible) {
         this.portraitPanel.render();
         this.monitorPanel.render();
+        this.crescendoPanel.render();
       }
       
       // Control panel renders independently
