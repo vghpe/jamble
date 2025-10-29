@@ -32,6 +32,7 @@ namespace Jamble {
     canvas: CanvasRenderInfo;
     animation?: AnimationState;
     anchor?: Anchor; // Where transform is anchored within canvas
+    opacity?: number; // 0-1, default 1.0
   }
 
   export interface CollisionBox {

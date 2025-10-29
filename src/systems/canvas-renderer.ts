@@ -9,6 +9,7 @@ namespace Jamble {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
     private readonly backgroundColor: string = '#e8f5e9';
+    private backgroundAlpha: number = 1.0; // For background transparency
     private gameWidth: number;
     private gameHeight: number;
     private scaleX: number = 1;
@@ -41,7 +42,7 @@ namespace Jamble {
     }
 
     private setupContext(): CanvasRenderingContext2D {
-      const ctx = this.canvas.getContext('2d', { alpha: false });
+      const ctx = this.canvas.getContext('2d', { alpha: true }); // Enable alpha for transparency
       if (!ctx) {
         throw new Error('Could not get 2D canvas context');
       }
@@ -69,16 +70,36 @@ namespace Jamble {
       this.ctx.imageSmoothingEnabled = false;
     }
 
+    /**
+     * Set the alpha transparency of the background
+     * @param alpha - 0 (fully transparent) to 1 (fully opaque)
+     */
+    setBackgroundAlpha(alpha: number): void {
+      this.backgroundAlpha = Math.max(0, Math.min(1, alpha));
+    }
+
     render(gameObjects: GameObject[]): void {
-      // Paint opaque background using logical game coordinates
+      // Clear canvas completely (including alpha channel)
+      this.ctx.clearRect(0, 0, this.gameWidth, this.gameHeight);
+      
+      // Paint background with current transparency
+      this.ctx.save();
+      this.ctx.globalAlpha = this.backgroundAlpha;
       this.ctx.fillStyle = this.backgroundColor;
       this.ctx.fillRect(0, 0, this.gameWidth, this.gameHeight);
+      this.ctx.restore();
       
       // Render all visible game objects
       gameObjects.forEach(obj => {
         if (!obj.render.visible) return;
         
         this.ctx.save();
+        
+        // Apply opacity if specified (for player transparency)
+        if (obj.render.opacity !== undefined) {
+          this.ctx.globalAlpha = obj.render.opacity;
+        }
+        
         this.applyTransform(obj);
         this.renderCanvasObject(obj);
         this.ctx.restore();

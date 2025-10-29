@@ -367,7 +367,6 @@ namespace Jamble {
         position: relative;
         width: 100%;
         aspect-ratio: ${this.gameWidth} / ${this.gameHeight};
-        background: #e8f5e9;
         overflow: visible;
       `;
       
@@ -375,6 +374,15 @@ namespace Jamble {
       this.setupResizeListener();
       // Apply initial scale
       this.updateHUDScale();
+      
+      // Setup editor mode listener for dimming player and background
+      window.addEventListener('jamble:editor-mode-change', ((e: CustomEvent) => {
+        const dimmed = e.detail.mode !== 'none';
+        const alpha = dimmed ? 0.2 : 1.0; // Use 0.2 for more obvious testing
+        console.log('Editor mode changed:', e.detail.mode, 'Setting alpha to:', alpha);
+        this.player.render.opacity = alpha;
+        this.renderer.setBackgroundAlpha(alpha);
+      }) as EventListener);
     }
 
     /**
