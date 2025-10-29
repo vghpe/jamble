@@ -112,7 +112,7 @@ namespace Jamble {
         position: relative;
         width: 100%;
         height: 144px;
-        margin: 0;
+        margin-top: 30px;
         padding: 0;
       `;
       root.appendChild(this.panelWrapper);

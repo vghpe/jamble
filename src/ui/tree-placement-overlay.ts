@@ -102,7 +102,7 @@ namespace Jamble {
         if (!slot.occupied || isOccupiedByTree) {
           const color = isOccupiedByTree ? this.occupiedColor : this.availableColor;
           // Offset circle up by X pixels for better visual alignment with trees
-          const offsetY = slot.y - 10; // Adjust this value (try 8-15)
+          const offsetY = slot.y - 0; // Adjust this value (try 8-15)
           this.drawFullCircle(slot.x, offsetY, color);
         }
       });
