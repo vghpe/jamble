@@ -9,6 +9,8 @@ namespace Jamble {
   export class TreePlacementOverlay {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
+    private backgroundCanvas: HTMLCanvasElement; // For unavailable slot indicators
+    private backgroundCtx: CanvasRenderingContext2D;
     private slotManager: SlotManager;
     private gameWidth: number;
     private gameHeight: number;
@@ -30,9 +32,28 @@ namespace Jamble {
       this.gameWidth = gameWidth;
       this.gameHeight = gameHeight;
       
-      // Create overlay canvas - extended to include padding area
-      this.canvas = document.createElement('canvas');
+      // Create background canvas for unavailable slot indicators (z-index: 2)
+      this.backgroundCanvas = document.createElement('canvas');
       const dpr = window.devicePixelRatio || 1;
+      this.backgroundCanvas.width = gameWidth * dpr;
+      this.backgroundCanvas.height = (gameHeight + this.overlayPadding) * dpr;
+      this.backgroundCanvas.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: calc(100% + ${this.overlayPadding}px);
+        pointer-events: none;
+        display: none;
+        z-index: 2;
+      `;
+      
+      this.backgroundCtx = this.backgroundCanvas.getContext('2d')!;
+      this.backgroundCtx.scale(dpr, dpr);
+      parent.appendChild(this.backgroundCanvas);
+      
+      // Create overlay canvas - extended to include padding area (z-index: 5)
+      this.canvas = document.createElement('canvas');
       this.canvas.width = gameWidth * dpr;
       this.canvas.height = (gameHeight + this.overlayPadding) * dpr;
       this.canvas.style.cssText = `
@@ -61,6 +82,7 @@ namespace Jamble {
     show(): void {
       this.isVisible = true;
       this.canvas.style.display = 'block';
+      this.backgroundCanvas.style.display = 'block';
       this.render();
     }
     
@@ -70,6 +92,7 @@ namespace Jamble {
     hide(): void {
       this.isVisible = false;
       this.canvas.style.display = 'none';
+      this.backgroundCanvas.style.display = 'none';
     }
     
     /**
@@ -88,11 +111,58 @@ namespace Jamble {
     }
     
     /**
-     * Render full circles at ground slot positions
+     * Draw small filled circles for ALL slots (ceiling, air_high, air_mid, air_low, ground)
+     * Available slots drawn on top canvas, unavailable slots on background canvas
+     */
+    private drawAllSlotIndicators(): void {
+      const allSlotTypes: Array<'ceiling' | 'air_high' | 'air_mid' | 'air_low' | 'ground'> = 
+        ['ceiling', 'air_high', 'air_mid', 'air_low', 'ground'];
+      const smallCircleRadius = 3;
+      const blueColor = '#2196f3'; // Match tap indicator blue
+      const grayColor = '#cccccc'; // Light gray for unavailable
+      
+      // Clear background canvas for unavailable slots
+      this.backgroundCtx.clearRect(0, 0, this.gameWidth, this.gameHeight + this.overlayPadding);
+      
+      allSlotTypes.forEach(slotType => {
+        const slots = this.slotManager.getSlotsByType(slotType);
+        
+        slots.forEach(slot => {
+          // Available for trees = ground slot that's not occupied (or occupied by tree which can be removed)
+          const isOccupiedByTree = this.occupiedSlotIds.has(slot.id);
+          const isAvailableForTree = slotType === 'ground' && (!slot.occupied || isOccupiedByTree);
+          
+          if (isAvailableForTree) {
+            // Draw blue circles on top canvas (z-index: 5)
+            this.ctx.save();
+            this.ctx.fillStyle = blueColor;
+            this.ctx.beginPath();
+            this.ctx.arc(slot.x, slot.y, smallCircleRadius, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.restore();
+          } else {
+            // Draw gray circles on background canvas (z-index: 2)
+            this.backgroundCtx.save();
+            this.backgroundCtx.fillStyle = grayColor;
+            this.backgroundCtx.beginPath();
+            this.backgroundCtx.arc(slot.x, slot.y, smallCircleRadius, 0, Math.PI * 2);
+            this.backgroundCtx.fill();
+            this.backgroundCtx.restore();
+          }
+        });
+      });
+    }
+
+    /**
+     * Render full circles at ground slot positions with small slot indicators
      */
     private render(): void {
       this.ctx.clearRect(0, 0, this.gameWidth, this.gameHeight + this.overlayPadding);
       
+      // First, draw small circles for ALL slots (underneath)
+      this.drawAllSlotIndicators();
+      
+      // Then, draw large circles for ground slots (on top)
       const groundSlots = this.slotManager.getSlotsByType('ground');
       
       groundSlots.forEach(slot => {
@@ -176,6 +246,9 @@ namespace Jamble {
     destroy(): void {
       if (this.canvas.parentElement) {
         this.canvas.parentElement.removeChild(this.canvas);
+      }
+      if (this.backgroundCanvas.parentElement) {
+        this.backgroundCanvas.parentElement.removeChild(this.backgroundCanvas);
       }
     }
   }

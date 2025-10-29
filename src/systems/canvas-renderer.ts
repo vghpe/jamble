@@ -36,7 +36,7 @@ namespace Jamble {
         image-rendering: pixelated;
         image-rendering: -moz-crisp-edges;
         image-rendering: crisp-edges;
-        z-index: 1;
+        z-index: 3;
       `;
       gameElement.appendChild(this.canvas);
     }
