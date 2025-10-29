@@ -7,6 +7,7 @@ namespace Jamble {
     private ctx: CanvasRenderingContext2D;
     private gameWidth: number;
     private gameHeight: number;
+    private readonly overlayPadding: number = 40; // Match canvas-host padding-bottom
     private readonly circleRadius: number = 33; // 1.5x larger: 22 * 1.5 = 33 (66px diameter)
     private visible: boolean = false;
     private playerX: number = 0;
@@ -17,16 +18,17 @@ namespace Jamble {
       this.gameWidth = gameWidth;
       this.gameHeight = gameHeight;
       
-      // Create canvas overlay
+      // Create canvas overlay - extended to include padding area
       this.canvas = document.createElement('canvas');
-      this.canvas.width = gameWidth;
-      this.canvas.height = gameHeight;
+      const dpr = window.devicePixelRatio || 1;
+      this.canvas.width = gameWidth * dpr;
+      this.canvas.height = (gameHeight + this.overlayPadding) * dpr;
       this.canvas.style.cssText = `
         position: absolute;
         top: 0;
         left: 0;
         width: 100%;
-        height: 100%;
+        height: calc(100% + ${this.overlayPadding}px);
         pointer-events: auto;
         z-index: 5;
       `;
@@ -34,6 +36,7 @@ namespace Jamble {
       const ctx = this.canvas.getContext('2d');
       if (!ctx) throw new Error('Could not get 2D context for tap indicator');
       this.ctx = ctx;
+      this.ctx.scale(dpr, dpr);
       
       canvasHost.appendChild(this.canvas);
       
@@ -102,7 +105,7 @@ namespace Jamble {
      * Clear the canvas
      */
     private clear(): void {
-      this.ctx.clearRect(0, 0, this.gameWidth, this.gameHeight);
+      this.ctx.clearRect(0, 0, this.gameWidth, this.gameHeight + this.overlayPadding);
     }
 
     /**
@@ -113,7 +116,7 @@ namespace Jamble {
       
       const rect = this.canvas.getBoundingClientRect();
       const scaleX = this.gameWidth / rect.width;
-      const scaleY = this.gameHeight / rect.height;
+      const scaleY = (this.gameHeight + this.overlayPadding) / rect.height;
       
       const clickX = (event.clientX - rect.left) * scaleX;
       const clickY = (event.clientY - rect.top) * scaleY;

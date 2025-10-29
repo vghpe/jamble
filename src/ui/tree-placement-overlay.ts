@@ -3,8 +3,8 @@
 namespace Jamble {
   /**
    * TreePlacementOverlay - Visual overlay showing available tree placement slots
-   * Renders half-circles (top half only) at ground slot positions
-   * Green for available slots, orange for occupied slots (trees can be removed)
+   * Renders full circles at ground slot positions (extended canvas allows bottom half to show)
+   * Blue for available slots, orange for occupied slots (trees can be removed)
    */
   export class TreePlacementOverlay {
     private canvas: HTMLCanvasElement;
@@ -12,6 +12,7 @@ namespace Jamble {
     private slotManager: SlotManager;
     private gameWidth: number;
     private gameHeight: number;
+    private readonly overlayPadding: number = 40; // Match canvas-host padding-bottom
     private isVisible: boolean = false;
     
     // Visual constants
@@ -29,17 +30,17 @@ namespace Jamble {
       this.gameWidth = gameWidth;
       this.gameHeight = gameHeight;
       
-      // Create overlay canvas
+      // Create overlay canvas - extended to include padding area
       this.canvas = document.createElement('canvas');
       const dpr = window.devicePixelRatio || 1;
       this.canvas.width = gameWidth * dpr;
-      this.canvas.height = gameHeight * dpr;
+      this.canvas.height = (gameHeight + this.overlayPadding) * dpr;
       this.canvas.style.cssText = `
         position: absolute;
         top: 0;
         left: 0;
         width: 100%;
-        height: 100%;
+        height: calc(100% + ${this.overlayPadding}px);
         pointer-events: auto;
         cursor: pointer;
         display: none;
@@ -87,10 +88,10 @@ namespace Jamble {
     }
     
     /**
-     * Render half-circles at ground slot positions
+     * Render full circles at ground slot positions
      */
     private render(): void {
-      this.ctx.clearRect(0, 0, this.gameWidth, this.gameHeight);
+      this.ctx.clearRect(0, 0, this.gameWidth, this.gameHeight + this.overlayPadding);
       
       const groundSlots = this.slotManager.getSlotsByType('ground');
       
@@ -100,15 +101,17 @@ namespace Jamble {
         // Only show circles for available slots OR slots occupied by trees (which can be removed)
         if (!slot.occupied || isOccupiedByTree) {
           const color = isOccupiedByTree ? this.occupiedColor : this.availableColor;
-          this.drawHalfCircle(slot.x, slot.y, color);
+          // Offset circle up by X pixels for better visual alignment with trees
+          const offsetY = slot.y - 10; // Adjust this value (try 8-15)
+          this.drawFullCircle(slot.x, offsetY, color);
         }
       });
     }
     
     /**
-     * Draw a half-circle (top half only) at the given position
+     * Draw a full circle at the given position
      */
-    private drawHalfCircle(x: number, y: number, color: string): void {
+    private drawFullCircle(x: number, y: number, color: string): void {
       this.ctx.save();
       
       // Draw blue dotted outline only (no fill)
@@ -118,7 +121,7 @@ namespace Jamble {
       this.ctx.lineWidth = 2;
       this.ctx.setLineDash([4, 4]); // Dotted pattern
       this.ctx.beginPath();
-      this.ctx.arc(x, y, this.circleRadius, Math.PI, 0, false); // Top half
+      this.ctx.arc(x, y, this.circleRadius, 0, Math.PI * 2, false); // Full circle
       this.ctx.stroke();
       
       // Reset line dash
@@ -137,7 +140,7 @@ namespace Jamble {
       
       // Convert to logical game coordinates
       const scaleX = this.gameWidth / rect.width;
-      const scaleY = this.gameHeight / rect.height;
+      const scaleY = (this.gameHeight + this.overlayPadding) / rect.height;
       const clickX = clickXScaled * scaleX;
       const clickY = clickYScaled * scaleY;
       

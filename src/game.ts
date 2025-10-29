@@ -368,7 +368,7 @@ namespace Jamble {
         width: 100%;
         aspect-ratio: ${this.gameWidth} / ${this.gameHeight};
         background: #e8f5e9;
-        overflow: hidden;
+        overflow: visible;
       `;
       
       // Setup resize listener to update HUD scaling
