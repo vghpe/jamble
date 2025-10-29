@@ -8,13 +8,20 @@ namespace Jamble {
     private container: HTMLElement;
     private heartCanvas: HTMLCanvasElement;
     private heartCtx: CanvasRenderingContext2D;
-    private fillBar: HTMLElement;
+    private fillCanvas: HTMLCanvasElement;
+    private fillCtx: CanvasRenderingContext2D;
     private currentValue: number = 0.1;  // Default to 0.1 so it's visible
     private width: number;
     private height: number;
     
-    // Animation state (for future pulse animation)
+    // Animation state
     private pulsePhase: number = 0;
+    private wavePhase: number = 0; // Horizontal scroll offset for wave
+    
+    // Wave animation parameters (exposed for debug tweaking)
+    private waveSpeed: number = 15; // pixels per second horizontal scroll
+    private waveFrequency: number = 0.9; // waves per panel width
+    private waveAmplitude: number = 0.5; // pixels of vertical wave height
 
     constructor(parent: HTMLElement, width: number, height: number) {
       this.width = width;
@@ -56,23 +63,28 @@ namespace Jamble {
       this.heartCtx = this.heartCanvas.getContext('2d')!;
       this.heartCtx.scale(dpr, dpr);
 
-      // Create fill bar (grows from bottom to top) - reddish pink
-      this.fillBar = document.createElement('div');
-      this.fillBar.style.cssText = `
+      // Create fill canvas for animated wavy fill effect
+      this.fillCanvas = document.createElement('canvas');
+      this.fillCanvas.width = width;
+      this.fillCanvas.height = height;
+      this.fillCanvas.style.cssText = `
         position: absolute;
         bottom: 0;
         left: 0;
-        width: 100%;
-        height: ${(this.currentValue * 100).toFixed(2)}%;
-        background: linear-gradient(to top, 
-          hsl(350, 80%, 50%) 0%,
-          hsl(350, 80%, 60%) 50%,
-          hsl(350, 80%, 70%) 100%
-        );
-        transition: height 0.1s ease-out;
+        width: ${width}px;
+        height: ${height}px;
+        pointer-events: none;
       `;
+      
+      // Set up high DPI rendering for fill canvas
+      const fillDpr = window.devicePixelRatio || 1;
+      this.fillCanvas.width = width * fillDpr;
+      this.fillCanvas.height = height * fillDpr;
+      
+      this.fillCtx = this.fillCanvas.getContext('2d')!;
+      this.fillCtx.scale(fillDpr, fillDpr);
 
-      this.container.appendChild(this.fillBar);
+      this.container.appendChild(this.fillCanvas);
       this.container.appendChild(this.heartCanvas);
       parent.appendChild(this.container);
     }
@@ -94,11 +106,16 @@ namespace Jamble {
 
     /**
      * Update animation state (called per frame from HUDManager)
-     * Similar to portrait panel pattern - currently no per-frame updates needed
      */
     update(deltaTime: number): void {
-      // Future: Update pulse phase for animation
-      // this.pulsePhase += deltaTime * 2; // 2 Hz pulse
+      // Update wave horizontal scroll phase
+      this.wavePhase += deltaTime * this.waveSpeed;
+      
+      // Wrap phase at one full wavelength to create seamless loop
+      const wavelength = this.width / this.waveFrequency;
+      if (this.wavePhase > wavelength) {
+        this.wavePhase -= wavelength;
+      }
     }
 
     /**
@@ -106,44 +123,81 @@ namespace Jamble {
      * Follows portrait panel pattern - canvas-based rendering
      */
     render(): void {
-      const size = this.heartCanvas.width / (window.devicePixelRatio || 1);
-      
-      // Clear canvas
-      this.heartCtx.clearRect(0, 0, size, size);
-      
-      // Draw heart emoji
-      this.heartCtx.font = `${size * 0.8}px Arial`;
+      // Render heart emoji
+      const heartSize = this.heartCanvas.width / (window.devicePixelRatio || 1);
+      this.heartCtx.clearRect(0, 0, heartSize, heartSize);
+      this.heartCtx.font = `${heartSize * 0.8}px Arial`;
       this.heartCtx.textAlign = 'center';
       this.heartCtx.textBaseline = 'middle';
+      this.heartCtx.fillText('🩷', heartSize / 2, heartSize / 2);
       
-      // Future: Apply pulse scale based on crescendo level
-      // const scale = 1 + Math.sin(this.pulsePhase) * 0.1 * this.currentValue;
-      // this.heartCtx.save();
-      // this.heartCtx.translate(size / 2, size / 2);
-      // this.heartCtx.scale(scale, scale);
-      // this.heartCtx.fillText('🩷', 0, 0);
-      // this.heartCtx.restore();
+      // Render fill bar with wavy top edge
+      const fillWidth = this.fillCanvas.width / (window.devicePixelRatio || 1);
+      const fillHeight = this.fillCanvas.height / (window.devicePixelRatio || 1);
       
-      this.heartCtx.fillText('🩷', size / 2, size / 2);
+      this.fillCtx.clearRect(0, 0, fillWidth, fillHeight);
+      
+      // Only render if there's something to show
+      if (this.currentValue <= 0) return;
+      
+      // Calculate fill height (always show at least 10%)
+      const displayValue = Math.max(0.1, this.currentValue);
+      const targetHeight = fillHeight * displayValue;
+      
+      // Create gradient for fill
+      const gradient = this.fillCtx.createLinearGradient(0, fillHeight, 0, fillHeight - targetHeight);
+      
+      // Brighter colors when at 100%
+      if (this.currentValue >= 1.0) {
+        gradient.addColorStop(0, 'hsl(350, 90%, 55%)');
+        gradient.addColorStop(0.5, 'hsl(350, 90%, 65%)');
+        gradient.addColorStop(1, 'hsl(350, 90%, 75%)');
+      } else {
+        gradient.addColorStop(0, 'hsl(350, 80%, 50%)');
+        gradient.addColorStop(0.5, 'hsl(350, 80%, 60%)');
+        gradient.addColorStop(1, 'hsl(350, 80%, 70%)');
+      }
+      
+      // Draw fill with wavy top edge using clipping path
+      this.fillCtx.save();
+      this.fillCtx.beginPath();
+      
+      // Start from bottom left
+      this.fillCtx.moveTo(0, fillHeight);
+      
+      // Left edge up to wave start
+      this.fillCtx.lineTo(0, fillHeight - targetHeight + this.waveAmplitude);
+      
+      // Draw wavy top edge (horizontally scrolling sine wave)
+      const wavePoints = Math.ceil(fillWidth) + 1;
+      for (let x = 0; x <= wavePoints; x++) {
+        const xPos = x;
+        const phase = ((x + this.wavePhase) / fillWidth) * Math.PI * 2 * this.waveFrequency;
+        const yOffset = Math.sin(phase) * this.waveAmplitude;
+        const yPos = fillHeight - targetHeight + yOffset;
+        this.fillCtx.lineTo(xPos, yPos);
+      }
+      
+      // Right edge down to bottom
+      this.fillCtx.lineTo(fillWidth, fillHeight);
+      
+      // Close path
+      this.fillCtx.closePath();
+      this.fillCtx.clip();
+      
+      // Fill with gradient
+      this.fillCtx.fillStyle = gradient;
+      this.fillCtx.fillRect(0, 0, fillWidth, fillHeight);
+      
+      this.fillCtx.restore();
     }
 
     /**
-     * Update visual display of the progress bar
+     * Update visual display (no longer needed for DOM, kept for API compatibility)
      */
     private updateDisplay(): void {
-      // Always show at least 10% fill so the bar is visible
-      const displayValue = Math.max(0.1, this.currentValue);
-      const heightPercent = (displayValue * 100).toFixed(2);
-      this.fillBar.style.height = `${heightPercent}%`;
-      
-      // Optional: Change color when threshold reached (at 100%) - brighter reddish pink
-      if (this.currentValue >= 1.0) {
-        this.fillBar.style.background = `linear-gradient(to top, 
-          hsl(350, 90%, 55%) 0%,
-          hsl(350, 90%, 65%) 50%,
-          hsl(350, 90%, 75%) 100%
-        )`;
-      }
+      // Display is now handled in render() method
+      // This method kept for API compatibility
     }
 
     /**
@@ -164,7 +218,24 @@ namespace Jamble {
       this.heartCanvas.style.height = `${heartSize}px`;
       this.heartCanvas.style.top = `-${heartSize * 1.1}px`;
       this.heartCtx.scale(dpr, dpr);
+      
+      // Recreate fill canvas with new size
+      this.fillCanvas.width = width * dpr;
+      this.fillCanvas.height = height * dpr;
+      this.fillCanvas.style.width = `${width}px`;
+      this.fillCanvas.style.height = `${height}px`;
+      this.fillCtx.scale(dpr, dpr);
     }
+    
+    // Getters/setters for debug panel tweaking
+    getWaveSpeed(): number { return this.waveSpeed; }
+    setWaveSpeed(value: number): void { this.waveSpeed = value; }
+    
+    getWaveFrequency(): number { return this.waveFrequency; }
+    setWaveFrequency(value: number): void { this.waveFrequency = value; }
+    
+    getWaveAmplitude(): number { return this.waveAmplitude; }
+    setWaveAmplitude(value: number): void { this.waveAmplitude = value; }
 
     /**
      * Clean up

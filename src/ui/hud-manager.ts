@@ -359,7 +359,7 @@ namespace Jamble {
         controls: [
           {
             type: 'checkbox',
-            label: 'Show Sensation Thresholds',
+            label: 'Sensation Thresholds',
             getValue: () => this.getSensationDebugMode(),
             setValue: (value) => this.setSensationDebugMode(value)
           },
@@ -392,7 +392,7 @@ namespace Jamble {
           },
           {
             type: 'slider',
-            label: 'Wave Frequency',
+            label: 'Wave Freq',
             min: 0.05,
             max: 5,
             step: 0.05,
@@ -401,7 +401,7 @@ namespace Jamble {
           },
           {
             type: 'slider',
-            label: 'Wave Amplitude',
+            label: 'Wave Amp',
             min: 0.05,
             max: 0.45,
             step: 0.05,
@@ -416,6 +416,33 @@ namespace Jamble {
             step: 0.05,
             getValue: () => this.monitorPanel.getSmoothing(),
             setValue: (value) => this.setActivitySmoothing(value)
+          },
+          {
+            type: 'slider',
+            label: 'Crescendo Speed',
+            min: 0,
+            max: 100,
+            step: 5,
+            getValue: () => this.crescendoPanel.getWaveSpeed(),
+            setValue: (value) => this.crescendoPanel.setWaveSpeed(value)
+          },
+          {
+            type: 'slider',
+            label: 'Crescendo Freq',
+            min: 0.1,
+            max: 2.0,
+            step: 0.1,
+            getValue: () => this.crescendoPanel.getWaveFrequency(),
+            setValue: (value) => this.crescendoPanel.setWaveFrequency(value)
+          },
+          {
+            type: 'slider',
+            label: 'Crescendo Amp',
+            min: 0,
+            max: 10,
+            step: 0.5,
+            getValue: () => this.crescendoPanel.getWaveAmplitude(),
+            setValue: (value) => this.crescendoPanel.setWaveAmplitude(value)
           }
         ]
       };

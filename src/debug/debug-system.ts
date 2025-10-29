@@ -118,7 +118,7 @@ namespace Jamble {
         const style = document.createElement('style');
         style.textContent = `
           .debug-container {
-            padding: 16px;
+            padding: 0;
             font-family: system-ui, sans-serif;
             font-size: 14px;
             background-color: #f8f9fa;
@@ -129,9 +129,10 @@ namespace Jamble {
           .debug-header {
             background: #fff;
             padding: 12px 16px;
-            border-radius: 8px;
-            border: 1px solid #dee2e6;
-            margin-bottom: 12px;
+            border-radius: 0;
+            border: none;
+            border-bottom: 1px solid #dee2e6;
+            margin-bottom: 0;
           }
           
     
@@ -157,15 +158,16 @@ namespace Jamble {
           
           .debug-section {
             background: #fff;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
+            border: none;
+            border-bottom: 1px solid #dee2e6;
+            border-radius: 0;
             overflow: hidden;
-            margin-bottom: 12px;
+            margin-bottom: 0;
           }
           
           .section-header {
             background: #f8f9fa;
-            padding: 12px 16px;
+            padding: 10px 16px;
             font-weight: 600;
             border-bottom: 1px solid #dee2e6;
             color: #212529;
@@ -173,6 +175,7 @@ namespace Jamble {
             user-select: none;
             position: relative;
             transition: background 0.2s;
+            font-size: 13px;
           }
           
           .section-header:hover {
@@ -192,7 +195,7 @@ namespace Jamble {
           }
           
           .section-content {
-            padding: 16px;
+            padding: 12px 16px;
             transition: max-height 0.3s ease-out, padding 0.3s ease-out;
             max-height: 1000px;
             overflow: hidden;
@@ -202,40 +205,47 @@ namespace Jamble {
             max-height: 0;
             padding: 0 16px;
           }
-          }
           
           .form-grid {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
           }
           
           .control-row {
             display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 16px;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 12px;
             align-items: center;
           }
           
           .stat-label {
             color: #495057;
             font-weight: 500;
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
           }
           
           .stat-value {
             font-family: monospace;
             color: #212529;
             background: #f8f9fa;
-            padding: 2px 6px;
+            padding: 2px 8px;
             border-radius: 3px;
             border: 1px solid #dee2e6;
+            min-width: 45px;
+            text-align: right;
+            display: inline-block;
+            font-size: 12px;
           }
           
           .debug-checkbox-label {
             display: flex;
             align-items: center;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             color: #212529;
           }
           
