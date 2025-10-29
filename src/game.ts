@@ -75,9 +75,19 @@ namespace Jamble {
         this.gameShell.className = 'game-shell';
         this.rootElement.appendChild(this.gameShell);
 
+        // Wrap canvasHost in a container that allows overflow
+        const canvasWrapper = document.createElement('div');
+        canvasWrapper.className = 'canvas-wrapper';
+        canvasWrapper.style.cssText = `
+          position: relative;
+          width: 100%;
+          overflow: visible;
+        `;
+        this.gameShell.appendChild(canvasWrapper);
+
         this.canvasHost = document.createElement('div');
         this.canvasHost.className = 'game-canvas';
-        this.gameShell.appendChild(this.canvasHost);
+        canvasWrapper.appendChild(this.canvasHost);
 
         this.renderer = new CanvasRenderer(this.canvasHost, this.gameWidth, this.gameHeight);
         this.debugRenderer = new DebugRenderer(this.canvasHost);
@@ -362,13 +372,14 @@ namespace Jamble {
         flex-direction: column;
         gap: 8px;
         margin: 0 auto;
+        overflow: visible;
       `;
 
       this.canvasHost.style.cssText = `
         position: relative;
         width: 100%;
         aspect-ratio: ${this.gameWidth} / ${this.gameHeight};
-        overflow: visible;
+        overflow: hidden;
       `;
       
       // Setup resize listener to update HUD scaling

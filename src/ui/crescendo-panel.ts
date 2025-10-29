@@ -123,13 +123,13 @@ namespace Jamble {
      * Follows portrait panel pattern - canvas-based rendering
      */
     render(): void {
-      // Render heart emoji
-      const heartSize = this.heartCanvas.width / (window.devicePixelRatio || 1);
-      this.heartCtx.clearRect(0, 0, heartSize, heartSize);
-      this.heartCtx.font = `${heartSize * 0.8}px Arial`;
-      this.heartCtx.textAlign = 'center';
-      this.heartCtx.textBaseline = 'middle';
-      this.heartCtx.fillText('🩷', heartSize / 2, heartSize / 2);
+      // Render heart emoji (disabled for now, keeping code)
+      // const heartSize = this.heartCanvas.width / (window.devicePixelRatio || 1);
+      // this.heartCtx.clearRect(0, 0, heartSize, heartSize);
+      // this.heartCtx.font = `${heartSize * 0.8}px Arial`;
+      // this.heartCtx.textAlign = 'center';
+      // this.heartCtx.textBaseline = 'middle';
+      // this.heartCtx.fillText('🩷', heartSize / 2, heartSize / 2);
       
       // Render fill bar with wavy top edge
       const fillWidth = this.fillCanvas.width / (window.devicePixelRatio || 1);

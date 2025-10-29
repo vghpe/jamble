@@ -47,10 +47,14 @@
             background: #fff;
             padding: 20px;
             padding-top: 15vh; /* Game at 2/4 of frame height */
+            min-width: 0; /* Allow flex item to shrink below content size */
         }
         
         #jamble-game {
             display: block;
+            width: 100%;
+            max-width: 100%;
+            min-width: 0; /* Allow shrinking below intrinsic size */
         }
         
         .instructions {
