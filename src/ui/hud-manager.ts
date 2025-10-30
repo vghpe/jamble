@@ -305,6 +305,20 @@ namespace Jamble {
     getSensationDebugMode(): boolean {
       return this.monitorPanel.getSensationDebugMode();
     }
+
+    /**
+     * Enable/disable sweet spot visualization
+     */
+    setShowSweetSpot(enabled: boolean): void {
+      this.monitorPanel.setShowSweetSpot(enabled);
+    }
+
+    /**
+     * Get sweet spot visualization state
+     */
+    getShowSweetSpot(): boolean {
+      return this.monitorPanel.getShowSweetSpot();
+    }
     
     /**
      * Trigger portrait pain feedback
@@ -366,9 +380,15 @@ namespace Jamble {
         controls: [
           {
             type: 'checkbox',
-            label: 'Sensation Thresholds',
+            label: 'Pain Threshold Line',
             getValue: () => this.getSensationDebugMode(),
             setValue: (value) => this.setSensationDebugMode(value)
+          },
+          {
+            type: 'checkbox',
+            label: 'Sweet Spot Zone',
+            getValue: () => this.getShowSweetSpot(),
+            setValue: (value) => this.setShowSweetSpot(value)
           },
           {
             type: 'slider',

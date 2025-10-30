@@ -66,24 +66,6 @@ namespace Jamble {
       }
     }
 
-    // Simple behavior methods
-    
-    /**
-     * Check if Soma wants the knob to hide (too much stimulation)
-     */
-    wantsKnobHidden(): boolean {
-      const state = this.getArousalState();
-      return state === 'pain';
-    }
-    
-    /**
-     * Check if Soma wants more stimulation (knob should be visible)
-     */
-    wantsMoreStimulation(): boolean {
-      const state = this.getArousalState();
-      return state === 'default' || state === 'minimum';
-    }
-
     protected resolveExpression(): NPCExpressionDescriptor {
       if (this.isPainExpressionActive()) {
         return {

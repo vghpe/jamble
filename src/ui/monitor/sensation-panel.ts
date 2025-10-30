@@ -17,6 +17,7 @@ namespace Jamble {
     private readonly zoneColors: string[];
     private npc: BaseNPC | null = null;
     private debugMode: boolean = true;
+    private showSweetSpot: boolean = true;
 
     constructor(parent: HTMLElement, width: number, height: number, options: LineGraphOptions = {}) {
       super(parent, width, height, {
@@ -65,6 +66,20 @@ namespace Jamble {
       return this.debugMode;
     }
 
+    /**
+     * Enable/disable sweet spot visualization
+     */
+    setShowSweetSpot(enabled: boolean): void {
+      this.showSweetSpot = enabled;
+    }
+
+    /**
+     * Get sweet spot visualization state
+     */
+    getShowSweetSpot(): boolean {
+      return this.showSweetSpot;
+    }
+
     protected generateSample(_sampleIntervalSeconds: number): number | null {
       // Simply return the current value - no internal state changes
       return this.currentValue;
@@ -79,19 +94,94 @@ namespace Jamble {
      * Override render to add debug visualization
      */
     render(): void {
-      // Call parent render first to draw the line graph
-      super.render();
+      // Get dimensions first
+      const width = (this as any).logicalWidth;
+      const height = (this as any).logicalHeight;
       
-      // Add debug overlays if enabled
+      // Clear canvas (copied from parent)
+      this.ctx.clearRect(0, 0, width, height);
+      
+      // Draw sweet spot zone AFTER clear but BEFORE line
+      if (this.showSweetSpot && this.npc) {
+        this.renderSweetSpotZone();
+      }
+      
+      // Draw the line graph (copied from parent LineGraphPanel.render)
+      const totalSegments = (this as any).dataBuffer.length - 1;
+      if (totalSegments > 0) {
+        const sampleSpacing = (this as any).sampleSpacing;
+        const totalWidth = totalSegments * sampleSpacing;
+        const startX = width - totalWidth;
+
+        for (let i = 0; i < totalSegments; i++) {
+          const x1 = startX + i * sampleSpacing;
+          const x2 = startX + (i + 1) * sampleSpacing;
+          const y1 = (this as any).valueToY((this as any).dataBuffer[i], height);
+          const y2 = (this as any).valueToY((this as any).dataBuffer[i + 1], height);
+
+          const age = (i + 1) / totalSegments;
+          const opacity = Math.pow(age, 1.5);
+          const segmentValue = (this as any).dataBuffer[i + 1];
+          const strokeColor = this.getStrokeColor(segmentValue);
+
+          this.ctx.save();
+          this.ctx.globalAlpha = opacity;
+          this.ctx.strokeStyle = strokeColor;
+          this.ctx.lineWidth = 3;
+          this.ctx.beginPath();
+          this.ctx.moveTo(x1, y1);
+          this.ctx.lineTo(x2, y2);
+          this.ctx.stroke();
+          this.ctx.restore();
+        }
+      }
+      
+      // Draw pain threshold line on top
       if (this.debugMode && this.npc) {
-        this.renderDebugOverlay();
+        this.renderPainThresholdLine();
       }
     }
 
     /**
-     * Render debug overlay with pain threshold line
+     * Render sweet spot zone as yellow rectangle behind the line
      */
-    private renderDebugOverlay(): void {
+    private renderSweetSpotZone(): void {
+      if (!this.npc) return;
+      
+      const crescendoConfig = (this.npc as any).crescendoConfig;
+      if (!crescendoConfig) return;
+      
+      const arousalRange = this.npc.getArousalRange();
+      const targetValue = crescendoConfig.targetArousalValue;
+      const tolerance = crescendoConfig.arousalTolerance;
+      
+      // Calculate zone bounds in arousal space
+      const zoneMin = targetValue - tolerance;
+      const zoneMax = targetValue + tolerance;
+      
+      // Convert to normalized 0-1 values
+      const normalizedMin = this.mapArousalToNormalized(zoneMin, arousalRange);
+      const normalizedMax = this.mapArousalToNormalized(zoneMax, arousalRange);
+      
+      // Convert to canvas Y coordinates (note: Y increases downward)
+      const yTop = this.computeYFromNormalized(normalizedMax);
+      const yBottom = this.computeYFromNormalized(normalizedMin);
+      const zoneHeight = yBottom - yTop;
+      
+      // Get canvas dimensions
+      const canvasWidth = this.canvas.width / (window.devicePixelRatio || 1);
+      
+      // Draw yellow rectangle for better contrast
+      this.ctx.save();
+      this.ctx.fillStyle = 'rgba(216, 251, 255, 1)'; 
+      this.ctx.fillRect(0, yTop, canvasWidth, zoneHeight);
+      this.ctx.restore();
+    }
+
+    /**
+     * Render pain threshold line on top
+     */
+    private renderPainThresholdLine(): void {
       if (!this.npc) return;
       
       const painThreshold = this.npc.getPainThreshold();

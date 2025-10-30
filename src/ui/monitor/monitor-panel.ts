@@ -96,6 +96,20 @@ namespace Jamble {
       return this.sensationPanel.getDebugMode();
     }
 
+    /**
+     * Enable/disable sweet spot visualization
+     */
+    setShowSweetSpot(enabled: boolean): void {
+      this.sensationPanel.setShowSweetSpot(enabled);
+    }
+
+    /**
+     * Get sweet spot visualization state
+     */
+    getShowSweetSpot(): boolean {
+      return this.sensationPanel.getShowSweetSpot();
+    }
+
     // Debug accessors (legacy API passthroughs)
     getSampleSpacing(): number {
       return this.heartRatePanel.getSampleSpacing();

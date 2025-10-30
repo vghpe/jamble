@@ -1,5 +1,4 @@
 namespace Jamble {
-  export type ArousalState = 'default' | 'minimum' | 'medium' | 'high' | 'very-high' | 'pain';
   export type NPCExpressionState = 'default' | 'enjoy' | 'aroused' | 'pain' | 'win';
 
   export interface NPCExpressionDescriptor {
@@ -202,18 +201,6 @@ namespace Jamble {
         min: this.arousalConfig.minValue,
         max: this.arousalConfig.maxValue
       };
-    }
-    
-    /**
-     * Get arousal state based on thresholds
-     */
-    getArousalState(): ArousalState {
-      if (this.arousalValue < 0.5) return 'default';
-      if (this.arousalValue < 1.5) return 'minimum';
-      if (this.arousalValue < 2.5) return 'medium';
-      if (this.arousalValue < 3.5) return 'high';
-      if (this.arousalValue < 4.5) return 'very-high';
-      return 'pain';
     }
     
     /**
