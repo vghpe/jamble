@@ -75,8 +75,11 @@ namespace Jamble {
       this.ctx.scale(dpr, dpr);
       parent.appendChild(this.canvas);
       
-      // Set up click handling
-      this.canvas.addEventListener('click', (e) => this.handleClick(e));
+      // Set up pointerdown handling for instant response (no click delay)
+      this.canvas.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        this.handleClick(e);
+      });
     }
     
     /**

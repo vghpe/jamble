@@ -44,8 +44,11 @@ namespace Jamble {
       
       canvasHost.appendChild(this.canvas);
       
-      // Setup click/tap handler
-      this.canvas.addEventListener('click', this.handleClick.bind(this));
+      // Setup pointerdown handler for instant response (no click delay)
+      this.canvas.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        this.handleClick(e);
+      });
     }
 
     /**
@@ -146,7 +149,7 @@ namespace Jamble {
      * Destroy and clean up
      */
     destroy(): void {
-      this.canvas.removeEventListener('click', this.handleClick.bind(this));
+      this.canvas.removeEventListener('pointerdown', this.handleClick.bind(this));
       if (this.canvas.parentNode) {
         this.canvas.parentNode.removeChild(this.canvas);
       }
