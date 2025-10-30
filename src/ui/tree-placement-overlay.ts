@@ -32,6 +32,9 @@ namespace Jamble {
       this.gameWidth = gameWidth;
       this.gameHeight = gameHeight;
       
+      // Calculate padding as percentage of game height for proper scaling
+      const paddingPercent = (this.overlayPadding / gameHeight) * 100;
+      
       // Create background canvas for unavailable slot indicators (z-index: 2)
       this.backgroundCanvas = document.createElement('canvas');
       const dpr = window.devicePixelRatio || 1;
@@ -42,7 +45,7 @@ namespace Jamble {
         top: 0;
         left: 0;
         width: 100%;
-        height: calc(100% + ${this.overlayPadding}px);
+        height: calc(100% + ${paddingPercent}%);
         pointer-events: none;
         display: none;
         z-index: 2;
@@ -61,7 +64,7 @@ namespace Jamble {
         top: 0;
         left: 0;
         width: 100%;
-        height: calc(100% + ${this.overlayPadding}px);
+        height: calc(100% + ${paddingPercent}%);
         pointer-events: auto;
         cursor: pointer;
         display: none;

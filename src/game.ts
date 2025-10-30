@@ -28,6 +28,7 @@ namespace Jamble {
   export class Game {
     private rootElement: HTMLElement;
     private gameShell: HTMLElement;
+    private canvasWrapper: HTMLElement;
     private canvasHost: HTMLElement;
     private renderer: CanvasRenderer;
     private debugRenderer: DebugRenderer;
@@ -76,18 +77,18 @@ namespace Jamble {
         this.rootElement.appendChild(this.gameShell);
 
         // Wrap canvasHost in a container that allows overflow
-        const canvasWrapper = document.createElement('div');
-        canvasWrapper.className = 'canvas-wrapper';
-        canvasWrapper.style.cssText = `
+        this.canvasWrapper = document.createElement('div');
+        this.canvasWrapper.className = 'canvas-wrapper';
+        this.canvasWrapper.style.cssText = `
           position: relative;
           width: 100%;
           overflow: visible;
         `;
-        this.gameShell.appendChild(canvasWrapper);
+        this.gameShell.appendChild(this.canvasWrapper);
 
         this.canvasHost = document.createElement('div');
         this.canvasHost.className = 'game-canvas';
-        canvasWrapper.appendChild(this.canvasHost);
+        this.canvasWrapper.appendChild(this.canvasHost);
 
         this.renderer = new CanvasRenderer(this.canvasHost, this.gameWidth, this.gameHeight);
         this.debugRenderer = new DebugRenderer(this.canvasHost);
@@ -102,12 +103,12 @@ namespace Jamble {
         this.hudManager.setStateManager(this.stateManager);
         this.hudManager.setNPC(this.activeNPC); // Pass NPC to HUD for portrait stats
         this.treePlacementOverlay = new TreePlacementOverlay(
-          this.canvasHost,
+          this.canvasWrapper,
           this.slotManager,
           this.gameWidth,
           this.gameHeight
         );
-        this.tapIndicator = new TapIndicator(this.canvasHost, this.gameWidth, this.gameHeight);
+        this.tapIndicator = new TapIndicator(this.canvasWrapper, this.gameWidth, this.gameHeight);
         
         // Setup tap indicator callback
         this.tapIndicator.setOnTap(() => {

@@ -23,12 +23,16 @@ namespace Jamble {
       const dpr = window.devicePixelRatio || 1;
       this.canvas.width = gameWidth * dpr;
       this.canvas.height = (gameHeight + this.overlayPadding) * dpr;
+      
+      // Calculate padding as percentage of game height for proper scaling
+      const paddingPercent = (this.overlayPadding / gameHeight) * 100;
+      
       this.canvas.style.cssText = `
         position: absolute;
         top: 0;
         left: 0;
         width: 100%;
-        height: calc(100% + ${this.overlayPadding}px);
+        height: calc(100% + ${paddingPercent}%);
         pointer-events: auto;
         z-index: 5;
       `;

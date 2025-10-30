@@ -37,6 +37,12 @@ body {
   box-sizing: border-box;
 }
 
+#jamble-game {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0; /* Allow shrinking below intrinsic size in flex containers */
+}
+
 /* Scale down proportionally on mobile devices */
 @media (max-width: 500px) {
   .jamble-game-wrapper {
