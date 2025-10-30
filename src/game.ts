@@ -1,5 +1,7 @@
 /// <reference path="entities/player/player.ts" />
-/// <reference path="entities/tree.ts" />
+/// <reference path="entities/tree/tree.ts" />
+/// <reference path="entities/tree/tree-anim.ts" />
+/// <reference path="entities/tree/tree-anim-debug.ts" />
 /// <reference path="entities/knob/knob.ts" />
 /// <reference path="entities/platform.ts" />
 /// <reference path="entities/home.ts" />
@@ -53,6 +55,7 @@ namespace Jamble {
     private knobs: Knob[] = [];  // Track all knobs for pain threshold retraction
     private trees: Map<string, Tree> = new Map(); // Track trees by slot ID
     private treeIdCounter: number = 0; // Counter for unique tree IDs
+    private treeAnimDebugPanel: TreeAnimDebugPanel | null = null; // Debug controls for tree animation
     
     private lastTime: number = 0;
     private gameWidth: number = 500;
@@ -136,6 +139,8 @@ namespace Jamble {
         if (debugRequested) {
           if (debugContainer) {
             this.debugSystem = new DebugSystem(debugContainer);
+            // Initialize tree animation debug panel
+            this.treeAnimDebugPanel = new TreeAnimDebugPanel(this.debugSystem);
           } else {
             console.warn('Debug requested but no container provided. Debug UI disabled.');
             this.debugSystem = null;
@@ -332,11 +337,14 @@ namespace Jamble {
         return;
       }
       
-      // Create and add tree
+      // Create and add tree with animation system
       const treeId = `tree_${this.treeIdCounter++}`;
-      const tree = new Tree(treeId, x, y, slotId);
+      const tree = new Tree(treeId, x, y, this.slotManager, slotId, this.treeAnimDebugPanel);
       
+      // Add tree and its child sensor to game objects
       this.gameObjects.push(tree);
+      this.gameObjects.push(tree.getSensor());
+      
       this.trees.set(slotId, tree);
       this.slotManager.occupySlot(slotId, treeId);
       this.treePlacementOverlay.setSlotOccupied(slotId, true);
@@ -349,11 +357,18 @@ namespace Jamble {
       const tree = this.trees.get(slotId);
       if (!tree) return;
       
-      // Remove tree from game
+      // Remove tree and its sensor from game
       tree.despawn();
-      const index = this.gameObjects.indexOf(tree);
-      if (index > -1) {
-        this.gameObjects.splice(index, 1);
+      
+      const treeIndex = this.gameObjects.indexOf(tree);
+      if (treeIndex > -1) {
+        this.gameObjects.splice(treeIndex, 1);
+      }
+      
+      const sensor = tree.getSensor();
+      const sensorIndex = this.gameObjects.indexOf(sensor);
+      if (sensorIndex > -1) {
+        this.gameObjects.splice(sensorIndex, 1);
       }
       
       this.trees.delete(slotId);

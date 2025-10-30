@@ -7,7 +7,7 @@ namespace Jamble {
     private offsetY: number;
     private enabled: boolean = true;  // Sensors can be disabled
     
-    constructor(id: string, target?: GameObject, offsetX: number = 0, offsetY: number = 0) {
+    constructor(id: string, target?: GameObject, offsetX: number = 0, offsetY: number = 0, width: number = 20, height: number = 5) {
       // Initial position - either from target or provided coordinates
       const initX = target ? target.transform.x + offsetX : offsetX;
       const initY = target ? target.transform.y + offsetY : offsetY;
@@ -21,12 +21,12 @@ namespace Jamble {
       // No visual rendering - invisible sensor
       this.render.visible = false;
       
-      // Default kinematic collider for triggers
+      // Default kinematic collider for triggers (with customizable size)
       this.collisionBox = {
         x: 0,
         y: 0,
-        width: 20,
-        height: 5, // Thin horizontal sensor
+        width: width,
+        height: height,
         anchor: { x: 0.5, y: 1 }, // Bottom center
         category: 'kinematic'
       };
