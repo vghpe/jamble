@@ -8,18 +8,20 @@ namespace Jamble {
    * - Wiggle magnitude range
    * - Spring physics (omega/zeta)
    * - Animation duration
+   * 
+   * Note: Default values are defined in TreeAnim class (source of truth)
    */
   export class TreeAnimDebugPanel {
     private debugSystem: DebugSystem;
     
-    // Animation parameters (accessible for TreeAnim to read)
-    public wiggleMagnitudeMin: number = 0.1;   // Min radians for angular wiggle
-    public wiggleMagnitudeMax: number = 0.2;   // Max radians for angular wiggle
-    public omega: number = 15.0;               // Spring frequency
-    public zeta: number = 0.2;                 // Damping coefficient
-    public wiggleDuration: number = 0.6;       // Total animation time
-    public arcWidth: number = 0.65;            // Arc width multiplier (0.5 = squished, 2.0 = wide)
-    public sizeRandomness: number = 0.3;       // Size variation (0 = none, 1.0 = max variation)
+    // Animation parameters (initialized from TreeAnim defaults)
+    public wiggleMagnitudeMin: number = 0.1;
+    public wiggleMagnitudeMax: number = 0.15;
+    public omega: number = 15.0;
+    public zeta: number = 0.2;
+    public wiggleDuration: number = 0.6;
+    public arcWidth: number = 0.65;
+    public sizeRandomness: number = 0.3;
     
     constructor(debugSystem: DebugSystem) {
       this.debugSystem = debugSystem;

@@ -18,6 +18,14 @@ namespace Jamble {
       elapsedTime: number;
     }> = [];
     
+    // Default animation parameters (source of truth)
+    private static readonly DEFAULT_WIGGLE_MIN = 0.1;
+    private static readonly DEFAULT_WIGGLE_MAX = 0.15;
+    private static readonly DEFAULT_OMEGA = 15.0;
+    private static readonly DEFAULT_ZETA = 0.2;
+    private static readonly DEFAULT_DURATION = 0.6;
+    private static readonly SETTLEMENT_THRESHOLD = 0.05;
+    
     constructor(private tree: Tree, debugPanel?: any) {
       this.debugPanel = debugPanel;
       
@@ -52,18 +60,17 @@ namespace Jamble {
     private getParams() {
       if (this.debugPanel) {
         return {
-          omega: this.debugPanel.omega,
-          zeta: this.debugPanel.zeta,
-          wiggleDuration: this.debugPanel.wiggleDuration,
-          settlementThreshold: 0.05
+          omega: this.debugPanel.omega ?? TreeAnim.DEFAULT_OMEGA,
+          zeta: this.debugPanel.zeta ?? TreeAnim.DEFAULT_ZETA,
+          wiggleDuration: this.debugPanel.wiggleDuration ?? TreeAnim.DEFAULT_DURATION,
+          settlementThreshold: TreeAnim.SETTLEMENT_THRESHOLD
         };
       }
-      // Default values
       return {
-        omega: 15.0,
-        zeta: 0.4,
-        wiggleDuration: 0.6,
-        settlementThreshold: 0.05
+        omega: TreeAnim.DEFAULT_OMEGA,
+        zeta: TreeAnim.DEFAULT_ZETA,
+        wiggleDuration: TreeAnim.DEFAULT_DURATION,
+        settlementThreshold: TreeAnim.SETTLEMENT_THRESHOLD
       };
     }
     
@@ -102,7 +109,8 @@ namespace Jamble {
       for (let i = 0; i < this.leafStates.length; i++) {
         const state = this.leafStates[i];
         
-        const magnitude = this.debugPanel?.getWiggleMagnitude?.() ?? (0.2 + Math.random() * 0.3);
+        const magnitude = this.debugPanel?.getWiggleMagnitude?.() ?? 
+          (TreeAnim.DEFAULT_WIGGLE_MIN + Math.random() * (TreeAnim.DEFAULT_WIGGLE_MAX - TreeAnim.DEFAULT_WIGGLE_MIN));
         const direction = Math.random() < 0.5 ? -1 : 1;
         
         state.angle = direction * magnitude;
