@@ -42,7 +42,6 @@
     "src/ui/control-panel.ts",
     "src/ui/portrait-panel.ts",
     "src/ui/crescendo-panel.ts",
-    "src/ui/monitor/monitor-panel.ts",
     "src/ui/monitor/line-graph-panel.ts",
     "src/ui/monitor/heart-rate-panel.ts",
     "src/ui/monitor/sensation-panel.ts",

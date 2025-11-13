@@ -1,3 +1,5 @@
+/// <reference path="line-graph-panel.ts" />
+
 namespace Jamble {
   export interface HeartRateOptions extends LineGraphOptions {
     frequency?: number;

@@ -1,6 +1,7 @@
 /// <reference path="ui-component-base.ts" />
 /// <reference path="portrait-panel.ts" />
-/// <reference path="monitor/monitor-panel.ts" />
+/// <reference path="monitor/heart-rate-panel.ts" />
+/// <reference path="monitor/sensation-panel.ts" />
 /// <reference path="crescendo-panel.ts" />
 /// <reference path="control-panel.ts" />
 /// <reference path="jump-instruction-panel.ts" />
@@ -13,7 +14,9 @@ namespace Jamble {
   export class HUDManager extends UIComponent {
     private hudOverlay!: HTMLElement;
     private portraitPanel!: PortraitPanel;
-    private monitorPanel!: MonitorPanel;
+    private heartRatePanel!: HeartRatePanel;
+    private sensationPanel!: SensationPanel;
+    private monitorContainer!: HTMLElement;
     private crescendoPanel!: CrescendoPanel;
     private controlPanel!: ControlPanel;
     private jumpInstructionPanel!: JumpInstructionPanel;
@@ -79,11 +82,37 @@ namespace Jamble {
       const portraitTotalWidth = this.portraitSize + 2;
       // Portrait group = crescendo + portrait
       const portraitGroupWidth = portraitTotalWidth + crescendoPanelWidth;
-      // Monitor takes remaining space
+      // Monitor panels take remaining space
       const monitorWidth = this.gameWidth - portraitGroupWidth;
       
-      // Create monitor panel
-      this.monitorPanel = new MonitorPanel(this.container, monitorWidth, this.portraitSize);
+      // Create monitor panels container
+      const monitorContainer = document.createElement('div');
+      monitorContainer.style.cssText = `
+        width: ${monitorWidth}px;
+        height: ${this.portraitSize}px;
+        flex: 1;
+        display: flex;
+        flex-direction: row;
+        justify-content: stretch;
+        align-items: stretch;
+        gap: 2px;
+        pointer-events: none;
+      `;
+      this.container.appendChild(monitorContainer);
+      this.monitorContainer = monitorContainer;
+      
+      // Create heart rate and sensation panels
+      const halfWidth = Math.floor(monitorWidth / 2);
+      const secondWidth = monitorWidth - halfWidth;
+      
+      this.heartRatePanel = new HeartRatePanel(monitorContainer, halfWidth, this.portraitSize, {
+        strokeStyle: '#757575'
+      });
+      
+      this.sensationPanel = new SensationPanel(monitorContainer, secondWidth, this.portraitSize, {
+        strokeStyle: '#59a869',
+        initialValue: 0.2
+      });
       
       // Create wrapper for portrait group (crescendo + portrait)
       const portraitGroup = document.createElement('div');
@@ -133,7 +162,7 @@ namespace Jamble {
       window.addEventListener('jamble:editor-mode-change', ((e: CustomEvent) => {
         const dimmed = e.detail.mode !== 'none';
         this.portraitPanel.setDimmed(dimmed);
-        this.monitorPanel.setDimmed(dimmed);
+        this.monitorContainer.style.opacity = dimmed ? '0.5' : '1';
         this.crescendoPanel.setDimmed(dimmed);
       }) as EventListener);
     }
@@ -161,7 +190,8 @@ namespace Jamble {
       
       if (this.isVisible) {
         this.portraitPanel.update(deltaTime);
-        this.monitorPanel.update(deltaTime);
+        this.heartRatePanel.update(deltaTime);
+        this.sensationPanel.update(deltaTime);
         this.crescendoPanel.update(deltaTime);
       }
       
@@ -175,7 +205,8 @@ namespace Jamble {
     render(): void {
       if (this.isVisible) {
         this.portraitPanel.render();
-        this.monitorPanel.render();
+        this.heartRatePanel.render();
+        this.sensationPanel.render();
         this.crescendoPanel.render();
       }
       
@@ -184,10 +215,10 @@ namespace Jamble {
     }
     
     /**
-     * Push data to the monitor panel from game events
+     * Push data to the heart rate monitor panel from game events
      */
     pushActivityData(value: number): void {
-      this.monitorPanel.pushData(value);
+      this.heartRatePanel.pushData(value);
     }
 
     /**
@@ -226,11 +257,11 @@ namespace Jamble {
      */
     getActivityParameters(): any {
       return {
-        sampleSpacing: this.monitorPanel.getSampleSpacing(),
-        scrollSpeed: this.monitorPanel.getScrollSpeed(),
-        frequency: this.monitorPanel.getFrequency(),
-        amplitude: this.monitorPanel.getAmplitude(),
-        smoothing: this.monitorPanel.getSmoothing()
+        sampleSpacing: this.heartRatePanel.getSampleSpacing(),
+        scrollSpeed: this.heartRatePanel.getScrollSpeed(),
+        frequency: this.heartRatePanel.getFrequency(),
+        amplitude: this.heartRatePanel.getAmplitude(),
+        smoothing: this.heartRatePanel.getSmoothing()
       };
     }
 
@@ -238,37 +269,40 @@ namespace Jamble {
      * Set monitor panel parameters for debugging
      */
     setActivitySampleSpacing(value: number): void {
-      this.monitorPanel.setSampleSpacing(value);
+      this.heartRatePanel.setSampleSpacing(value);
+      this.sensationPanel.setSampleSpacing(value);
     }
 
     setActivityScrollSpeed(value: number): void {
-      this.monitorPanel.setScrollSpeed(value);
+      this.heartRatePanel.setScrollSpeed(value);
+      this.sensationPanel.setScrollSpeed(value);
     }
 
     setActivityFrequency(value: number): void {
-      this.monitorPanel.setFrequency(value);
+      this.heartRatePanel.setFrequency(value);
     }
 
     setActivityAmplitude(value: number): void {
-      this.monitorPanel.setAmplitude(value);
+      this.heartRatePanel.setAmplitude(value);
     }
 
     setActivitySmoothing(value: number): void {
-      this.monitorPanel.setSmoothing(value);
+      this.heartRatePanel.setSmoothing(value);
+      this.sensationPanel.setSmoothing(value);
     }
 
     /**
      * Set sensation value (0-1) for the sensation panel from external source
      */
     setSensationValue(value: number): void {
-      this.monitorPanel.setSensationValue(value);
+      this.sensationPanel.setValue(value);
     }
 
     /**
      * Get current sensation value
      */
     getSensationValue(): number {
-      return this.monitorPanel.getSensationValue();
+      return this.sensationPanel.getValue();
     }
 
     /**
@@ -289,35 +323,35 @@ namespace Jamble {
      * Set the NPC reference for sensation debug visualization
      */
     setSensationNPC(npc: any): void {
-      this.monitorPanel.setSensationNPC(npc);
+      this.sensationPanel.setNPC(npc);
     }
 
     /**
      * Enable/disable sensation debug mode (shows pain threshold line)
      */
     setSensationDebugMode(enabled: boolean): void {
-      this.monitorPanel.setSensationDebugMode(enabled);
+      this.sensationPanel.setDebugMode(enabled);
     }
 
     /**
      * Get sensation debug mode state
      */
     getSensationDebugMode(): boolean {
-      return this.monitorPanel.getSensationDebugMode();
+      return this.sensationPanel.getDebugMode();
     }
 
     /**
      * Enable/disable sweet spot visualization
      */
     setShowSweetSpot(enabled: boolean): void {
-      this.monitorPanel.setShowSweetSpot(enabled);
+      this.sensationPanel.setShowSweetSpot(enabled);
     }
 
     /**
      * Get sweet spot visualization state
      */
     getShowSweetSpot(): boolean {
-      return this.monitorPanel.getShowSweetSpot();
+      return this.sensationPanel.getShowSweetSpot();
     }
     
     /**
@@ -405,7 +439,7 @@ namespace Jamble {
             min: 1,
             max: 10,
             step: 1,
-            getValue: () => this.monitorPanel.getSampleSpacing(),
+            getValue: () => this.heartRatePanel.getSampleSpacing(),
             setValue: (value) => this.setActivitySampleSpacing(value)
           },
           {
@@ -414,7 +448,7 @@ namespace Jamble {
             min: 5,
             max: 200,
             step: 5,
-            getValue: () => this.monitorPanel.getScrollSpeed(),
+            getValue: () => this.heartRatePanel.getScrollSpeed(),
             setValue: (value) => this.setActivityScrollSpeed(value)
           },
           {
@@ -423,7 +457,7 @@ namespace Jamble {
             min: 0.05,
             max: 5,
             step: 0.05,
-            getValue: () => this.monitorPanel.getFrequency(),
+            getValue: () => this.heartRatePanel.getFrequency(),
             setValue: (value) => this.setActivityFrequency(value)
           },
           {
@@ -432,7 +466,7 @@ namespace Jamble {
             min: 0.05,
             max: 0.45,
             step: 0.05,
-            getValue: () => this.monitorPanel.getAmplitude(),
+            getValue: () => this.heartRatePanel.getAmplitude(),
             setValue: (value) => this.setActivityAmplitude(value)
           },
           {
@@ -441,7 +475,7 @@ namespace Jamble {
             min: 0.1,
             max: 1.0,
             step: 0.05,
-            getValue: () => this.monitorPanel.getSmoothing(),
+            getValue: () => this.heartRatePanel.getSmoothing(),
             setValue: (value) => this.setActivitySmoothing(value)
           },
           {

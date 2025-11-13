@@ -1,3 +1,5 @@
+/// <reference path="line-graph-panel.ts" />
+
 namespace Jamble {
   /**
    * Sensation panel – displays a normalized (0-1) sensation value.
