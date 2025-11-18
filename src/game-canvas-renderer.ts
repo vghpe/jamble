@@ -1,73 +1,27 @@
-/// <reference path="../core/game-object.ts" />
+/// <reference path="core/game-object.ts" />
 
 namespace Jamble {
   /**
-   * High-performance canvas-based renderer for all game objects.
-   * Handles crisp pixel-perfect rendering with proper DPI scaling.
+   * GameCanvasRenderer - High-performance canvas-based renderer for game objects.
+   * Handles crisp pixel-perfect rendering of all in-game entities.
+   * 
+   * Scope: Only renders game objects within the main game canvas.
+   * Does NOT handle UI panels, HUD elements, or overlays outside the game canvas.
+   * 
+   * Note: Canvas creation and high-DPI setup is now handled by GameContainer.
+   * GameCanvasRenderer receives a pre-configured context and focuses on rendering logic.
    */
-  export class CanvasRenderer {
-    private canvas: HTMLCanvasElement;
+  export class GameCanvasRenderer {
     private ctx: CanvasRenderingContext2D;
     private readonly backgroundColor: string = '#e8f5e9';
     private backgroundAlpha: number = 1.0; // For background transparency
     private gameWidth: number;
     private gameHeight: number;
-    private scaleX: number = 1;
-    private scaleY: number = 1;
 
-    constructor(gameElement: HTMLElement, gameWidth: number, gameHeight: number) {
+    constructor(ctx: CanvasRenderingContext2D, gameWidth: number, gameHeight: number) {
+      this.ctx = ctx;
       this.gameWidth = gameWidth;
       this.gameHeight = gameHeight;
-      
-      this.canvas = document.createElement('canvas');
-      this.ctx = this.setupContext();
-      this.setupCanvas(gameElement);
-      this.setupHighDPIRendering(gameElement);
-    }
-
-    private setupCanvas(gameElement: HTMLElement): void {
-      this.canvas.id = 'gameCanvas';
-      this.canvas.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        image-rendering: pixelated;
-        image-rendering: -moz-crisp-edges;
-        image-rendering: crisp-edges;
-        z-index: 3;
-      `;
-      gameElement.appendChild(this.canvas);
-    }
-
-    private setupContext(): CanvasRenderingContext2D {
-      const ctx = this.canvas.getContext('2d', { alpha: true }); // Enable alpha for transparency
-      if (!ctx) {
-        throw new Error('Could not get 2D canvas context');
-      }
-      ctx.imageSmoothingEnabled = false;
-      return ctx;
-    }
-
-    private setupHighDPIRendering(_gameElement: HTMLElement): void {
-      // Configure immediately using known logical game size; avoids a transient
-      // first-frame stretch before layout settles.
-      const pixelRatio = window.devicePixelRatio || 1;
-
-      // Match backing store to device pixels while keeping logical coordinates
-      // in game units (gameWidth × gameHeight).
-      this.canvas.width = this.gameWidth * pixelRatio;
-      this.canvas.height = this.gameHeight * pixelRatio;
-
-      // CSS size is already set to 100% in setupCanvas(), which allows it to
-      // respond to the wrapper's scaling. We only set the backing store size here.
-
-      // Apply DPR scaling so 1 logical unit = 1 CSS pixel
-      this.scaleX = pixelRatio;
-      this.scaleY = pixelRatio;
-      this.ctx.setTransform(this.scaleX, 0, 0, this.scaleY, 0, 0);
-      this.ctx.imageSmoothingEnabled = false;
     }
 
     /**

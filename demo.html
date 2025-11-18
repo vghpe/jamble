@@ -109,8 +109,7 @@
                     }
                     console.log('Initializing with debug panel');
                     options = {
-                        debug: true,
-                        container: debugContainer
+                        debugContainer: debugContainer
                     };
                 } else {
                     console.log('Initializing with debug disabled');
@@ -118,12 +117,13 @@
                     if (debugPanel) {
                         debugPanel.remove();
                     }
-                    options = { debug: false };
+                    options = {};
                 }
 
-                const game = new Jamble.Game(gameContainer, options);
-                console.log('Game created, starting...');
-                game.start();
+                // Use new GameContainer API (handles DOM creation and scaling)
+                const container = new Jamble.GameContainer(gameContainer, options);
+                console.log('GameContainer created, starting...');
+                container.start();
                 console.log('Game started successfully');
             } catch (error) {
                 console.error('Error initializing game:', error);

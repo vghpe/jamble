@@ -26,7 +26,7 @@
     "src/npc/soma.ts",
     "src/skills/skill-system.ts",
     "src/systems/economy-manager.ts",
-    "src/systems/canvas-renderer.ts",
+    "src/game-canvas-renderer.ts",
     "src/systems/level-manager.ts",
     "src/debug/debug-renderer.ts",
     "src/systems/collision-manager.ts",
@@ -50,6 +50,8 @@
     "src/ui/editor/entity-placement-overlay.ts",
     "src/ui/control-container.ts",
     "src/ui/instrument-container.ts",
-    "src/game.ts"
+    "src/systems/input-handler.ts",
+    "src/game.ts",
+    "src/game-container.ts"
   ]
 }

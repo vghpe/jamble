@@ -6,7 +6,7 @@
 /// <reference path="entities/platform.ts" />
 /// <reference path="entities/home.ts" />
 /// <reference path="entities/sensor.ts" />
-/// <reference path="systems/canvas-renderer.ts" />
+/// <reference path="game-canvas-renderer.ts" />
 /// <reference path="debug/debug-renderer.ts" />
 /// <reference path="systems/state-manager.ts" />
 /// <reference path="systems/input-manager.ts" />
@@ -23,17 +23,25 @@
 /// <reference path="npc/soma.ts" />
 
 namespace Jamble {
-  interface GameOptions {
-    debug?: boolean;
-    container?: HTMLElement;
-  }
-
+  /**
+   * Game - Core game logic and systems.
+   * 
+   * Responsibilities:
+   * - Game loop (update/render)
+   * - Entity management (player, NPCs, trees, platforms)
+   * - System coordination (collision, input, state, level)
+   * - Game logic and rules
+   * 
+   * Note: DOM creation is now handled by GameContainer.
+   * Game receives pre-configured canvas context and canvasWrapper for overlays.
+   */
   export class Game {
-    private rootElement: HTMLElement;
-    private gameShell: HTMLElement;
+    // Removed DOM creation properties - now handled by GameContainer
+    // Note: canvasWrapper kept temporarily for prompts/overlays until refactored
     private canvasWrapper: HTMLElement;
     private canvasHost: HTMLElement;
-    private renderer: CanvasRenderer;
+    
+    private renderer: GameCanvasRenderer;
     private debugRenderer: DebugRenderer;
     private stateManager: StateManager;
     private inputManager: InputManager;
@@ -59,43 +67,32 @@ namespace Jamble {
     private treeAnimDebugPanel: TreeAnimDebugPanel | null = null; // Debug controls for tree animation
     
     private lastTime: number = 0;
-    private gameWidth: number = 500;
-    private gameHeight: number = 100;
+    private gameWidth: number;
+    private gameHeight: number;
 
-    constructor(gameElement: HTMLElement, optionsOrContainer?: HTMLElement | GameOptions) {
+    constructor(
+      canvasContext: CanvasRenderingContext2D,
+      canvasWrapper: HTMLElement,
+      gameWidth: number,
+      gameHeight: number,
+      hudManager: InstrumentContainer,
+      debugContainer?: HTMLElement
+    ) {
       try {
         // Log build version for debugging
         console.log('🎮 Jamble Game Initializing - Build: BUILD_VERSION_PLACEHOLDER');
         
-        let options: GameOptions = {};
-        if (optionsOrContainer instanceof HTMLElement) {
-          options = { debug: true, container: optionsOrContainer };
-        } else if (optionsOrContainer) {
-          options = optionsOrContainer;
-        }
-
-        this.rootElement = gameElement;
-        this.rootElement.innerHTML = '';
-        this.gameShell = document.createElement('div');
-        this.gameShell.className = 'game-shell';
-        this.rootElement.appendChild(this.gameShell);
-
-        // Wrap canvasHost in a container that allows overflow
-        this.canvasWrapper = document.createElement('div');
-        this.canvasWrapper.className = 'canvas-wrapper';
-        this.canvasWrapper.style.cssText = `
-          position: relative;
-          width: 100%;
-          overflow: visible;
-        `;
-        this.gameShell.appendChild(this.canvasWrapper);
-
-        this.canvasHost = document.createElement('div');
-        this.canvasHost.className = 'game-canvas';
-        this.canvasWrapper.appendChild(this.canvasHost);
-
-        this.renderer = new CanvasRenderer(this.canvasHost, this.gameWidth, this.gameHeight);
+        this.canvasWrapper = canvasWrapper;
+        this.canvasHost = canvasWrapper.querySelector('.game-canvas') as HTMLElement;
+        this.gameWidth = gameWidth;
+        this.gameHeight = gameHeight;
+        this.hudManager = hudManager;
+        
+        // Initialize renderer with provided context (no DOM creation)
+        this.renderer = new GameCanvasRenderer(canvasContext, this.gameWidth, this.gameHeight);
         this.debugRenderer = new DebugRenderer(this.canvasHost);
+        
+        // Initialize game systems
         this.stateManager = new StateManager();
         this.inputManager = new InputManager();
         this.levelManager = new LevelManager();
@@ -104,9 +101,12 @@ namespace Jamble {
         this.skillManager = new SkillManager();
         this.activeNPC = new Soma();  // Initialize our active NPC
         this.collisionManager = new CollisionManager(this.gameWidth, this.gameHeight);
-        this.hudManager = new InstrumentContainer(this.gameShell, this.gameWidth, this.gameHeight);
+        
+        // Connect HUD to game systems
         this.hudManager.setStateManager(this.stateManager);
         this.hudManager.setNPC(this.activeNPC); // Pass NPC to HUD for portrait stats
+        
+        // Create tree placement overlay (temporary: uses canvasWrapper)
         this.treePlacementOverlay = new EntityPlacementOverlay(
           this.canvasWrapper,
           this.slotManager,
@@ -147,23 +147,14 @@ namespace Jamble {
           }
         });
 
-        const debugContainer = options.container;
-        const debugRequested = options.debug ?? Boolean(debugContainer);
-
-        if (debugRequested) {
-          if (debugContainer) {
-            this.debugSystem = new DebugSystem(debugContainer);
-            // Initialize tree animation debug panel
-            this.treeAnimDebugPanel = new TreeAnimDebugPanel(this.debugSystem);
-          } else {
-            console.warn('Debug requested but no container provided. Debug UI disabled.');
-            this.debugSystem = null;
-          }
+        // Setup debug system if requested
+        if (debugContainer) {
+          this.debugSystem = new DebugSystem(debugContainer);
+          // Initialize tree animation debug panel
+          this.treeAnimDebugPanel = new TreeAnimDebugPanel(this.debugSystem);
         } else {
           this.debugSystem = null;
         }
-
-        this.setupGameElement();
         
         // Connect player to control panel so sliders can update player attributes
         this.hudManager.getControlPanel().setPlayer(this.player);
@@ -310,35 +301,12 @@ namespace Jamble {
     private createPlayer() {
       this.player = new Player(50, 0);
       this.gameObjects.push(this.player);
-    }
-
-    private setupGameElement() {
-      this.gameShell.style.cssText = `
-        width: 100%;
-        max-width: ${this.gameWidth}px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        margin: 0 auto;
-        overflow: visible;
-      `;
-
-      this.canvasHost.style.cssText = `
-        position: relative;
-        width: 100%;
-        aspect-ratio: ${this.gameWidth} / ${this.gameHeight};
-        overflow: hidden;
-      `;
-      
-      // Setup resize listener to update HUD scaling
-      this.setupResizeListener();
-      // Apply initial scale
-      this.updateHUDScale();
       
       // Setup editor mode listener for dimming player and background
+      // Note: This is game logic (visual feedback), not DOM manipulation
       window.addEventListener('jamble:editor-mode-change', ((e: CustomEvent) => {
         const dimmed = e.detail.mode !== 'none';
-        const alpha = dimmed ? 0.2 : 1.0; // Use 0.2 for more obvious testing
+        const alpha = dimmed ? 0.2 : 1.0;
         console.log('Editor mode changed:', e.detail.mode, 'Setting alpha to:', alpha);
         this.player.render.opacity = alpha;
         this.renderer.setBackgroundAlpha(alpha);
@@ -503,35 +471,6 @@ namespace Jamble {
         // Disable heart module (knob is now active)
         this.hudManager.getControlPanel().disableHeart();
       }
-    }
-
-    /**
-     * Calculate current scale factor based on canvas actual size vs base size
-     */
-    private calculateCanvasScale(): number {
-      const canvasRect = this.canvasHost.getBoundingClientRect();
-      const actualWidth = canvasRect.width;
-      const scaleX = actualWidth / this.gameWidth;
-      
-      // Use scaleX since canvas scales uniformly (aspect-ratio maintains proportions)
-      return scaleX;
-    }
-
-    /**
-     * Update HUD panel scaling to match canvas scale
-     */
-    private updateHUDScale(): void {
-      const scale = this.calculateCanvasScale();
-      this.hudManager.setScale(scale);
-    }
-
-    /**
-     * Setup window resize listener to keep HUD scaled with canvas
-     */
-    private setupResizeListener(): void {
-      window.addEventListener('resize', () => {
-        this.updateHUDScale();
-      });
     }
 
     /**
