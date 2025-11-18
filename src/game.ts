@@ -10,6 +10,7 @@
 /// <reference path="debug/debug-renderer.ts" />
 /// <reference path="systems/state-manager.ts" />
 /// <reference path="systems/input-manager.ts" />
+/// <reference path="systems/input-handler.ts" />
 /// <reference path="systems/level-manager.ts" />
 /// <reference path="slots/slot-manager.ts" />
 /// <reference path="skills/skill-system.ts" />
@@ -36,6 +37,7 @@ namespace Jamble {
     private debugRenderer: DebugRenderer;
     private stateManager: StateManager;
     private inputManager: InputManager;
+    private inputHandler!: InputHandler; // Initialized after player and home are created
     private levelManager: LevelManager;
     private slotManager: SlotManager;
     private skillManager: SkillManager;
@@ -185,7 +187,15 @@ namespace Jamble {
         // Setup ground sensor behavior
         this.setupGroundSensor();
         
-        this.setupInput();
+        // Create input handler (needs player and home to be initialized)
+        this.inputHandler = new InputHandler(
+          this.inputManager,
+          this.stateManager,
+          this.skillManager,
+          this.player,
+          this.home,
+          this.canvasHost
+        );
         
         // Initialize active NPC
         this.activeNPC.initialize();
@@ -496,64 +506,9 @@ namespace Jamble {
       };
     }
 
-    private setupInput() {
-      // Set up space key handler for jump
-      this.inputManager.onKeyDown('Space', () => {
-        if (this.skillManager.hasSkill('jump')) {
-          this.skillManager.useSkill('jump', this.player);
-        }
-      });
-      
-      // Set up tap to jump (entire canvas area)
-      this.canvasHost.addEventListener('pointerdown', (e) => {
-        if (this.stateManager.isRunning() && this.skillManager.hasSkill('jump')) {
-          e.preventDefault();
-          this.skillManager.useSkill('jump', this.player);
-        }
-      });
-    }
-
-    private handleInput() {
-      if (!this.skillManager.hasSkill('move')) return;
-
-      // Handle movement based on game state
-      if (this.stateManager.isTransition()) {
-        // In transition state: continue current movement, check for horizontal alignment
-        this.handleTransitionState();
-      } else if (this.stateManager.isRunning()) {
-        // In run state: auto-movement (player controls direction through collisions)
-        this.player.startAutoRun();
-      } else if (this.stateManager.isIdle()) {
-        // In idle state: stop autorun, wait for tap (no keyboard movement)
-        this.player.stopAutoRun();
-        this.player.stopMoving();
-      }
-    }
-
-    /**
-     * Handle transition state - auto-center player to home position
-     */
-    private handleTransitionState(): void {
-      if (!this.home || !this.player) return;
-      
-      const homeX = this.home.transform.x;
-      const playerX = this.player.transform.x;
-      const threshold = 2; // Alignment threshold in pixels
-      
-      // Check if aligned
-      if (Math.abs(playerX - homeX) < threshold) {
-        // Aligned! Enter idle state
-        this.player.stopMoving();
-        this.stateManager.enterIdle();
-        return;
-      }
-      
-      // Player continues its current movement (we don't change velocity)
-      // The player's existing velocity will naturally move them toward alignment
-    }
-
     private update(deltaTime: number) {
-      this.handleInput();
+      // Update input handler (state-driven input logic)
+      this.inputHandler.update(deltaTime);
       
       // Update active NPC (pass player for temperature-based decay)
       this.activeNPC.update(deltaTime, this.player);
