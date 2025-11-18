@@ -8,10 +8,10 @@
 
 namespace Jamble {
   /**
-   * HUD (Heads Up Display) Manager for all UI components.
-   * Manages the top overlay (portrait + activity monitor) and control panel.
+   * Instrument Container - Top-level UI container for all game instruments.
+   * Manages the top overlay (portrait + monitors) and control panel.
    */
-  export class HUDManager extends UIElement {
+  export class InstrumentContainer extends UIElement {
     private hudOverlay!: HTMLElement;
     private portraitPanel!: PortraitMonitor;
     private heartRatePanel!: HeartRateMonitor;

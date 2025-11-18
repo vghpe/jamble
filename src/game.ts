@@ -15,7 +15,7 @@
 /// <reference path="skills/skill-system.ts" />
 /// <reference path="debug/debug-system.ts" />
 /// <reference path="systems/collision-manager.ts" />
-/// <reference path="ui/hud-manager.ts" />
+/// <reference path="ui/instrument-container.ts" />
 /// <reference path="ui/editor/entity-placement-overlay.ts" />
 /// <reference path="ui/prompts/tap-prompt.ts" />
 /// <reference path="ui/prompts/jump-prompt.ts" />
@@ -42,7 +42,7 @@ namespace Jamble {
     private debugSystem: DebugSystem | null;
     private collisionManager: CollisionManager;
     private activeNPC: Soma;  // Current active NPC (Soma for now)
-    private hudManager: HUDManager;
+    private hudManager: InstrumentContainer;
     private treePlacementOverlay: EntityPlacementOverlay;
     private tapIndicator: TapPrompt;
     private jumpInstructionPanel: JumpPrompt;
@@ -102,7 +102,7 @@ namespace Jamble {
         this.skillManager = new SkillManager();
         this.activeNPC = new Soma();  // Initialize our active NPC
         this.collisionManager = new CollisionManager(this.gameWidth, this.gameHeight);
-        this.hudManager = new HUDManager(this.gameShell, this.gameWidth, this.gameHeight);
+        this.hudManager = new InstrumentContainer(this.gameShell, this.gameWidth, this.gameHeight);
         this.hudManager.setStateManager(this.stateManager);
         this.hudManager.setNPC(this.activeNPC); // Pass NPC to HUD for portrait stats
         this.treePlacementOverlay = new EntityPlacementOverlay(

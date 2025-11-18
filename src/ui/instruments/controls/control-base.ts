@@ -11,7 +11,7 @@ namespace Jamble {
    * Base class for all instrument controls.
    * Handles common functionality like reset events, DOM structure, and lifecycle.
    */
-  export abstract class InstrumentControl extends UIElement implements IInstrumentComponent {
+  export abstract class ControlBase extends UIElement implements IInstrumentComponent {
     protected config: ControlConfig;
 
     constructor(config: ControlConfig) {

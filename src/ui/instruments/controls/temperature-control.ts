@@ -5,7 +5,7 @@ namespace Jamble {
    * Temperature Module - Horizontal slider controlling player heat.
    * Range: 0 (cold/blue) to 1 (hot/yellow), 0.5 is neutral
    */
-  export class TemperatureControl extends InstrumentControl {
+  export class TemperatureControl extends ControlBase {
     private static readonly DEFAULT_VALUE: number = 0.5; // Center = neutral temperature
     private value!: number;
     private slider!: HTMLInputElement;

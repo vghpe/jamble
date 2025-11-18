@@ -8,10 +8,10 @@
 
 namespace Jamble {
   /**
-   * Control Panel - Modular widget-based interface for game controls.
+   * Control Container - Container for game controls.
    * Features a 4x4 grid layout with various sized modules.
    */
-  export class ControlPanel extends UIElement {
+  export class ControlContainer extends UIElement {
     private modules: Map<string, ControlBase> = new Map();
     private stateManager: any;
 

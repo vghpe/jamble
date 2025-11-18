@@ -4,7 +4,7 @@ namespace Jamble {
   /**
    * Tree Module - Button for placing trees with limited uses.
    */
-  export class TreePlacementControl extends InstrumentControl {
+  export class TreePlacementControl extends ControlBase {
     private static readonly MAX_USES: number = 2;
     private usesRemaining!: number;
     private button!: HTMLElement;

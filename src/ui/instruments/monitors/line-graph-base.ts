@@ -16,7 +16,7 @@ namespace Jamble {
    * Handles canvas setup, EMA smoothing, buffer management and rendering.
    * Subclasses provide data samples via generateSample().
    */
-  export abstract class LineGraphPanel extends UIElement implements IInstrumentComponent {
+  export abstract class LineGraphBase extends UIElement implements IInstrumentComponent {
     protected canvas: HTMLCanvasElement;
     protected ctx: CanvasRenderingContext2D;
     protected dataBuffer: number[] = [];

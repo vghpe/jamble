@@ -5,7 +5,7 @@ namespace Jamble {
    * Softness Module - Horizontal slider controlling player roundness/squareness.
    * Range: 0 (hard/square) to 1 (soft/circle), 0.5 is current default
    */
-  export class SoftnessControl extends InstrumentControl {
+  export class SoftnessControl extends ControlBase {
     private static readonly DEFAULT_VALUE: number = 0.5; // Center = baseline behavior
     private value!: number;
     private slider!: HTMLInputElement;

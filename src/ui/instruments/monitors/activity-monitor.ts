@@ -1,8 +1,7 @@
 /// <reference path="line-graph-base.ts" />
-/// <reference path="../../../systems/editor-mode-manager.ts" />
 
 namespace Jamble {
-  export interface HeartRateMonitorOptions extends LineGraphOptions {
+  export interface ActivityMonitorOptions extends LineGraphOptions {
     frequency?: number;
     amplitude?: number;
   }
@@ -10,12 +9,12 @@ namespace Jamble {
   /**
    * Activity monitor - displays legacy sine wave activity simulation.
    */
-  export class HeartRateMonitor extends LineGraphBase {
+  export class ActivityMonitor extends LineGraphBase {
     private time: number = 0;
     private frequency: number;
     private amplitude: number;
 
-    constructor(parent: HTMLElement, width: number, height: number, options: HeartRateMonitorOptions = {}) {
+    constructor(parent: HTMLElement, width: number, height: number, options: ActivityMonitorOptions = {}) {
       super(parent, width, height, options);
       this.frequency = options.frequency ?? 0.5;
       this.amplitude = options.amplitude ?? 0.3;

@@ -5,7 +5,7 @@ namespace Jamble {
    * Heart Control - Button with limited uses.
    * Provides heart functionality with usage tracking.
    */
-  export class HeartControl extends InstrumentControl {
+  export class HeartControl extends ControlBase {
     private static readonly MAX_USES: number = 3;
     private usesRemaining!: number;
     private button!: HTMLElement;

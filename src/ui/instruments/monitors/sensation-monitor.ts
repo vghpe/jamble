@@ -7,7 +7,7 @@ namespace Jamble {
    * The panel is agnostic to what the value means; it just renders it with color mapping.
    * External code (NPC) controls the value and its changes over time.
    */
-  export class SensationMonitor extends LineGraphPanel {
+  export class SensationMonitor extends LineGraphBase {
     private currentValue: number;
     private readonly zoneCount: number = 6;
     private readonly intensityMin: number = -1;
@@ -109,7 +109,7 @@ namespace Jamble {
         this.renderSweetSpotZone();
       }
       
-      // Draw the line graph (copied from parent LineGraphPanel.render)
+      // Draw the line graph (copied from parent LineGraphBase.render)
       const totalSegments = (this as any).dataBuffer.length - 1;
       if (totalSegments > 0) {
         const sampleSpacing = (this as any).sampleSpacing;

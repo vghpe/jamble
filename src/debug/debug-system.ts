@@ -1,7 +1,7 @@
 /// <reference path="../entities/player/player.ts" />
 /// <reference path="../systems/state-manager.ts" />
 /// <reference path="../systems/economy-manager.ts" />
-/// <reference path="../ui/hud-manager.ts" />
+/// <reference path="../ui/instrument-container.ts" />
 /// <reference path="../game.ts" />
 
 namespace Jamble {
@@ -72,7 +72,7 @@ namespace Jamble {
     private player: Player | null = null;
     private stateManager: StateManager | null = null;
     private economyManager: EconomyManager;
-    private hudManager: HUDManager | null = null;
+    private hudManager: InstrumentContainer | null = null;
     private game: Game | null = null;
     
     // Registry system
@@ -428,7 +428,7 @@ namespace Jamble {
       this.stateManager = stateManager;
     }
 
-    setHUDManager(hudManager: HUDManager) {
+    setHUDManager(hudManager: InstrumentContainer) {
       this.hudManager = hudManager;
     }
 

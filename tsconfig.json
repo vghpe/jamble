@@ -48,8 +48,8 @@
     "src/ui/prompts/jump-prompt.ts",
     "src/ui/prompts/tap-prompt.ts",
     "src/ui/editor/entity-placement-overlay.ts",
-    "src/ui/control-panel.ts",
-    "src/ui/hud-manager.ts",
+    "src/ui/control-container.ts",
+    "src/ui/instrument-container.ts",
     "src/game.ts"
   ]
 }
