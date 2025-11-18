@@ -140,6 +140,18 @@ namespace Jamble {
     getKnobs(): Knob[] {
       return this.knobs;
     }
+    
+    /**
+     * Connect to NPC pain threshold for gameplay response
+     * When NPC hits pain threshold, retract all knobs and disable crescendo
+     */
+    onNPCPainThreshold(npc: BaseNPC): void {
+      npc.onPainThreshold(() => {
+        console.log('LevelManager: Pain threshold hit - retracting all knobs');
+        this.knobs.forEach(knob => knob.retract());
+        npc.disableCrescendo();
+      });
+    }
 
     // ==================== Entity Spawning ====================
     // Hardcoded methods that will serve as foundation for future level editor

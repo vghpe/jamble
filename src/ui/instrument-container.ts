@@ -152,6 +152,41 @@ namespace Jamble {
     }
     
     /**
+     * Connect to NPC for automatic UI updates
+     * Subscribes to NPC events and updates UI accordingly
+     */
+    connectToNPC(npc: BaseNPC): void {
+      // Connect sensation panel for debug visualization
+      this.setSensationNPC(npc);
+      
+      // Subscribe to NPC arousal changes
+      npc.onArousalChange((value, npc) => {
+        this.setSensationValue(npc.getSensationNormalized());
+      });
+      
+      // Subscribe to NPC crescendo changes
+      npc.onCrescendoChange((value, npc) => {
+        this.setCrescendoValue(npc.getCrescendoNormalized());
+      });
+      
+      // Subscribe to NPC expression changes
+      npc.onExpressionChange((expression) => {
+        this.setPortraitExpression(expression);
+      });
+      
+      // Subscribe to pain threshold for UI feedback
+      npc.onPainThreshold(() => {
+        this.showPortraitPain();
+        this.getControlPanel().enableHeart();
+      });
+      
+      // Set initial values
+      this.setSensationValue(npc.getSensationNormalized());
+      this.setCrescendoValue(npc.getCrescendoNormalized());
+      this.setPortraitExpression(npc.getExpressionDescriptor());
+    }
+    
+    /**
      * Set scale for HUD panels to match canvas scaling
      * This ensures HUD panels scale proportionally with the game canvas
      */

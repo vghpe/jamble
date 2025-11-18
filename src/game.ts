@@ -211,11 +211,14 @@ namespace Jamble {
         // Initialize active NPC
         this.activeNPC.initialize();
         
-        // Connect NPC to sensation panel for debug visualization
-        this.hudManager.setSensationNPC(this.activeNPC);
+        // Connect HUD to NPC for automatic UI updates
+        this.hudManager.connectToNPC(this.activeNPC);
         
         // Setup level manager with active NPC
         this.levelManager.setActiveNPC(this.activeNPC);
+        
+        // Connect LevelManager to NPC pain threshold for gameplay response
+        this.levelManager.onNPCPainThreshold(this.activeNPC);
         
         // Listen for level complete from level manager
         this.levelManager.onLevelComplete((npc) => {
@@ -223,39 +226,6 @@ namespace Jamble {
           // TODO: Show victory UI, transition to next level, etc.
           // For now, just log it
         });
-        
-        // Connect NPC arousal changes to HUD - update sensation panel with normalized value
-        this.activeNPC.onArousalChange((value, npc) => {
-          // Update HUD with normalized sensation value (0-1)
-          this.hudManager.setSensationValue(npc.getSensationNormalized());
-        });
-        
-        // Connect NPC crescendo changes to HUD
-        this.activeNPC.onCrescendoChange((value, npc) => {
-          this.hudManager.setCrescendoValue(npc.getCrescendoNormalized());
-        });
-
-        // Connect NPC expression changes to HUD portrait
-        this.activeNPC.onExpressionChange((expression) => {
-          this.hudManager.setPortraitExpression(expression);
-        });
-        
-        // Connect NPC pain threshold to retract all knobs
-        this.activeNPC.onPainThreshold(() => {
-          console.log('Pain threshold hit - retracting all knobs');
-          this.levelManager.getKnobs().forEach(knob => knob.retract());
-          // Disable crescendo rise when knobs retract
-          this.activeNPC.disableCrescendo();
-          // Trigger portrait pain feedback
-          this.hudManager.showPortraitPain();
-          // Enable heart module (knob retracted)
-          this.hudManager.getControlPanel().enableHeart();
-        });
-        
-        // Set initial values
-        this.hudManager.setSensationValue(this.activeNPC.getSensationNormalized());
-        this.hudManager.setCrescendoValue(this.activeNPC.getCrescendoNormalized());
-        this.hudManager.setPortraitExpression(this.activeNPC.getExpressionDescriptor());
 
         if (this.debugSystem) {
           this.debugSystem.setPlayer(this.player);
