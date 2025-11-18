@@ -1,12 +1,12 @@
-/// <reference path="../slots/slot-manager.ts" />
+/// <reference path="../../slots/slot-manager.ts" />
 
 namespace Jamble {
   /**
-   * TreePlacementOverlay - Visual overlay showing available tree placement slots
+   * EntityPlacementOverlay - Visual overlay showing available entity placement slots
    * Renders full circles at ground slot positions (extended canvas allows bottom half to show)
    * Blue for available slots, orange for occupied slots (trees can be removed)
    */
-  export class TreePlacementOverlay {
+  export class EntityPlacementOverlay {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
     private backgroundCanvas: HTMLCanvasElement; // For unavailable slot indicators

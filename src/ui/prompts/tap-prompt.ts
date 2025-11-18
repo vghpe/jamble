@@ -2,7 +2,7 @@ namespace Jamble {
   /**
    * Tap Indicator - Shows a blue dotted circle around the player when they can be tapped
    */
-  export class TapIndicator {
+  export class TapPrompt {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
     private gameWidth: number;

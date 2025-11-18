@@ -1,10 +1,10 @@
 namespace Jamble {
   /**
-   * Crescendo Panel - vertical progress bar showing crescendo level (0-1).
+   * Crescendo Monitor - vertical progress bar showing crescendo level (0-1).
    * Simple display component - value is controlled externally by NPC system.
    * Features a pink heart emoji above the bar for UX clarity.
    */
-  export class CrescendoPanel {
+  export class CrescendoMonitor {
     private container: HTMLElement;
     private heartCanvas: HTMLCanvasElement;
     private heartCtx: CanvasRenderingContext2D;

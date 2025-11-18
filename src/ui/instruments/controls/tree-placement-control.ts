@@ -1,22 +1,22 @@
-/// <reference path="module-base.ts" />
+/// <reference path="control-base.ts" />
 
 namespace Jamble {
   /**
    * Tree Module - Button for placing trees with limited uses.
    */
-  export class TreeModule extends ControlModule {
+  export class TreePlacementControl extends InstrumentControl {
     private static readonly MAX_USES: number = 2;
     private usesRemaining!: number;
     private button!: HTMLElement;
     private usesDisplay!: HTMLElement;
 
-    constructor(config: ModuleConfig) {
+    constructor(config: ControlConfig) {
       super(config);
     }
 
     protected createElement(): HTMLElement {
       // Initialize uses before creating elements
-      this.usesRemaining = TreeModule.MAX_USES;
+      this.usesRemaining = TreePlacementControl.MAX_USES;
       
       const element = this.createBaseElement();
       
@@ -77,7 +77,7 @@ namespace Jamble {
      * Return a tree (increment count)
      */
     public returnTree(): void {
-      if (this.usesRemaining < TreeModule.MAX_USES) {
+      if (this.usesRemaining < TreePlacementControl.MAX_USES) {
         this.usesRemaining++;
         this.updateUsesDisplay();
       }
@@ -95,7 +95,7 @@ namespace Jamble {
     }
 
     protected resetState(): void {
-      this.usesRemaining = TreeModule.MAX_USES;
+      this.usesRemaining = TreePlacementControl.MAX_USES;
       this.updateUsesDisplay();
     }
 

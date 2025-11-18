@@ -1,10 +1,10 @@
 /// <reference path="ui-component-base.ts" />
-/// <reference path="portrait-panel.ts" />
-/// <reference path="monitor/heart-rate-panel.ts" />
-/// <reference path="monitor/sensation-panel.ts" />
-/// <reference path="crescendo-panel.ts" />
+/// <reference path="instruments/monitors/portrait-monitor.ts" />
+/// <reference path="instruments/monitors/activity-monitor.ts" />
+/// <reference path="instruments/monitors/sensation-monitor.ts" />
+/// <reference path="instruments/monitors/crescendo-monitor.ts" />
 /// <reference path="control-panel.ts" />
-/// <reference path="jump-instruction-panel.ts" />
+/// <reference path="prompts/jump-prompt.ts" />
 
 namespace Jamble {
   /**
@@ -13,13 +13,13 @@ namespace Jamble {
    */
   export class HUDManager extends UIComponent {
     private hudOverlay!: HTMLElement;
-    private portraitPanel!: PortraitPanel;
-    private heartRatePanel!: HeartRatePanel;
-    private sensationPanel!: SensationPanel;
+    private portraitPanel!: PortraitMonitor;
+    private heartRatePanel!: ActivityMonitor;
+    private sensationPanel!: SensationMonitor;
     private monitorContainer!: HTMLElement;
-    private crescendoPanel!: CrescendoPanel;
+    private crescendoPanel!: CrescendoMonitor;
     private controlPanel!: ControlPanel;
-    private jumpInstructionPanel!: JumpInstructionPanel;
+    private jumpInstructionPanel!: JumpPrompt;
     private panelWrapper!: HTMLElement;
     
     private gameWidth: number;
@@ -101,11 +101,11 @@ namespace Jamble {
       const halfWidth = Math.floor(monitorWidth / 2);
       const secondWidth = monitorWidth - halfWidth;
       
-      this.heartRatePanel = new HeartRatePanel(monitorContainer, halfWidth, this.portraitSize, {
+      this.heartRatePanel = new ActivityMonitor(monitorContainer, halfWidth, this.portraitSize, {
         strokeStyle: '#757575'
       });
       
-      this.sensationPanel = new SensationPanel(monitorContainer, secondWidth, this.portraitSize, {
+      this.sensationPanel = new SensationMonitor(monitorContainer, secondWidth, this.portraitSize, {
         strokeStyle: '#59a869',
         initialValue: 0.2
       });
@@ -126,8 +126,8 @@ namespace Jamble {
       this.container.appendChild(portraitGroup);
       
       // Create components in order within portrait group: crescendo panel, portrait
-      this.crescendoPanel = new CrescendoPanel(portraitGroup, crescendoPanelWidth, this.portraitSize);
-      this.portraitPanel = new PortraitPanel(portraitGroup, this.portraitSize);
+      this.crescendoPanel = new CrescendoMonitor(portraitGroup, crescendoPanelWidth, this.portraitSize);
+      this.portraitPanel = new PortraitMonitor(portraitGroup, this.portraitSize);
     }
 
     private createPanelWrapper(): void {
@@ -148,7 +148,7 @@ namespace Jamble {
     }
 
     private createJumpInstructionPanel(): void {
-      this.jumpInstructionPanel = new JumpInstructionPanel(this.panelWrapper);
+      this.jumpInstructionPanel = new JumpPrompt(this.panelWrapper);
     }
     
     /**
@@ -176,6 +176,10 @@ namespace Jamble {
       // This prevents layout issues when scaled down
       const scaledHeight = this.portraitSize * scale;
       this.container.style.marginBottom = `${scaledHeight - this.portraitSize}px`;
+      
+      // Apply scale to panel wrapper (control panel and jump instruction)
+      this.panelWrapper.style.transform = `scale(${scale})`;
+      this.panelWrapper.style.transformOrigin = 'top center';
     }
     
     /**
@@ -382,7 +386,7 @@ namespace Jamble {
     /**
      * Get jump instruction panel for direct access if needed
      */
-    getJumpInstructionPanel(): JumpInstructionPanel {
+    getJumpInstructionPanel(): JumpPrompt {
       return this.jumpInstructionPanel;
     }
     

@@ -1,10 +1,10 @@
 /// <reference path="ui-component-base.ts" />
 /// <reference path="../entities/player/player.ts" />
-/// <reference path="modules/module-base.ts" />
-/// <reference path="modules/heart-module.ts" />
-/// <reference path="modules/tree-module.ts" />
-/// <reference path="modules/softness-module.ts" />
-/// <reference path="modules/temperature-module.ts" />
+/// <reference path="instruments/controls/control-base.ts" />
+/// <reference path="instruments/controls/heart-control.ts" />
+/// <reference path="instruments/controls/tree-placement-control.ts" />
+/// <reference path="instruments/controls/softness-control.ts" />
+/// <reference path="instruments/controls/temperature-control.ts" />
 
 namespace Jamble {
   /**
@@ -12,7 +12,7 @@ namespace Jamble {
    * Features a 4x4 grid layout with various sized modules.
    */
   export class ControlPanel extends UIComponent {
-    private modules: Map<string, ControlModule> = new Map();
+    private modules: Map<string, InstrumentControl> = new Map();
     private stateManager: any;
 
     constructor(parentContainer: HTMLElement) {
@@ -210,22 +210,22 @@ namespace Jamble {
       // Row 1: Softness (3x1) + Heart (1x1)
       // Row 2: Temperature (3x1) + Tree (1x1)
       
-      const softness = new SoftnessModule({ 
+      const softness = new SoftnessControl({ 
         id: 'softness', 
         gridSize: { width: 3, height: 1 }
       });
       
-      const heart = new HeartModule({ 
+      const heart = new HeartControl({ 
         id: 'heart', 
         gridSize: { width: 1, height: 1 }
       });
       
-      const temperature = new TemperatureModule({ 
+      const temperature = new TemperatureControl({ 
         id: 'temperature', 
         gridSize: { width: 3, height: 1 }
       });
       
-      const tree = new TreeModule({ 
+      const tree = new TreePlacementControl({ 
         id: 'tree', 
         gridSize: { width: 1, height: 1 }
       });
@@ -274,8 +274,8 @@ namespace Jamble {
      */
     public setPlayer(player: Player): void {
       // Connect slider modules to player
-      const softnessModule = this.modules.get('softness') as SoftnessModule;
-      const temperatureModule = this.modules.get('temperature') as TemperatureModule;
+      const softnessModule = this.modules.get('softness') as SoftnessControl;
+      const temperatureModule = this.modules.get('temperature') as TemperatureControl;
       
       if (softnessModule) {
         softnessModule.setPlayer(player);
@@ -309,7 +309,7 @@ namespace Jamble {
     /**
      * Get a specific module by ID.
      */
-    public getModule(id: string): ControlModule | undefined {
+    public getModule(id: string): InstrumentControl | undefined {
       return this.modules.get(id);
     }
 
@@ -324,7 +324,7 @@ namespace Jamble {
      * Enable heart module (knob is retracted)
      */
     public enableHeart(): void {
-      const heartModule = this.modules.get('heart') as HeartModule;
+      const heartModule = this.modules.get('heart') as HeartControl;
       if (heartModule) {
         heartModule.enable();
       }
@@ -334,7 +334,7 @@ namespace Jamble {
      * Disable heart module (knob is present/active)
      */
     public disableHeart(): void {
-      const heartModule = this.modules.get('heart') as HeartModule;
+      const heartModule = this.modules.get('heart') as HeartControl;
       if (heartModule) {
         heartModule.disable();
       }

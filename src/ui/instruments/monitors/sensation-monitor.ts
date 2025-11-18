@@ -1,12 +1,12 @@
-/// <reference path="line-graph-panel.ts" />
+/// <reference path="line-graph-base.ts" />
 
 namespace Jamble {
   /**
-   * Sensation panel – displays a normalized (0-1) sensation value.
+   * Sensation monitor – displays a normalized (0-1) sensation value.
    * The panel is agnostic to what the value means; it just renders it with color mapping.
    * External code (NPC) controls the value and its changes over time.
    */
-  export class SensationPanel extends LineGraphPanel {
+  export class SensationMonitor extends LineGraphPanel {
     private currentValue: number;
     private readonly zoneCount: number = 6;
     private readonly intensityMin: number = -1;

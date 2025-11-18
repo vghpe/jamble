@@ -1,11 +1,11 @@
-/// <reference path="ui-component-base.ts" />
+/// <reference path="../ui-component-base.ts" />
 
 namespace Jamble {
   /**
    * Jump Instruction Panel - Shows "TAP OR SPACE TO JUMP" during run mode
    * Replaces the control panel area with soft gray instructional text
    */
-  export class JumpInstructionPanel extends UIComponent {
+  export class JumpPrompt extends UIComponent {
     private stateManager: any;
     private onJumpCallback: (() => void) | null = null;
 

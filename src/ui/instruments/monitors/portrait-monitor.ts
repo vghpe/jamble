@@ -1,9 +1,9 @@
 namespace Jamble {
   /**
-   * Portrait Panel - Player character display (formerly PlayerPortrait)  
+   * Portrait Monitor - Player character display (formerly PlayerPortrait)  
    * Renders emoji character states in a bordered canvas
    */
-  export class PortraitPanel {
+  export class PortraitMonitor {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
     private size: number;

@@ -1,24 +1,24 @@
-/// <reference path="module-base.ts" />
+/// <reference path="control-base.ts" />
 
 namespace Jamble {
   /**
-   * Heart Module - Button with limited uses.
+   * Heart Control - Button with limited uses.
    * Provides heart functionality with usage tracking.
    */
-  export class HeartModule extends ControlModule {
+  export class HeartControl extends InstrumentControl {
     private static readonly MAX_USES: number = 3;
     private usesRemaining!: number;
     private button!: HTMLElement;
     private usesDisplay!: HTMLElement;
     private isDisabled: boolean = false;
 
-    constructor(config: ModuleConfig) {
+    constructor(config: ControlConfig) {
       super(config);
     }
 
     protected createElement(): HTMLElement {
       // Initialize uses before creating elements
-      this.usesRemaining = HeartModule.MAX_USES;
+      this.usesRemaining = HeartControl.MAX_USES;
       
       const element = this.createBaseElement();
       
@@ -106,7 +106,7 @@ namespace Jamble {
     }
 
     protected resetState(): void {
-      this.usesRemaining = HeartModule.MAX_USES;
+      this.usesRemaining = HeartControl.MAX_USES;
       this.updateUsesDisplay();
       this.isDisabled = false;
       this.button.classList.remove('depleted');

@@ -16,9 +16,9 @@
 /// <reference path="debug/debug-system.ts" />
 /// <reference path="systems/collision-manager.ts" />
 /// <reference path="ui/hud-manager.ts" />
-/// <reference path="ui/tree-placement-overlay.ts" />
-/// <reference path="ui/tap-indicator.ts" />
-/// <reference path="ui/jump-instruction-panel.ts" />
+/// <reference path="ui/editor/entity-placement-overlay.ts" />
+/// <reference path="ui/prompts/tap-prompt.ts" />
+/// <reference path="ui/prompts/jump-prompt.ts" />
 /// <reference path="npc/soma.ts" />
 
 namespace Jamble {
@@ -43,9 +43,9 @@ namespace Jamble {
     private collisionManager: CollisionManager;
     private activeNPC: Soma;  // Current active NPC (Soma for now)
     private hudManager: HUDManager;
-    private treePlacementOverlay: TreePlacementOverlay;
-    private tapIndicator: TapIndicator;
-    private jumpInstructionPanel: JumpInstructionPanel;
+    private treePlacementOverlay: EntityPlacementOverlay;
+    private tapIndicator: TapPrompt;
+    private jumpInstructionPanel: JumpPrompt;
     
     private player!: Player; // Will be initialized in createPlayer()
     private home!: Home; // Reference to home object for centering logic
@@ -105,13 +105,13 @@ namespace Jamble {
         this.hudManager = new HUDManager(this.gameShell, this.gameWidth, this.gameHeight);
         this.hudManager.setStateManager(this.stateManager);
         this.hudManager.setNPC(this.activeNPC); // Pass NPC to HUD for portrait stats
-        this.treePlacementOverlay = new TreePlacementOverlay(
+        this.treePlacementOverlay = new EntityPlacementOverlay(
           this.canvasWrapper,
           this.slotManager,
           this.gameWidth,
           this.gameHeight
         );
-        this.tapIndicator = new TapIndicator(this.canvasWrapper, this.gameWidth, this.gameHeight);
+        this.tapIndicator = new TapPrompt(this.canvasWrapper, this.gameWidth, this.gameHeight);
         
         // Setup tap indicator callback
         this.tapIndicator.setOnTap(() => {
@@ -278,7 +278,7 @@ namespace Jamble {
      * Setup tree placement system - wire up all event listeners
      */
     private setupTreePlacement(): void {
-      const treeModule = this.hudManager.getControlPanel().getModule('tree') as TreeModule;
+      const treeModule = this.hudManager.getControlPanel().getModule('tree') as TreePlacementControl;
       
       // Listen for tree module clicks to toggle edit mode
       window.addEventListener('jamble:tree-module-clicked', () => {
@@ -311,7 +311,7 @@ namespace Jamble {
       this.stateManager.enterTreePlacementMode();
       this.treePlacementOverlay.show();
       
-      const treeModule = this.hudManager.getControlPanel().getModule('tree') as TreeModule;
+      const treeModule = this.hudManager.getControlPanel().getModule('tree') as TreePlacementControl;
       treeModule.setEditMode(true);
     }
 
@@ -322,7 +322,7 @@ namespace Jamble {
       this.stateManager.exitEditorMode();
       this.treePlacementOverlay.hide();
       
-      const treeModule = this.hudManager.getControlPanel().getModule('tree') as TreeModule;
+      const treeModule = this.hudManager.getControlPanel().getModule('tree') as TreePlacementControl;
       treeModule.setEditMode(false);
     }
 
@@ -330,7 +330,7 @@ namespace Jamble {
      * Place a tree at the specified slot
      */
     private placeTree(slotId: string, x: number, y: number): void {
-      const treeModule = this.hudManager.getControlPanel().getModule('tree') as TreeModule;
+      const treeModule = this.hudManager.getControlPanel().getModule('tree') as TreePlacementControl;
       
       // Check if we have trees available and use one
       if (treeModule.getUsesRemaining() === 0 || !treeModule.useTree()) {
@@ -375,7 +375,7 @@ namespace Jamble {
       this.slotManager.freeSlot(slotId);
       
       // Return tree to module and update overlay
-      const treeModule = this.hudManager.getControlPanel().getModule('tree') as TreeModule;
+      const treeModule = this.hudManager.getControlPanel().getModule('tree') as TreePlacementControl;
       treeModule.returnTree();
       this.treePlacementOverlay.setSlotOccupied(slotId, false);
     }

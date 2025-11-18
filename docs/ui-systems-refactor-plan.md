@@ -262,12 +262,31 @@ Each instrument component checks if it should dim based on current editor mode.
 
 ## Migration Path
 
-### Phase A: Test Scaling Assumption (Quick Validation)
+### Phase A: Test Scaling Assumption ✅ COMPLETE
 
 **Goal:** Verify transform scaling works before major refactor
 
 **Steps:**
-1. Remove `autoReposition` logic from `UIComponent`
+1. ✅ Remove `autoReposition` logic from `UIComponent`
+2. ✅ Apply transform scaling to `HUDManager` container
+3. ✅ Test on narrow window (simulate mobile)
+4. ✅ Test all UI interactions still work
+
+**Results:**
+- Removed ~50 lines of unused auto-repositioning complexity
+- Unified scaling working via transform on parent containers
+- All UI elements scale uniformly
+- Build succeeds, no regressions
+
+**UX Consideration (Future Enhancement):**
+Phase A implements uniform scaling across all UI. In Phase B or later, consider selective scaling where:
+- **Monitors** (info displays) can scale down fully - info remains readable when small
+- **Controls** (interactive elements) maintain minimum usable size (e.g., `Math.max(scale, 0.75)`) for better mobile tap targets
+- Single system with smart thresholds rather than separate implementations
+
+**Decision Point:** ✅ Scaling validated - proceed to Phase B
+
+---
 2. Apply transform scaling to `HUDManager` container
 3. Test on narrow window (simulate mobile)
 4. Test all UI interactions still work

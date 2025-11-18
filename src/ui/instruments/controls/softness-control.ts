@@ -1,19 +1,19 @@
-/// <reference path="module-base.ts" />
+/// <reference path="control-base.ts" />
 
 namespace Jamble {
   /**
-   * Temperature Module - Horizontal slider controlling player heat.
-   * Range: 0 (cold/blue) to 1 (hot/yellow), 0.5 is neutral
+   * Softness Module - Horizontal slider controlling player roundness/squareness.
+   * Range: 0 (hard/square) to 1 (soft/circle), 0.5 is current default
    */
-  export class TemperatureModule extends ControlModule {
-    private static readonly DEFAULT_VALUE: number = 0.5; // Center = neutral temperature
+  export class SoftnessControl extends InstrumentControl {
+    private static readonly DEFAULT_VALUE: number = 0.5; // Center = baseline behavior
     private value!: number;
     private slider!: HTMLInputElement;
     private label!: HTMLElement;
     private valueDisplay!: HTMLElement;
     private player: Player | null = null;
 
-    constructor(config: ModuleConfig) {
+    constructor(config: ControlConfig) {
       super(config);
     }
 
@@ -24,20 +24,20 @@ namespace Jamble {
       this.player = player;
       // Set initial player value
       if (this.player) {
-        this.player.setTemperature(this.value);
+        this.player.setSoftness(this.value);
       }
     }
 
     protected createElement(): HTMLElement {
       // Initialize value before creating elements
-      this.value = TemperatureModule.DEFAULT_VALUE;
+      this.value = SoftnessControl.DEFAULT_VALUE;
       
       const element = this.createBaseElement();
       element.classList.add('module-slider');
       
       this.label = document.createElement('div');
       this.label.className = 'module-label';
-      this.label.textContent = 'TEMP';
+      this.label.textContent = 'SOFT';
       
       this.slider = document.createElement('input');
       this.slider.type = 'range';
@@ -75,7 +75,7 @@ namespace Jamble {
       
       // Update player if connected
       if (this.player) {
-        this.player.setTemperature(this.value);
+        this.player.setSoftness(this.value);
       }
     }
 
@@ -84,18 +84,18 @@ namespace Jamble {
     }
 
     protected resetState(): void {
-      this.value = TemperatureModule.DEFAULT_VALUE;
+      this.value = SoftnessControl.DEFAULT_VALUE;
       this.slider.value = String(this.value * 100);
       this.updateValueDisplay();
       
       // Update player if connected
       if (this.player) {
-        this.player.setTemperature(this.value);
+        this.player.setSoftness(this.value);
       }
     }
 
     /**
-     * Get current temperature value (0 to 1)
+     * Get current softness value (0 to 1)
      */
     getValue(): number {
       return this.value;

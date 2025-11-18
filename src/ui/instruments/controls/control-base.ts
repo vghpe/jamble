@@ -1,18 +1,18 @@
 namespace Jamble {
-  export interface ModuleConfig {
+  export interface ControlConfig {
     id: string;
     gridSize: { width: number; height: number };
   }
 
   /**
-   * Base class for all control panel modules.
+   * Base class for all instrument controls.
    * Handles common functionality like reset events, DOM structure, and lifecycle.
    */
-  export abstract class ControlModule {
+  export abstract class InstrumentControl {
     protected element: HTMLElement;
-    protected config: ModuleConfig;
+    protected config: ControlConfig;
 
-    constructor(config: ModuleConfig) {
+    constructor(config: ControlConfig) {
       this.config = config;
       this.element = this.createElement();
       this.setupResetListener();
