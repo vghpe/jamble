@@ -49,7 +49,6 @@ namespace Jamble {
     
     private player!: Player; // Will be initialized in createPlayer()
     private home!: Home; // Reference to home object for centering logic
-    private homeSensor!: Sensor; // Reference to home sensor for enabling/disabling
     private groundSensor!: Sensor; // Reference to ground sensor for enabling home
     private gameObjects: GameObject[] = [];
     private knobs: Knob[] = [];  // Track all knobs for pain threshold retraction
@@ -177,11 +176,10 @@ namespace Jamble {
         // Track spawned entities
         this.home = levelData.home;
         this.knobs = levelData.knobs;
-        this.homeSensor = levelData.homeSensor;
         this.groundSensor = levelData.groundSensor;
         this.gameObjects.push(...levelData.allEntities);
         
-        // Setup home sensor behavior
+        // Setup home sensor behavior (sensor is owned by home entity)
         this.setupHomeSensor();
         
         // Setup ground sensor behavior
@@ -468,18 +466,19 @@ namespace Jamble {
     }
 
     private setupHomeSensor(): void {
-      this.homeSensor.onTriggerEnter = (other: GameObject) => {
+      const homeSensor = this.home.getSensor();
+      homeSensor.onTriggerEnter = (other: GameObject) => {
         if (other.id === 'player') {
           // Check if we're in the initial transition state (game start)
           if (this.stateManager.isTransition() && this.player.velocityX === 0) {
             // No movement at game start - go directly to idle
             this.stateManager.enterIdle();
-            this.homeSensor.setEnabled(false);
+            homeSensor.setEnabled(false);
             this.skillManager.setSkillEnabled('jump', false);
           } else if (!this.stateManager.isTransition() && !this.stateManager.isIdle()) {
             // Coming from run state - enter transition
             this.stateManager.enterTransition();
-            this.homeSensor.setEnabled(false);
+            homeSensor.setEnabled(false);
             // Disable jump during transition
             this.skillManager.setSkillEnabled('jump', false);
           }
@@ -488,10 +487,11 @@ namespace Jamble {
     }
 
     private setupGroundSensor(): void {
+      const homeSensor = this.home.getSensor();
       this.groundSensor.onTriggerEnter = (other: GameObject) => {
         if (other.id === 'player' && this.stateManager.isRunning()) {
           // Re-enable home sensor when player touches ground while running
-          this.homeSensor.setEnabled(true);
+          homeSensor.setEnabled(true);
         }
       };
     }

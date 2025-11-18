@@ -13,7 +13,6 @@ namespace Jamble {
   export interface LevelData {
     home: Home;
     knobs: Knob[];
-    homeSensor: Sensor;
     groundSensor: Sensor;
     allEntities: GameObject[];
   }
@@ -119,9 +118,9 @@ namespace Jamble {
 
     /**
      * Spawn home entity at the first ground slot
-     * Returns home and its sensor
+     * Home owns its sensor internally (accessed via home.getSensor())
      */
-    spawnHome(slotManager: SlotManager, gameWidth: number, gameHeight: number): { home: Home; homeSensor: Sensor } {
+    spawnHome(slotManager: SlotManager, gameWidth: number, gameHeight: number): Home {
       const groundSlots = slotManager.getSlotsByType('ground');
       if (groundSlots.length === 0) {
         throw new Error('No ground slots available for home');
@@ -130,12 +129,8 @@ namespace Jamble {
       const homeSlot = groundSlots[0];
       const home = new Home('home', homeSlot.x, homeSlot.y);
       slotManager.occupySlot(homeSlot.id, home.id);
-
-      // Create home sensor - attached to home, just above it
-      const homeSensor = new Sensor('home-sensor', home, 0, -20);
-      homeSensor.setTriggerSize(30, 10); // Narrower point sensor
       
-      return { home, homeSensor };
+      return home;
     }
 
     /**
@@ -191,9 +186,9 @@ namespace Jamble {
       const allEntities: GameObject[] = [];
       const knobs: Knob[] = [];
 
-      // Spawn home (leftmost ground slot)
-      const { home, homeSensor } = this.spawnHome(slotManager, gameWidth, gameHeight);
-      allEntities.push(home, homeSensor);
+      // Spawn home (leftmost ground slot) - includes its child sensor
+      const home = this.spawnHome(slotManager, gameWidth, gameHeight);
+      allEntities.push(home, home.getSensor());
 
       // Trees are placed via tree placement overlay (no default spawn)
 
@@ -217,7 +212,6 @@ namespace Jamble {
       return {
         home,
         knobs,
-        homeSensor,
         groundSensor,
         allEntities
       };
