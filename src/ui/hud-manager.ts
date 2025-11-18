@@ -30,7 +30,7 @@ namespace Jamble {
       const shell = gameElement.classList.contains('game-shell')
         ? gameElement
         : (gameElement.querySelector('.game-shell') as HTMLElement) || gameElement;
-      super(shell, { mountNode: shell, autoReposition: false });
+      super(shell, { mountNode: shell });
       this.gameWidth = gameWidth;
       this.gameHeight = gameHeight;
       
@@ -56,10 +56,6 @@ namespace Jamble {
       `;
       
       return container;
-    }
-
-    protected calculatePosition(_gameRect: DOMRect): { left: number; top: number } {
-      return { left: 0, top: 0 };
     }
 
     show(): void {

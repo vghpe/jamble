@@ -1,11 +1,11 @@
 namespace Jamble {
   /**
-   * Base class for UI components that need positioning relative to the game canvas.
-   * Provides shared functionality for positioning, lifecycle management, and styling.
+   * Base class for UI components.
+   * Provides shared functionality for lifecycle management and basic styling.
+   * Components use relative positioning and scale via parent transform.
    */
   interface UIComponentOptions {
     mountNode?: HTMLElement;
-    autoReposition?: boolean;
   }
 
   export abstract class UIComponent {
@@ -13,17 +13,12 @@ namespace Jamble {
     protected gameElement: HTMLElement;
     protected isVisible: boolean = false;
     protected mountNode: HTMLElement;
-    private autoReposition: boolean;
     
     constructor(gameElement: HTMLElement, options: UIComponentOptions = {}) {
       this.gameElement = gameElement;
       this.container = this.createContainer();
       this.mountNode = options.mountNode ?? document.body;
-      this.autoReposition = options.autoReposition ?? true;
       this.setupInitialStyles();
-      if (this.autoReposition) {
-        this.setupResizeListener();
-      }
     }
     
     /**
@@ -37,8 +32,9 @@ namespace Jamble {
      * Subclasses can override to add specific styling.
      */
     protected setupInitialStyles(): void {
+      // Default styling - subclasses typically override position
       if (!this.container.style.position) {
-        this.container.style.position = 'fixed';
+        this.container.style.position = 'relative';
       }
       if (!this.container.style.zIndex) {
         this.container.style.zIndex = '10';
@@ -46,47 +42,13 @@ namespace Jamble {
     }
     
     /**
-     * Reposition the UI component based on the game element's current position.
-     * Uses the same logic as the shop UI for consistent positioning.
-     */
-    protected reposition(): void {
-      if (!this.isVisible) return;
-      
-      const gameRect = this.gameElement.getBoundingClientRect();
-      const position = this.calculatePosition(gameRect);
-      
-      this.container.style.left = `${position.left}px`;
-      this.container.style.top = `${position.top}px`;
-    }
-    
-    /**
-     * Calculate the position for this component based on the game element's bounds.
-     * Subclasses should implement this to define their specific positioning logic.
-     */
-    protected abstract calculatePosition(gameRect: DOMRect): { left: number; top: number };
-    
-    /**
-     * Set up window resize listener to handle repositioning.
-     */
-    private setupResizeListener(): void {
-      window.addEventListener('resize', () => {
-        if (this.isVisible) {
-          this.reposition();
-        }
-      });
-    }
-    
-    /**
-     * Show the UI component and position it correctly.
+     * Show the UI component.
      */
     show(): void {
       if (!this.isVisible) {
         this.isVisible = true;
         this.container.style.display = 'block';
         this.mountNode.appendChild(this.container);
-        if (this.autoReposition) {
-          setTimeout(() => this.reposition(), 0); // Wait for DOM update
-        }
       }
     }
     

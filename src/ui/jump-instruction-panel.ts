@@ -10,7 +10,7 @@ namespace Jamble {
     private onJumpCallback: (() => void) | null = null;
 
     constructor(parentContainer: HTMLElement) {
-      super(parentContainer, { mountNode: parentContainer, autoReposition: false });
+      super(parentContainer, { mountNode: parentContainer });
       this.setupStyles();
       this.setupClickHandler();
       this.mountNode.appendChild(this.container);
@@ -40,10 +40,6 @@ namespace Jamble {
       container.style.position = 'relative';
       container.textContent = 'TAP OR SPACE TO JUMP';
       return container;
-    }
-
-    protected calculatePosition(_gameRect: DOMRect): { left: number; top: number } {
-      return { left: 0, top: 0 };
     }
 
     show(): void {

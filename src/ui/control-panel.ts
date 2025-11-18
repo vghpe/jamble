@@ -16,7 +16,7 @@ namespace Jamble {
     private stateManager: any;
 
     constructor(parentContainer: HTMLElement) {
-      super(parentContainer, { mountNode: parentContainer, autoReposition: false });
+      super(parentContainer, { mountNode: parentContainer });
       this.setupStyles();
       this.createModules();
       this.show();
@@ -26,13 +26,8 @@ namespace Jamble {
       const container = document.createElement('div');
       container.id = 'control-panel';
       container.className = 'control-panel';
-      // Ensure UIComponent doesn't force position: fixed
       container.style.position = 'relative';
       return container;
-    }
-
-    protected calculatePosition(_gameRect: DOMRect): { left: number; top: number } {
-      return { left: 0, top: 0 };
     }
 
     show(): void {
