@@ -1,11 +1,13 @@
+/// <reference path="../../ui-element-base.ts" />
+/// <reference path="../../../systems/editor-mode-manager.ts" />
+
 namespace Jamble {
   /**
    * Crescendo Monitor - vertical progress bar showing crescendo level (0-1).
    * Simple display component - value is controlled externally by NPC system.
    * Features a pink heart emoji above the bar for UX clarity.
    */
-  export class CrescendoMonitor {
-    private container: HTMLElement;
+  export class CrescendoMonitor extends UIElement implements IInstrumentComponent {
     private heartCanvas: HTMLCanvasElement;
     private heartCtx: CanvasRenderingContext2D;
     private fillCanvas: HTMLCanvasElement;
@@ -24,11 +26,14 @@ namespace Jamble {
     private waveAmplitude: number = 0.5; // pixels of vertical wave height
 
     constructor(parent: HTMLElement, width: number, height: number) {
+      // Create container first
+      const container = document.createElement('div');
+      super(container);
+      
       this.width = width;
       this.height = height;
 
-      // Create container - white background with border to match other panels
-      this.container = document.createElement('div');
+      // Set container styles - white background with border to match other panels
       this.container.style.cssText = `
         width: ${width}px;
         height: ${height}px;
@@ -87,6 +92,37 @@ namespace Jamble {
       this.container.appendChild(this.fillCanvas);
       this.container.appendChild(this.heartCanvas);
       parent.appendChild(this.container);
+      
+      // Listen for editor mode changes
+      window.addEventListener('jamble:editor-mode-change', () => {
+        this.updateDimming();
+      });
+    }
+    
+    /**
+     * IInstrumentComponent: Get category
+     */
+    getCategory(): 'monitor' | 'control' {
+      return 'monitor';
+    }
+    
+    /**
+     * IInstrumentComponent: Determine if should dim in editor mode
+     * Monitors dim during any editor mode
+     */
+    shouldDimInEditorMode(editorMode: string, _activeControlId: string | null): boolean {
+      return editorMode !== 'none';
+    }
+    
+    /**
+     * Update dimming based on current editor mode
+     */
+    private updateDimming(): void {
+      const editorModeManager = EditorModeManager.getInstance();
+      const mode = editorModeManager.getCurrentMode();
+      const activeControl = editorModeManager.getActiveControlId();
+      const shouldDim = this.shouldDimInEditorMode(mode, activeControl);
+      this.setDimmed(shouldDim);
     }
 
     /**
@@ -236,22 +272,5 @@ namespace Jamble {
     
     getWaveAmplitude(): number { return this.waveAmplitude; }
     setWaveAmplitude(value: number): void { this.waveAmplitude = value; }
-
-    /**
-     * Clean up
-     */
-    destroy(): void {
-      if (this.container.parentElement) {
-        this.container.parentElement.removeChild(this.container);
-      }
-    }
-
-    /**
-     * Dim/undim panel for editor mode
-     */
-    setDimmed(dimmed: boolean): void {
-      this.container.style.opacity = dimmed ? '0.5' : '1';
-      this.container.style.pointerEvents = dimmed ? 'none' : 'auto';
-    }
   }
 }

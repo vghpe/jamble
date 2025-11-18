@@ -1,3 +1,6 @@
+/// <reference path="../../ui-element-base.ts" />
+/// <reference path="../../../systems/editor-mode-manager.ts" />
+
 namespace Jamble {
   export interface ControlConfig {
     id: string;
@@ -8,28 +11,57 @@ namespace Jamble {
    * Base class for all instrument controls.
    * Handles common functionality like reset events, DOM structure, and lifecycle.
    */
-  export abstract class InstrumentControl {
-    protected element: HTMLElement;
+  export abstract class InstrumentControl extends UIElement implements IInstrumentComponent {
     protected config: ControlConfig;
 
     constructor(config: ControlConfig) {
+      // Create element first
+      const element = document.createElement('div');
+      super(element);
+      
       this.config = config;
-      this.element = this.createElement();
+      
+      // Apply base styling
+      this.container.className = 'control-module';
+      this.container.dataset.moduleId = this.config.id;
+      this.applyGridSizeClass(this.container);
+      
+      this.initializeElement();
       this.setupResetListener();
       this.setupEditorModeListener();
     }
-
+    
     /**
-     * Create the DOM element for this module.
+     * Initialize the control element (called after container is set up)
      * Subclasses should implement their specific structure.
+     * Should set up this.container with the control's DOM structure.
      */
-    protected abstract createElement(): HTMLElement;
+    protected abstract initializeElement(): void;
 
     /**
      * Reset module to default state.
      * Subclasses should implement their specific reset logic.
      */
     protected abstract resetState(): void;
+    
+    /**
+     * IInstrumentComponent: Get category
+     */
+    getCategory(): 'monitor' | 'control' {
+      return 'control';
+    }
+    
+    /**
+     * IInstrumentComponent: Determine if should dim in editor mode
+     * Controls dim unless they are the active control
+     */
+    shouldDimInEditorMode(editorMode: string, activeControlId: string | null): boolean {
+      if (editorMode === 'none') {
+        return false; // Not dimmed when no editor mode
+      }
+      // Dim unless this control is the active one
+      return activeControlId !== this.config.id;
+    }
 
     /**
      * Update module (called from game loop).
@@ -60,24 +92,25 @@ namespace Jamble {
      * Listen for editor mode changes to dim/disable inactive modules.
      */
     private setupEditorModeListener(): void {
-      window.addEventListener('jamble:editor-mode-change', ((e: CustomEvent) => {
-        const mode = e.detail.mode;
-        const isActiveEditor = this.shouldStayActiveInEditorMode(mode);
-        
-        if (mode === 'none') {
-          // Exit editor mode - restore normal state
-          this.element.style.opacity = '1';
-          this.element.style.pointerEvents = 'auto';
-        } else {
-          // In editor mode - dim and disable unless this module is the active editor
-          this.element.style.opacity = isActiveEditor ? '1' : '0.5';
-          this.element.style.pointerEvents = isActiveEditor ? 'auto' : 'none';
-        }
-      }) as EventListener);
+      window.addEventListener('jamble:editor-mode-change', () => {
+        this.updateDimming();
+      });
+    }
+    
+    /**
+     * Update dimming based on current editor mode
+     */
+    private updateDimming(): void {
+      const editorModeManager = EditorModeManager.getInstance();
+      const mode = editorModeManager.getCurrentMode();
+      const activeControl = editorModeManager.getActiveControlId();
+      const shouldDim = this.shouldDimInEditorMode(mode, activeControl);
+      this.setDimmed(shouldDim);
     }
 
     /**
      * Override in subclasses to stay active during specific editor modes.
+     * @deprecated Use shouldDimInEditorMode instead
      * @param mode The current editor mode ('tree-placement', etc.)
      * @returns true if this module should stay active (not dimmed)
      */
@@ -89,7 +122,7 @@ namespace Jamble {
      * Get the DOM element for mounting.
      */
     getElement(): HTMLElement {
-      return this.element;
+      return this.container;
     }
 
     /**

@@ -1,9 +1,12 @@
+/// <reference path="../../ui-element-base.ts" />
+/// <reference path="../../../systems/editor-mode-manager.ts" />
+
 namespace Jamble {
   /**
    * Portrait Monitor - Player character display (formerly PlayerPortrait)  
    * Renders emoji character states in a bordered canvas
    */
-  export class PortraitMonitor {
+  export class PortraitMonitor extends UIElement implements IInstrumentComponent {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
     private size: number;
@@ -11,6 +14,10 @@ namespace Jamble {
     private npc: BaseNPC | null = null;
     
     constructor(parent: HTMLElement, size: number) {
+      // Create canvas container first
+      const container = document.createElement('div');
+      super(container);
+      
       this.size = size;
       this.canvas = document.createElement('canvas');
       this.canvas.width = size;
@@ -30,7 +37,39 @@ namespace Jamble {
       this.ctx = this.canvas.getContext('2d')!;
       this.ctx.scale(dpr, dpr);
       
-      parent.appendChild(this.canvas);
+      parent.appendChild(this.container);
+      this.container.appendChild(this.canvas);
+      
+      // Listen for editor mode changes
+      window.addEventListener('jamble:editor-mode-change', () => {
+        this.updateDimming();
+      });
+    }
+    
+    /**
+     * IInstrumentComponent: Get category
+     */
+    getCategory(): 'monitor' | 'control' {
+      return 'monitor';
+    }
+    
+    /**
+     * IInstrumentComponent: Determine if should dim in editor mode
+     * Monitors dim during any editor mode
+     */
+    shouldDimInEditorMode(editorMode: string, _activeControlId: string | null): boolean {
+      return editorMode !== 'none';
+    }
+    
+    /**
+     * Update dimming based on current editor mode
+     */
+    private updateDimming(): void {
+      const editorModeManager = EditorModeManager.getInstance();
+      const mode = editorModeManager.getCurrentMode();
+      const activeControl = editorModeManager.getActiveControlId();
+      const shouldDim = this.shouldDimInEditorMode(mode, activeControl);
+      this.setDimmed(shouldDim);
     }
     
     setExpression(expression: NPCExpressionDescriptor): void {
@@ -94,14 +133,6 @@ namespace Jamble {
         
 
       }
-    }
-
-    /**
-     * Dim/undim panel for editor mode
-     */
-    setDimmed(dimmed: boolean): void {
-      this.canvas.style.opacity = dimmed ? '0.5' : '1';
-      this.canvas.style.pointerEvents = dimmed ? 'none' : 'auto';
     }
   }
 }

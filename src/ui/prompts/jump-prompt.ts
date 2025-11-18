@@ -1,19 +1,35 @@
-/// <reference path="../ui-component-base.ts" />
+/// <reference path="../ui-element-base.ts" />
+/// <reference path="../../systems/state-manager.ts" />
 
 namespace Jamble {
   /**
    * Jump Instruction Panel - Shows "TAP OR SPACE TO JUMP" during run mode
    * Replaces the control panel area with soft gray instructional text
    */
-  export class JumpPrompt extends UIComponent {
-    private stateManager: any;
+  export class JumpPrompt extends UIElement implements IUXPrompt {
+    private stateManager: StateManager | null = null;
     private onJumpCallback: (() => void) | null = null;
 
     constructor(parentContainer: HTMLElement) {
-      super(parentContainer, { mountNode: parentContainer });
+      // Create container first
+      const container = document.createElement('div');
+      super(container);
+      
+      this.container.id = 'jump-instruction-panel';
+      this.container.className = 'jump-instruction-panel';
+      this.container.style.position = 'relative';
+      this.container.textContent = 'TAP OR SPACE TO JUMP';
+      
       this.setupStyles();
       this.setupClickHandler();
-      this.mountNode.appendChild(this.container);
+      parentContainer.appendChild(this.container);
+    }
+    
+    /**
+     * IUXPrompt: Determine if should show in game state
+     */
+    shouldShowInState(gameState: string): boolean {
+      return gameState === 'running';
     }
 
     private setupClickHandler(): void {
@@ -33,15 +49,6 @@ namespace Jamble {
       this.onJumpCallback = callback;
     }
 
-    protected createContainer(): HTMLElement {
-      const container = document.createElement('div');
-      container.id = 'jump-instruction-panel';
-      container.className = 'jump-instruction-panel';
-      container.style.position = 'relative';
-      container.textContent = 'TAP OR SPACE TO JUMP';
-      return container;
-    }
-
     show(): void {
       if (this.isVisible) return;
       this.isVisible = true;
@@ -55,6 +62,10 @@ namespace Jamble {
       if (!this.isVisible) return;
       this.isVisible = false;
       this.container.classList.remove('visible');
+    }
+    
+    update(_deltaTime: number): void {
+      // No per-frame updates needed
     }
 
     private setupStyles(): void {
@@ -94,7 +105,7 @@ namespace Jamble {
     /**
      * Set state manager for visibility control
      */
-    setStateManager(stateManager: any): void {
+    setStateManager(stateManager: StateManager): void {
       this.stateManager = stateManager;
     }
 

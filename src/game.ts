@@ -596,13 +596,13 @@ namespace Jamble {
       if (this.stateManager.isIdle() && !this.stateManager.isInEditorMode()) {
         // Center the tap circle on the player's center (10px above anchor)
         const playerCenterY = this.player.transform.y - 10;
-        if (!this.tapIndicator.isVisible()) {
-          this.tapIndicator.show(this.player.transform.x, playerCenterY);
+        if (!this.tapIndicator.isShown()) {
+          this.tapIndicator.showAt(this.player.transform.x, playerCenterY);
         } else {
           this.tapIndicator.updatePosition(this.player.transform.x, playerCenterY);
         }
       } else {
-        if (this.tapIndicator.isVisible()) {
+        if (this.tapIndicator.isShown()) {
           this.tapIndicator.hide();
         }
       }
@@ -622,7 +622,7 @@ namespace Jamble {
       this.hudManager.render();
       
       // Render tap indicator
-      if (this.tapIndicator.isVisible()) {
+      if (this.tapIndicator.isShown()) {
         this.tapIndicator.render();
       }
     }

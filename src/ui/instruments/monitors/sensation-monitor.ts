@@ -1,4 +1,5 @@
 /// <reference path="line-graph-base.ts" />
+/// <reference path="../../../systems/editor-mode-manager.ts" />
 
 namespace Jamble {
   /**

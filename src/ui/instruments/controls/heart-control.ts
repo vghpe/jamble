@@ -16,11 +16,9 @@ namespace Jamble {
       super(config);
     }
 
-    protected createElement(): HTMLElement {
+    protected initializeElement(): void {
       // Initialize uses before creating elements
       this.usesRemaining = HeartControl.MAX_USES;
-      
-      const element = this.createBaseElement();
       
       this.button = document.createElement('button');
       this.button.className = 'module-button';
@@ -31,11 +29,9 @@ namespace Jamble {
       this.updateUsesDisplay();
       
       this.button.appendChild(this.usesDisplay);
-      element.appendChild(this.button);
+      this.container.appendChild(this.button);
       
       this.setupInteraction();
-      
-      return element;
     }
 
     private setupInteraction(): void {

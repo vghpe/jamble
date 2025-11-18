@@ -28,12 +28,11 @@ namespace Jamble {
       }
     }
 
-    protected createElement(): HTMLElement {
+    protected initializeElement(): void {
       // Initialize value before creating elements
       this.value = SoftnessControl.DEFAULT_VALUE;
       
-      const element = this.createBaseElement();
-      element.classList.add('module-slider');
+      this.container.classList.add('module-slider');
       
       this.label = document.createElement('div');
       this.label.className = 'module-label';
@@ -56,12 +55,10 @@ namespace Jamble {
       sliderContainer.appendChild(this.slider);
       sliderContainer.appendChild(this.valueDisplay);
       
-      element.appendChild(this.label);
-      element.appendChild(sliderContainer);
+      this.container.appendChild(this.label);
+      this.container.appendChild(sliderContainer);
       
       this.setupInteraction();
-      
-      return element;
     }
 
     private setupInteraction(): void {

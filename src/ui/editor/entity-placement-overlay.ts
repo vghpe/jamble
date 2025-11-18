@@ -1,4 +1,5 @@
 /// <reference path="../../slots/slot-manager.ts" />
+/// <reference path="../ui-element-base.ts" />
 
 namespace Jamble {
   /**
@@ -6,7 +7,7 @@ namespace Jamble {
    * Renders full circles at ground slot positions (extended canvas allows bottom half to show)
    * Blue for available slots, orange for occupied slots (trees can be removed)
    */
-  export class EntityPlacementOverlay {
+  export class EntityPlacementOverlay extends UIElement {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
     private backgroundCanvas: HTMLCanvasElement; // For unavailable slot indicators
@@ -15,7 +16,6 @@ namespace Jamble {
     private gameWidth: number;
     private gameHeight: number;
     private readonly overlayPadding: number = 40; // Match canvas-host padding-bottom
-    private isVisible: boolean = false;
     
     // Visual constants
     private readonly circleRadius: number = 33; // 1.5x larger: 22 * 1.5 = 33 (66px diameter)
@@ -28,6 +28,10 @@ namespace Jamble {
     private occupiedSlotIds: Set<string> = new Set();
     
     constructor(parent: HTMLElement, slotManager: SlotManager, gameWidth: number, gameHeight: number) {
+      // Create container first
+      const container = document.createElement('div');
+      super(container);
+      
       this.slotManager = slotManager;
       this.gameWidth = gameWidth;
       this.gameHeight = gameHeight;
@@ -162,7 +166,7 @@ namespace Jamble {
     /**
      * Render full circles at ground slot positions with small slot indicators
      */
-    private render(): void {
+    render(): void {
       this.ctx.clearRect(0, 0, this.gameWidth, this.gameHeight + this.overlayPadding);
       
       // First, draw small circles for ALL slots (underneath)
@@ -182,6 +186,13 @@ namespace Jamble {
           this.drawFullCircle(slot.x, offsetY, color);
         }
       });
+    }
+    
+    /**
+     * Update method (required by UIElement)
+     */
+    update(_deltaTime: number): void {
+      // No per-frame updates needed
     }
     
     /**
@@ -256,6 +267,7 @@ namespace Jamble {
       if (this.backgroundCanvas.parentElement) {
         this.backgroundCanvas.parentElement.removeChild(this.backgroundCanvas);
       }
+      super.destroy();
     }
   }
 }

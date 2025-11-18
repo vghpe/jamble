@@ -1,3 +1,5 @@
+/// <reference path="editor-mode-manager.ts" />
+
 namespace Jamble {
   export type GameState = 'transition' | 'idle' | 'run';
   export type EditorMode = 'none' | 'tree-placement';
@@ -6,9 +8,11 @@ namespace Jamble {
     private currentState: GameState = 'transition';
     private editorMode: EditorMode = 'none';
     private stateStartTime: number = 0;
+    private editorModeManager: EditorModeManager;
 
     constructor() {
       this.currentState = 'transition';
+      this.editorModeManager = EditorModeManager.getInstance();
       this.stateStartTime = Date.now();
     }
 
@@ -71,18 +75,14 @@ namespace Jamble {
     enterTreePlacementMode(): void {
       if (this.editorMode !== 'tree-placement') {
         this.editorMode = 'tree-placement';
-        window.dispatchEvent(new CustomEvent('jamble:editor-mode-change', {
-          detail: { mode: 'tree-placement' }
-        }));
+        this.editorModeManager.enterEditorMode('entity-placement', 'tree');
       }
     }
 
     exitEditorMode(): void {
       if (this.editorMode !== 'none') {
         this.editorMode = 'none';
-        window.dispatchEvent(new CustomEvent('jamble:editor-mode-change', {
-          detail: { mode: 'none' }
-        }));
+        this.editorModeManager.exitEditorMode();
       }
     }
 

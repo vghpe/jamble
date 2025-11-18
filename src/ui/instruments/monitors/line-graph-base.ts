@@ -1,3 +1,6 @@
+/// <reference path="../../ui-element-base.ts" />
+/// <reference path="../../../systems/editor-mode-manager.ts" />
+
 namespace Jamble {
   export interface LineGraphOptions {
     sampleSpacing?: number;
@@ -13,7 +16,7 @@ namespace Jamble {
    * Handles canvas setup, EMA smoothing, buffer management and rendering.
    * Subclasses provide data samples via generateSample().
    */
-  export abstract class LineGraphPanel {
+  export abstract class LineGraphPanel extends UIElement implements IInstrumentComponent {
     protected canvas: HTMLCanvasElement;
     protected ctx: CanvasRenderingContext2D;
     protected dataBuffer: number[] = [];
@@ -33,6 +36,10 @@ namespace Jamble {
     private devicePixelRatio: number;
 
     constructor(parent: HTMLElement, width: number, height: number, options: LineGraphOptions = {}) {
+      // Create container first for UIElement
+      const container = document.createElement('div');
+      super(container);
+      
       this.sampleSpacing = options.sampleSpacing ?? 1;
       this.scrollSpeed = options.scrollSpeed ?? 50;
       this.smoothing = options.smoothing ?? 0.3;
@@ -50,10 +57,42 @@ namespace Jamble {
 
       this.installCanvasSizing(width, height);
 
-      parent.appendChild(this.canvas);
+      this.container.appendChild(this.canvas);
+      parent.appendChild(this.container);
 
       this.maxBufferSize = Math.ceil(this.logicalWidth / this.sampleSpacing) + 10;
       this.resetBuffer();
+      
+      // Listen for editor mode changes
+      window.addEventListener('jamble:editor-mode-change', () => {
+        this.updateDimming();
+      });
+    }
+    
+    /**
+     * IInstrumentComponent: Get category
+     */
+    getCategory(): 'monitor' | 'control' {
+      return 'monitor';
+    }
+    
+    /**
+     * IInstrumentComponent: Determine if should dim in editor mode
+     * Monitors dim during any editor mode
+     */
+    shouldDimInEditorMode(editorMode: string, _activeControlId: string | null): boolean {
+      return editorMode !== 'none';
+    }
+    
+    /**
+     * Update dimming based on current editor mode
+     */
+    private updateDimming(): void {
+      const editorModeManager = EditorModeManager.getInstance();
+      const mode = editorModeManager.getCurrentMode();
+      const activeControl = editorModeManager.getActiveControlId();
+      const shouldDim = this.shouldDimInEditorMode(mode, activeControl);
+      this.setDimmed(shouldDim);
     }
 
     /**

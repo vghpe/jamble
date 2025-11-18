@@ -1,20 +1,25 @@
+/// <reference path="../ui-element-base.ts" />
+
 namespace Jamble {
   /**
    * Tap Indicator - Shows a blue dotted circle around the player when they can be tapped
    */
-  export class TapPrompt {
+  export class TapPrompt extends UIElement implements IUXPrompt {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
     private gameWidth: number;
     private gameHeight: number;
     private readonly overlayPadding: number = 40; // Match canvas-host padding-bottom
     private readonly circleRadius: number = 33; // 1.5x larger: 22 * 1.5 = 33 (66px diameter)
-    private visible: boolean = false;
     private playerX: number = 0;
     private playerY: number = 0;
     private onTapCallback?: () => void;
 
     constructor(canvasHost: HTMLElement, gameWidth: number, gameHeight: number) {
+      // Create container first
+      const container = document.createElement('div');
+      super(container);
+      
       this.gameWidth = gameWidth;
       this.gameHeight = gameHeight;
       
@@ -42,7 +47,8 @@ namespace Jamble {
       this.ctx = ctx;
       this.ctx.scale(dpr, dpr);
       
-      canvasHost.appendChild(this.canvas);
+      this.container.appendChild(this.canvas);
+      canvasHost.appendChild(this.container);
       
       // Setup pointerdown handler for instant response (no click delay)
       this.canvas.addEventListener('pointerdown', (e) => {
@@ -50,12 +56,24 @@ namespace Jamble {
         this.handleClick(e);
       });
     }
+    
+    /**
+     * IUXPrompt: Determine if should show in game state
+     */
+    shouldShowInState(gameState: string): boolean {
+      // Tap prompt shows when player is idle/tappable
+      return gameState === 'idle';
+    }
+    
+    update(_deltaTime: number): void {
+      // No per-frame updates needed beyond render
+    }
 
     /**
      * Show the tap indicator at the player's position
      */
-    show(playerX: number, playerY: number): void {
-      this.visible = true;
+    showAt(playerX: number, playerY: number): void {
+      this.isVisible = true;
       this.playerX = playerX;
       this.playerY = playerY;
       this.canvas.style.display = 'block';
@@ -66,7 +84,7 @@ namespace Jamble {
      * Hide the tap indicator
      */
     hide(): void {
-      this.visible = false;
+      this.isVisible = false;
       this.canvas.style.display = 'none';
       this.clear();
     }
@@ -75,7 +93,7 @@ namespace Jamble {
      * Update player position (call each frame while visible)
      */
     updatePosition(playerX: number, playerY: number): void {
-      if (!this.visible) return;
+      if (!this.isVisible) return;
       this.playerX = playerX;
       this.playerY = playerY;
     }
@@ -91,7 +109,7 @@ namespace Jamble {
      * Render the blue dotted circle
      */
     render(): void {
-      if (!this.visible) return;
+      if (!this.isVisible) return;
       
       this.clear();
       
@@ -119,7 +137,7 @@ namespace Jamble {
      * Handle click/tap on the canvas
      */
     private handleClick(event: MouseEvent): void {
-      if (!this.visible || !this.onTapCallback) return;
+      if (!this.isVisible || !this.onTapCallback) return;
       
       const rect = this.canvas.getBoundingClientRect();
       const scaleX = this.gameWidth / rect.width;
@@ -135,23 +153,6 @@ namespace Jamble {
       
       if (distance <= this.circleRadius) {
         this.onTapCallback();
-      }
-    }
-
-    /**
-     * Check if currently visible
-     */
-    isVisible(): boolean {
-      return this.visible;
-    }
-
-    /**
-     * Destroy and clean up
-     */
-    destroy(): void {
-      this.canvas.removeEventListener('pointerdown', this.handleClick.bind(this));
-      if (this.canvas.parentNode) {
-        this.canvas.parentNode.removeChild(this.canvas);
       }
     }
   }

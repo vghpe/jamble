@@ -1,6 +1,6 @@
 /// <reference path="ui-component-base.ts" />
 /// <reference path="instruments/monitors/portrait-monitor.ts" />
-/// <reference path="instruments/monitors/activity-monitor.ts" />
+/// <reference path="instruments/monitors/heart-rate-monitor.ts" />
 /// <reference path="instruments/monitors/sensation-monitor.ts" />
 /// <reference path="instruments/monitors/crescendo-monitor.ts" />
 /// <reference path="control-panel.ts" />
@@ -14,7 +14,7 @@ namespace Jamble {
   export class HUDManager extends UIComponent {
     private hudOverlay!: HTMLElement;
     private portraitPanel!: PortraitMonitor;
-    private heartRatePanel!: ActivityMonitor;
+    private heartRatePanel!: HeartRateMonitor;
     private sensationPanel!: SensationMonitor;
     private monitorContainer!: HTMLElement;
     private crescendoPanel!: CrescendoMonitor;
@@ -38,7 +38,6 @@ namespace Jamble {
       this.createPanelWrapper();
       this.createControlPanel();
       this.createJumpInstructionPanel();
-      this.setupEditorModeListener();
       this.show(); // Show HUD immediately (control panel visibility controlled separately)
     }
     
@@ -101,7 +100,7 @@ namespace Jamble {
       const halfWidth = Math.floor(monitorWidth / 2);
       const secondWidth = monitorWidth - halfWidth;
       
-      this.heartRatePanel = new ActivityMonitor(monitorContainer, halfWidth, this.portraitSize, {
+      this.heartRatePanel = new HeartRateMonitor(monitorContainer, halfWidth, this.portraitSize, {
         strokeStyle: '#757575'
       });
       
@@ -149,18 +148,6 @@ namespace Jamble {
 
     private createJumpInstructionPanel(): void {
       this.jumpInstructionPanel = new JumpPrompt(this.panelWrapper);
-    }
-    
-    /**
-     * Listen for editor mode changes and dim HUD panels accordingly
-     */
-    private setupEditorModeListener(): void {
-      window.addEventListener('jamble:editor-mode-change', ((e: CustomEvent) => {
-        const dimmed = e.detail.mode !== 'none';
-        this.portraitPanel.setDimmed(dimmed);
-        this.monitorContainer.style.opacity = dimmed ? '0.5' : '1';
-        this.crescendoPanel.setDimmed(dimmed);
-      }) as EventListener);
     }
     
     /**
