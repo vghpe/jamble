@@ -166,7 +166,27 @@ namespace Jamble {
         // Setup tree placement system
         this.setupTreePlacement();
         
-        this.TempEntitiesLayout();
+        // Create level using LevelManager
+        const levelData = this.levelManager.createSomaLevel(
+          this.slotManager,
+          this.activeNPC,
+          this.gameWidth,
+          this.gameHeight
+        );
+        
+        // Track spawned entities
+        this.home = levelData.home;
+        this.knobs = levelData.knobs;
+        this.homeSensor = levelData.homeSensor;
+        this.groundSensor = levelData.groundSensor;
+        this.gameObjects.push(...levelData.allEntities);
+        
+        // Setup home sensor behavior
+        this.setupHomeSensor();
+        
+        // Setup ground sensor behavior
+        this.setupGroundSensor();
+        
         this.setupInput();
         
         // Initialize active NPC
@@ -447,72 +467,33 @@ namespace Jamble {
       this.gameObjects.push(this.player);
     }
 
-    private TempEntitiesLayout() {
-      const groundSlots = this.slotManager.getSlotsByType('ground');
-      const lowAirSlots = this.slotManager.getAvailableSlots('air_low');
-
-      // Place home at the first ground slot (leftmost)
-      if (groundSlots.length > 0) {
-        const homeSlot = groundSlots[0];
-        this.home = new Home('home', homeSlot.x, homeSlot.y);
-        this.gameObjects.push(this.home);
-        this.slotManager.occupySlot(homeSlot.id, this.home.id);
-        
-        // Add home sensor - attached to home, just above it
-        this.homeSensor = new Sensor('home-sensor', this.home, 0, -20);
-        this.homeSensor.setTriggerSize(30, 10); // Narrower point sensor
-        this.homeSensor.onTriggerEnter = (other: GameObject) => {
-          if (other.id === 'player') {
-            // Check if we're in the initial transition state (game start)
-            if (this.stateManager.isTransition() && this.player.velocityX === 0) {
-              // No movement at game start - go directly to idle
-              this.stateManager.enterIdle();
-              this.homeSensor.setEnabled(false);
-              this.skillManager.setSkillEnabled('jump', false);
-            } else if (!this.stateManager.isTransition() && !this.stateManager.isIdle()) {
-              // Coming from run state - enter transition
-              this.stateManager.enterTransition();
-              this.homeSensor.setEnabled(false);
-              // Disable jump during transition
-              this.skillManager.setSkillEnabled('jump', false);
-            }
+    private setupHomeSensor(): void {
+      this.homeSensor.onTriggerEnter = (other: GameObject) => {
+        if (other.id === 'player') {
+          // Check if we're in the initial transition state (game start)
+          if (this.stateManager.isTransition() && this.player.velocityX === 0) {
+            // No movement at game start - go directly to idle
+            this.stateManager.enterIdle();
+            this.homeSensor.setEnabled(false);
+            this.skillManager.setSkillEnabled('jump', false);
+          } else if (!this.stateManager.isTransition() && !this.stateManager.isIdle()) {
+            // Coming from run state - enter transition
+            this.stateManager.enterTransition();
+            this.homeSensor.setEnabled(false);
+            // Disable jump during transition
+            this.skillManager.setSkillEnabled('jump', false);
           }
-        };
-        this.gameObjects.push(this.homeSensor);
-      }
+        }
+      };
+    }
 
-      // Get available slots after home placement
-      const availableGroundSlots = this.slotManager.getAvailableSlots('ground');
-
-      // Trees are now placed via tree placement overlay (no default tree spawn)
-
-      // Place knob at the fourth available ground slot
-      if (availableGroundSlots.length > 3) {
-        const knobSlot = availableGroundSlots[3];
-        const knob = new Knob('knob1', knobSlot.x, knobSlot.y, this.slotManager, knobSlot.id, this.activeNPC);
-        this.gameObjects.push(knob);
-        this.knobs.push(knob);  // Track for pain threshold
-        this.slotManager.occupySlot(knobSlot.id, knob.id);
-      }
-
-      // Place platform at the third low air slot
-      if (lowAirSlots.length > 2) {
-        const platformSlot = lowAirSlots[2];
-        const platform = new Platform('platform1', platformSlot.x, platformSlot.y);
-        this.gameObjects.push(platform);
-        this.slotManager.occupySlot(platformSlot.id, platform.id);
-      }
-      
-      // Add ground sensor - static sensor just above ground level for re-enabling home
-      this.groundSensor = new Sensor('ground-sensor', undefined, this.gameWidth / 2, this.gameHeight - 5);
-      this.groundSensor.setTriggerSize(this.gameWidth, 5); // Full width ground sensor, very thin
+    private setupGroundSensor(): void {
       this.groundSensor.onTriggerEnter = (other: GameObject) => {
         if (other.id === 'player' && this.stateManager.isRunning()) {
           // Re-enable home sensor when player touches ground while running
           this.homeSensor.setEnabled(true);
         }
       };
-      this.gameObjects.push(this.groundSensor);
     }
 
     private setupInput() {

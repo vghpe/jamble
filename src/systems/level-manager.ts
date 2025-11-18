@@ -1,9 +1,27 @@
 /// <reference path="../npc/base-npc.ts" />
+/// <reference path="../entities/home.ts" />
+/// <reference path="../entities/knob/knob.ts" />
+/// <reference path="../entities/platform.ts" />
+/// <reference path="../entities/sensor.ts" />
+/// <reference path="../slots/slot-manager.ts" />
+/// <reference path="../core/game-object.ts" />
 
 namespace Jamble {
   /**
-   * LevelManager - manages level progression and win conditions.
-   * Currently monitors NPC crescendo threshold for level completion.
+   * Data returned when creating a level
+   */
+  export interface LevelData {
+    home: Home;
+    knobs: Knob[];
+    homeSensor: Sensor;
+    groundSensor: Sensor;
+    allEntities: GameObject[];
+  }
+
+  /**
+   * LevelManager - manages level progression and entity spawning.
+   * Handles instantiation and initial placement of level entities.
+   * Does not handle progression (NPC system does that).
    */
   export class LevelManager {
     private currentNPC: BaseNPC | null = null;
@@ -94,6 +112,115 @@ namespace Jamble {
     destroy(): void {
       this.reset();
       this.levelCompleteListeners = [];
+    }
+
+    // ==================== Entity Spawning ====================
+    // Hardcoded methods that will serve as foundation for future level editor
+
+    /**
+     * Spawn home entity at the first ground slot
+     * Returns home and its sensor
+     */
+    spawnHome(slotManager: SlotManager, gameWidth: number, gameHeight: number): { home: Home; homeSensor: Sensor } {
+      const groundSlots = slotManager.getSlotsByType('ground');
+      if (groundSlots.length === 0) {
+        throw new Error('No ground slots available for home');
+      }
+
+      const homeSlot = groundSlots[0];
+      const home = new Home('home', homeSlot.x, homeSlot.y);
+      slotManager.occupySlot(homeSlot.id, home.id);
+
+      // Create home sensor - attached to home, just above it
+      const homeSensor = new Sensor('home-sensor', home, 0, -20);
+      homeSensor.setTriggerSize(30, 10); // Narrower point sensor
+      
+      return { home, homeSensor };
+    }
+
+    /**
+     * Spawn knob at specified ground slot index (from available slots)
+     */
+    spawnKnob(slotManager: SlotManager, npc: BaseNPC, slotIndex: number): Knob | null {
+      const availableGroundSlots = slotManager.getAvailableSlots('ground');
+      
+      if (availableGroundSlots.length <= slotIndex) {
+        console.warn(`Not enough available ground slots for knob at index ${slotIndex}`);
+        return null;
+      }
+
+      const knobSlot = availableGroundSlots[slotIndex];
+      const knob = new Knob(`knob${slotIndex + 1}`, knobSlot.x, knobSlot.y, slotManager, knobSlot.id, npc);
+      slotManager.occupySlot(knobSlot.id, knob.id);
+      
+      return knob;
+    }
+
+    /**
+     * Spawn platform at specified low air slot index
+     */
+    spawnPlatform(slotManager: SlotManager, slotIndex: number): Platform | null {
+      const lowAirSlots = slotManager.getAvailableSlots('air_low');
+      
+      if (lowAirSlots.length <= slotIndex) {
+        console.warn(`Not enough available air slots for platform at index ${slotIndex}`);
+        return null;
+      }
+
+      const platformSlot = lowAirSlots[slotIndex];
+      const platform = new Platform(`platform${slotIndex + 1}`, platformSlot.x, platformSlot.y);
+      slotManager.occupySlot(platformSlot.id, platform.id);
+      
+      return platform;
+    }
+
+    /**
+     * Create ground sensor for re-enabling home sensor
+     */
+    spawnGroundSensor(gameWidth: number, gameHeight: number): Sensor {
+      const groundSensor = new Sensor('ground-sensor', undefined, gameWidth / 2, gameHeight - 5);
+      groundSensor.setTriggerSize(gameWidth, 5); // Full width ground sensor, very thin
+      return groundSensor;
+    }
+
+    /**
+     * Create the Soma level (hardcoded for now, foundation for future editor)
+     * Returns all spawned entities for game to track
+     */
+    createSomaLevel(slotManager: SlotManager, npc: BaseNPC, gameWidth: number, gameHeight: number): LevelData {
+      const allEntities: GameObject[] = [];
+      const knobs: Knob[] = [];
+
+      // Spawn home (leftmost ground slot)
+      const { home, homeSensor } = this.spawnHome(slotManager, gameWidth, gameHeight);
+      allEntities.push(home, homeSensor);
+
+      // Trees are placed via tree placement overlay (no default spawn)
+
+      // Spawn knob at fourth available ground slot
+      const knob = this.spawnKnob(slotManager, npc, 3);
+      if (knob) {
+        allEntities.push(knob);
+        knobs.push(knob);
+      }
+
+      // Spawn platform at third low air slot
+      const platform = this.spawnPlatform(slotManager, 2);
+      if (platform) {
+        allEntities.push(platform);
+      }
+
+      // Spawn ground sensor for home re-enabling
+      const groundSensor = this.spawnGroundSensor(gameWidth, gameHeight);
+      allEntities.push(groundSensor);
+
+      return {
+        home,
+        knobs,
+        homeSensor,
+        groundSensor,
+        allEntities
+      };
     }
   }
 }
