@@ -243,37 +243,142 @@ namespace Jamble {
         throw error;
       }
     }
-    
-    /**
-     * Respawn all retracted knobs (called from heart control)
-     */
-    private respawnAllKnobs(): void {
-      const respawnedCount = this.levelManager.respawnAllKnobs();
-      
-      // Re-enable crescendo if any knobs were respawned
-      if (respawnedCount > 0) {
-        this.activeNPC.enableCrescendo();
-        this.activeNPC.resetPainExpression();
-        // Disable heart module (knob is now active)
-        this.hudManager.getControlPanel().disableHeart();
-      }
+
+    // ============================================================================
+    // Lifecycle Methods
+    // ============================================================================
+
+    start() {
+      const gameLoop = (currentTime: number) => {
+        // Calculate delta time (capped to avoid huge jumps)
+        const deltaTime = this.lastTime ? Math.min((currentTime - this.lastTime) / 1000, 0.1) : 0;
+        this.lastTime = currentTime;
+
+        this.update(deltaTime);
+        this.render();
+
+        requestAnimationFrame(gameLoop);
+      };
+
+      requestAnimationFrame(gameLoop);
     }
-    
-    /**
-     * Get debug section for registering with DebugSystem
-     */
-    getDebugSection(): Jamble.DebugSection {
-      return {
-        title: 'Game Controls',
-        controls: [
-          {
-            type: 'button',
-            label: 'Respawn All Knobs',
-            onClick: () => this.respawnAllKnobs()
+
+    private update(deltaTime: number) {
+      // Update input handler (state-driven input logic)
+      this.inputHandler.update(deltaTime);
+      
+      // Update active NPC (pass player for temperature-based decay)
+      this.activeNPC.update(deltaTime, this.player);
+      
+      // Update all game objects
+      this.gameObjects.forEach(obj => obj.update(deltaTime));
+      
+      // Resolve collisions against solid environment (platforms, trees, etc.)
+      this.collisionManager.update(this.gameObjects);
+      
+      // Update UI systems
+      if (this.debugSystem) {
+        this.debugSystem.update();
+      }
+      this.hudManager.updateControlPanel(); // Update control panel visibility
+      this.jumpInstructionPanel.updateVisibility(); // Update jump instruction panel visibility
+      this.hudManager.update(deltaTime);
+      
+      // Update tap prompt (self-manages visibility and positioning)
+      this.tapPrompt.update(deltaTime);
+    }
+
+    private render() {
+      this.renderer.render(this.gameObjects);
+      this.debugRenderer.render(
+        this.gameObjects, 
+        this.debugSystem ? this.debugSystem.getShowColliders() : false,
+        this.debugSystem ? this.debugSystem.getShowOrigins() : false,
+        this.debugSystem ? this.debugSystem.getShowSlots() : false,
+        this.slotManager.getAllSlots()
+      );
+      this.hudManager.render();
+      
+      // Render tap prompt (self-managed, but still needs render call)
+      this.tapPrompt.render();
+    }
+
+    // ============================================================================
+    // Initialization & Setup
+    // ============================================================================
+
+    private createPlayer() {
+      this.player = new Player(50, 0);
+      this.gameObjects.push(this.player);
+    }
+
+    private setupGameElement() {
+      this.gameShell.style.cssText = `
+        width: 100%;
+        max-width: ${this.gameWidth}px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin: 0 auto;
+        overflow: visible;
+      `;
+
+      this.canvasHost.style.cssText = `
+        position: relative;
+        width: 100%;
+        aspect-ratio: ${this.gameWidth} / ${this.gameHeight};
+        overflow: hidden;
+      `;
+      
+      // Setup resize listener to update HUD scaling
+      this.setupResizeListener();
+      // Apply initial scale
+      this.updateHUDScale();
+      
+      // Setup editor mode listener for dimming player and background
+      window.addEventListener('jamble:editor-mode-change', ((e: CustomEvent) => {
+        const dimmed = e.detail.mode !== 'none';
+        const alpha = dimmed ? 0.2 : 1.0; // Use 0.2 for more obvious testing
+        console.log('Editor mode changed:', e.detail.mode, 'Setting alpha to:', alpha);
+        this.player.render.opacity = alpha;
+        this.renderer.setBackgroundAlpha(alpha);
+      }) as EventListener);
+    }
+
+    private setupHomeSensor(): void {
+      const homeSensor = this.home.getSensor();
+      homeSensor.onTriggerEnter = (other: GameObject) => {
+        if (other.id === 'player') {
+          // Check if we're in the initial transition state (game start)
+          if (this.stateManager.isTransition() && this.player.velocityX === 0) {
+            // No movement at game start - go directly to idle
+            this.stateManager.enterIdle();
+            homeSensor.setEnabled(false);
+            this.skillManager.setSkillEnabled('jump', false);
+          } else if (!this.stateManager.isTransition() && !this.stateManager.isIdle()) {
+            // Coming from run state - enter transition
+            this.stateManager.enterTransition();
+            homeSensor.setEnabled(false);
+            // Disable jump during transition
+            this.skillManager.setSkillEnabled('jump', false);
           }
-        ]
+        }
       };
     }
+
+    private setupGroundSensor(): void {
+      const homeSensor = this.home.getSensor();
+      this.groundSensor.onTriggerEnter = (other: GameObject) => {
+        if (other.id === 'player' && this.stateManager.isRunning()) {
+          // Re-enable home sensor when player touches ground while running
+          homeSensor.setEnabled(true);
+        }
+      };
+    }
+
+    // ============================================================================
+    // Tree Placement System
+    // ============================================================================
 
     /**
      * Setup tree placement system - wire up all event listeners
@@ -381,37 +486,23 @@ namespace Jamble {
       this.treePlacementOverlay.setSlotOccupied(slotId, false);
     }
 
-    private setupGameElement() {
-      this.gameShell.style.cssText = `
-        width: 100%;
-        max-width: ${this.gameWidth}px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        margin: 0 auto;
-        overflow: visible;
-      `;
+    // ============================================================================
+    // Utility & Helper Methods
+    // ============================================================================
 
-      this.canvasHost.style.cssText = `
-        position: relative;
-        width: 100%;
-        aspect-ratio: ${this.gameWidth} / ${this.gameHeight};
-        overflow: hidden;
-      `;
+    /**
+     * Respawn all retracted knobs (called from heart control)
+     */
+    private respawnAllKnobs(): void {
+      const respawnedCount = this.levelManager.respawnAllKnobs();
       
-      // Setup resize listener to update HUD scaling
-      this.setupResizeListener();
-      // Apply initial scale
-      this.updateHUDScale();
-      
-      // Setup editor mode listener for dimming player and background
-      window.addEventListener('jamble:editor-mode-change', ((e: CustomEvent) => {
-        const dimmed = e.detail.mode !== 'none';
-        const alpha = dimmed ? 0.2 : 1.0; // Use 0.2 for more obvious testing
-        console.log('Editor mode changed:', e.detail.mode, 'Setting alpha to:', alpha);
-        this.player.render.opacity = alpha;
-        this.renderer.setBackgroundAlpha(alpha);
-      }) as EventListener);
+      // Re-enable crescendo if any knobs were respawned
+      if (respawnedCount > 0) {
+        this.activeNPC.enableCrescendo();
+        this.activeNPC.resetPainExpression();
+        // Disable heart module (knob is now active)
+        this.hudManager.getControlPanel().disableHeart();
+      }
     }
 
     /**
@@ -443,97 +534,20 @@ namespace Jamble {
       });
     }
 
-    private createPlayer() {
-      this.player = new Player(50, 0);
-      this.gameObjects.push(this.player);
-    }
-
-    private setupHomeSensor(): void {
-      const homeSensor = this.home.getSensor();
-      homeSensor.onTriggerEnter = (other: GameObject) => {
-        if (other.id === 'player') {
-          // Check if we're in the initial transition state (game start)
-          if (this.stateManager.isTransition() && this.player.velocityX === 0) {
-            // No movement at game start - go directly to idle
-            this.stateManager.enterIdle();
-            homeSensor.setEnabled(false);
-            this.skillManager.setSkillEnabled('jump', false);
-          } else if (!this.stateManager.isTransition() && !this.stateManager.isIdle()) {
-            // Coming from run state - enter transition
-            this.stateManager.enterTransition();
-            homeSensor.setEnabled(false);
-            // Disable jump during transition
-            this.skillManager.setSkillEnabled('jump', false);
+    /**
+     * Get debug section for registering with DebugSystem
+     */
+    getDebugSection(): Jamble.DebugSection {
+      return {
+        title: 'Game Controls',
+        controls: [
+          {
+            type: 'button',
+            label: 'Respawn All Knobs',
+            onClick: () => this.respawnAllKnobs()
           }
-        }
+        ]
       };
-    }
-
-    private setupGroundSensor(): void {
-      const homeSensor = this.home.getSensor();
-      this.groundSensor.onTriggerEnter = (other: GameObject) => {
-        if (other.id === 'player' && this.stateManager.isRunning()) {
-          // Re-enable home sensor when player touches ground while running
-          homeSensor.setEnabled(true);
-        }
-      };
-    }
-
-    private update(deltaTime: number) {
-      // Update input handler (state-driven input logic)
-      this.inputHandler.update(deltaTime);
-      
-      // Update active NPC (pass player for temperature-based decay)
-      this.activeNPC.update(deltaTime, this.player);
-      
-      // Update all game objects
-      this.gameObjects.forEach(obj => obj.update(deltaTime));
-      
-      // Resolve collisions against solid environment (platforms, trees, etc.)
-      this.collisionManager.update(this.gameObjects);
-      
-      // Update UI systems
-      if (this.debugSystem) {
-        this.debugSystem.update();
-      }
-      this.hudManager.updateControlPanel(); // Update control panel visibility
-      this.jumpInstructionPanel.updateVisibility(); // Update jump instruction panel visibility
-      this.hudManager.update(deltaTime);
-      
-      // Update tap prompt (self-manages visibility and positioning)
-      this.tapPrompt.update(deltaTime);
-    }
-
-    // Render debug overlays and visuals
-
-    private render() {
-      this.renderer.render(this.gameObjects);
-      this.debugRenderer.render(
-        this.gameObjects, 
-        this.debugSystem ? this.debugSystem.getShowColliders() : false,
-        this.debugSystem ? this.debugSystem.getShowOrigins() : false,
-        this.debugSystem ? this.debugSystem.getShowSlots() : false,
-        this.slotManager.getAllSlots()
-      );
-      this.hudManager.render();
-      
-      // Render tap prompt (self-managed, but still needs render call)
-      this.tapPrompt.render();
-    }
-
-    start() {
-      const gameLoop = (currentTime: number) => {
-        // Calculate delta time (capped to avoid huge jumps)
-        const deltaTime = this.lastTime ? Math.min((currentTime - this.lastTime) / 1000, 0.1) : 0;
-        this.lastTime = currentTime;
-
-        this.update(deltaTime);
-        this.render();
-
-        requestAnimationFrame(gameLoop);
-      };
-
-      requestAnimationFrame(gameLoop);
     }
   }
 }
