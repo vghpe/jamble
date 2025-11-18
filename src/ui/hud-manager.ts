@@ -1,4 +1,4 @@
-/// <reference path="ui-component-base.ts" />
+/// <reference path="ui-element-base.ts" />
 /// <reference path="instruments/monitors/portrait-monitor.ts" />
 /// <reference path="instruments/monitors/heart-rate-monitor.ts" />
 /// <reference path="instruments/monitors/sensation-monitor.ts" />
@@ -11,7 +11,7 @@ namespace Jamble {
    * HUD (Heads Up Display) Manager for all UI components.
    * Manages the top overlay (portrait + activity monitor) and control panel.
    */
-  export class HUDManager extends UIComponent {
+  export class HUDManager extends UIElement {
     private hudOverlay!: HTMLElement;
     private portraitPanel!: PortraitMonitor;
     private heartRatePanel!: HeartRateMonitor;
@@ -30,9 +30,26 @@ namespace Jamble {
       const shell = gameElement.classList.contains('game-shell')
         ? gameElement
         : (gameElement.querySelector('.game-shell') as HTMLElement) || gameElement;
-      super(shell, { mountNode: shell });
+      
+      const portraitSize = 80; // Configurable portrait size
+      
+      // Create container first
+      const container = document.createElement('div');
+      container.id = 'hud-overlay';
+      container.style.cssText = `
+        position: relative;
+        width: 100%;
+        height: ${portraitSize}px;
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+        pointer-events: none;
+      `;
+      
+      super(container, shell, shell);
       this.gameWidth = gameWidth;
       this.gameHeight = gameHeight;
+      this.portraitSize = portraitSize;
       
       this.createHUDComponents();
       this.createPanelWrapper();
@@ -41,27 +58,11 @@ namespace Jamble {
       this.show(); // Show HUD immediately (control panel visibility controlled separately)
     }
     
-    protected createContainer(): HTMLElement {
-      const container = document.createElement('div');
-      container.id = 'hud-overlay';
-      container.style.cssText = `
-        position: relative;
-        width: 100%;
-        height: ${this.portraitSize}px;
-        display: flex;
-        align-items: stretch;
-        gap: 0;
-        pointer-events: none;
-      `;
-      
-      return container;
-    }
-
     show(): void {
       if (this.isVisible) return;
       this.isVisible = true;
       this.container.style.display = 'flex';
-      const mount = this.mountNode;
+      const mount = this.mountNode!;
       if (mount.firstChild) {
         mount.insertBefore(this.container, mount.firstChild);
       } else {
@@ -130,7 +131,7 @@ namespace Jamble {
     }
 
     private createPanelWrapper(): void {
-      const root = this.gameElement.parentElement || this.gameElement;
+      const root = this.gameElement!.parentElement || this.gameElement!;
       this.panelWrapper = document.createElement('div');
       this.panelWrapper.style.cssText = `
         position: relative;
@@ -173,7 +174,7 @@ namespace Jamble {
      * Update all UI components
      */
     update(deltaTime: number): void {
-      super.update(deltaTime); // Handle positioning
+      // No base positioning logic needed anymore
       
       if (this.isVisible) {
         this.portraitPanel.update(deltaTime);
@@ -504,7 +505,21 @@ namespace Jamble {
       if (this.controlPanel) {
         this.controlPanel.destroy();
       }
-      // Additional cleanup for HUD-specific resources if needed
+      if (this.portraitPanel) {
+        this.portraitPanel.destroy();
+      }
+      if (this.heartRatePanel) {
+        this.heartRatePanel.destroy();
+      }
+      if (this.sensationPanel) {
+        this.sensationPanel.destroy();
+      }
+      if (this.crescendoPanel) {
+        this.crescendoPanel.destroy();
+      }
+      if (this.jumpInstructionPanel) {
+        this.jumpInstructionPanel.destroy();
+      }
     }
   }
 }

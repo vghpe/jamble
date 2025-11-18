@@ -1,4 +1,4 @@
-/// <reference path="ui-component-base.ts" />
+/// <reference path="ui-element-base.ts" />
 /// <reference path="../entities/player/player.ts" />
 /// <reference path="instruments/controls/control-base.ts" />
 /// <reference path="instruments/controls/heart-control.ts" />
@@ -11,29 +11,30 @@ namespace Jamble {
    * Control Panel - Modular widget-based interface for game controls.
    * Features a 4x4 grid layout with various sized modules.
    */
-  export class ControlPanel extends UIComponent {
+  export class ControlPanel extends UIElement {
     private modules: Map<string, InstrumentControl> = new Map();
     private stateManager: any;
 
     constructor(parentContainer: HTMLElement) {
-      super(parentContainer, { mountNode: parentContainer });
-      this.setupStyles();
-      this.createModules();
-      this.show();
-    }
-
-    protected createContainer(): HTMLElement {
+      // Create container first
       const container = document.createElement('div');
       container.id = 'control-panel';
       container.className = 'control-panel';
       container.style.position = 'relative';
-      return container;
+      
+      super(container, undefined, parentContainer);
+      this.setupStyles();
+      this.createModules();
+      
+      // Append to parent
+      parentContainer.appendChild(this.container);
+      this.show();
     }
 
     show(): void {
       if (this.isVisible) return;
       this.isVisible = true;
-      if (!this.container.parentNode) {
+      if (!this.container.parentNode && this.mountNode) {
         this.mountNode.appendChild(this.container);
       }
     }
@@ -242,7 +243,7 @@ namespace Jamble {
     }
 
     update(deltaTime: number): void {
-      super.update(deltaTime);
+      // No base positioning logic needed anymore
       this.modules.forEach(module => module.update(deltaTime));
     }
 

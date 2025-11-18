@@ -35,7 +35,6 @@
     "src/debug/debug-system.ts",
     "src/systems/editor-mode-manager.ts",
     "src/ui/ui-element-base.ts",
-    "src/ui/ui-component-base.ts",
     "src/ui/instruments/controls/control-base.ts",
     "src/ui/instruments/controls/heart-control.ts",
     "src/ui/instruments/controls/softness-control.ts",

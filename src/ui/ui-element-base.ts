@@ -2,14 +2,19 @@ namespace Jamble {
   /**
    * UIElement - Unified base class for all UI components
    * Provides consistent lifecycle, visibility management, and dimming interface
+   * Supports both leaf components and containers
    */
   export abstract class UIElement {
     protected container: HTMLElement;
     protected isVisible: boolean = false;
     protected isDimmed: boolean = false;
+    protected gameElement?: HTMLElement;  // Optional - used by container components
+    protected mountNode?: HTMLElement;    // Optional - used by container components
     
-    constructor(container: HTMLElement) {
+    constructor(container: HTMLElement, gameElement?: HTMLElement, mountNode?: HTMLElement) {
       this.container = container;
+      this.gameElement = gameElement;
+      this.mountNode = mountNode;
     }
     
     /**
@@ -26,18 +31,32 @@ namespace Jamble {
     
     /**
      * Show the component
+     * If mountNode is provided (container components), will append to it
      */
     show(): void {
+      if (this.isVisible) return;
       this.isVisible = true;
       this.container.style.display = 'block';
+      
+      // Container components may need to mount themselves
+      if (this.mountNode && !this.container.parentNode) {
+        this.mountNode.appendChild(this.container);
+      }
     }
     
     /**
      * Hide the component
+     * If mountNode is provided (container components), will remove from DOM
      */
     hide(): void {
+      if (!this.isVisible) return;
       this.isVisible = false;
       this.container.style.display = 'none';
+      
+      // Container components may need to unmount themselves
+      if (this.mountNode && this.container.parentNode) {
+        this.container.parentNode.removeChild(this.container);
+      }
     }
     
     /**
@@ -58,12 +77,18 @@ namespace Jamble {
     }
     
     /**
+     * Get the container element (useful for container components)
+     */
+    getContainer(): HTMLElement {
+      return this.container;
+    }
+    
+    /**
      * Clean up resources and remove from DOM
      */
     destroy(): void {
-      if (this.container.parentElement) {
-        this.container.parentElement.removeChild(this.container);
-      }
+      this.hide();
+      // Subclasses should override to clean up specific resources
     }
   }
   
