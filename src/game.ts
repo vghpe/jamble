@@ -53,7 +53,6 @@ namespace Jamble {
     private home!: Home; // Reference to home object for centering logic
     private groundSensor!: Sensor; // Reference to ground sensor for enabling home
     private gameObjects: GameObject[] = [];
-    private knobs: Knob[] = [];  // Track all knobs for pain threshold retraction
     private trees: Map<string, Tree> = new Map(); // Track trees by slot ID
     private treeIdCounter: number = 0; // Counter for unique tree IDs
     private treeAnimDebugPanel: TreeAnimDebugPanel | null = null; // Debug controls for tree animation
@@ -177,7 +176,6 @@ namespace Jamble {
         
         // Track spawned entities
         this.home = levelData.home;
-        this.knobs = levelData.knobs;
         this.groundSensor = levelData.groundSensor;
         this.gameObjects.push(...levelData.allEntities);
         
@@ -232,7 +230,7 @@ namespace Jamble {
         // Connect NPC pain threshold to retract all knobs
         this.activeNPC.onPainThreshold(() => {
           console.log('Pain threshold hit - retracting all knobs');
-          this.knobs.forEach(knob => knob.retract());
+          this.levelManager.getKnobs().forEach(knob => knob.retract());
           // Disable crescendo rise when knobs retract
           this.activeNPC.disableCrescendo();
           // Trigger portrait pain feedback
@@ -264,16 +262,10 @@ namespace Jamble {
     }
     
     /**
-     * Respawn all retracted knobs (called from debug panel or control station)
+     * Respawn all retracted knobs (called from heart control)
      */
-    respawnAllKnobs(): void {
-      let respawnedCount = 0;
-      this.knobs.forEach(knob => {
-        if (knob.getState() === KnobState.RETRACTED) {
-          knob.manualRespawn();
-          respawnedCount++;
-        }
-      });
+    private respawnAllKnobs(): void {
+      const respawnedCount = this.levelManager.respawnAllKnobs();
       
       // Re-enable crescendo if any knobs were respawned
       if (respawnedCount > 0) {
@@ -282,8 +274,6 @@ namespace Jamble {
         // Disable heart module (knob is now active)
         this.hudManager.getControlPanel().disableHeart();
       }
-      
-      console.log(`Respawned ${respawnedCount} knob(s)`);
     }
     
     /**

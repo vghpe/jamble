@@ -26,6 +26,7 @@ namespace Jamble {
     private currentNPC: BaseNPC | null = null;
     private levelCompleteListeners: Array<(npc: BaseNPC) => void> = [];
     private crescendoThresholdListener: ((npc: BaseNPC) => void) | null = null;
+    private knobs: Knob[] = []; // Track spawned knobs for respawn functionality
 
     constructor() {
       // Level manager starts without an active NPC
@@ -111,6 +112,33 @@ namespace Jamble {
     destroy(): void {
       this.reset();
       this.levelCompleteListeners = [];
+      this.knobs = [];
+    }
+
+    // ==================== Knob Management ====================
+
+    /**
+     * Respawn all retracted knobs
+     * Returns number of knobs respawned
+     */
+    respawnAllKnobs(): number {
+      let respawnedCount = 0;
+      this.knobs.forEach(knob => {
+        if (knob.getState() === KnobState.RETRACTED) {
+          knob.manualRespawn();
+          respawnedCount++;
+        }
+      });
+      
+      console.log(`LevelManager: Respawned ${respawnedCount} knob(s)`);
+      return respawnedCount;
+    }
+
+    /**
+     * Get all tracked knobs
+     */
+    getKnobs(): Knob[] {
+      return this.knobs;
     }
 
     // ==================== Entity Spawning ====================
