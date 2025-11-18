@@ -1,8 +1,12 @@
 /// <reference path="../ui-element-base.ts" />
+/// <reference path="../../systems/state-manager.ts" />
+/// <reference path="../../systems/editor-mode-manager.ts" />
+/// <reference path="../../entities/player/player.ts" />
 
 namespace Jamble {
   /**
    * Tap Indicator - Shows a blue dotted circle around the player when they can be tapped
+   * Self-manages positioning and visibility based on game state
    */
   export class TapPrompt extends UIElement implements IUXPrompt {
     private canvas: HTMLCanvasElement;
@@ -11,17 +15,30 @@ namespace Jamble {
     private gameHeight: number;
     private readonly overlayPadding: number = 40; // Match canvas-host padding-bottom
     private readonly circleRadius: number = 33; // 1.5x larger: 22 * 1.5 = 33 (66px diameter)
-    private playerX: number = 0;
-    private playerY: number = 0;
     private onTapCallback?: () => void;
+    
+    // References for self-positioning
+    private player: Player;
+    private stateManager: StateManager;
+    private editorModeManager: EditorModeManager;
 
-    constructor(canvasHost: HTMLElement, gameWidth: number, gameHeight: number) {
+    constructor(
+      canvasHost: HTMLElement,
+      gameWidth: number,
+      gameHeight: number,
+      player: Player,
+      stateManager: StateManager,
+      editorModeManager: EditorModeManager
+    ) {
       // Create container first
       const container = document.createElement('div');
       super(container);
       
       this.gameWidth = gameWidth;
       this.gameHeight = gameHeight;
+      this.player = player;
+      this.stateManager = stateManager;
+      this.editorModeManager = editorModeManager;
       
       // Create canvas overlay - extended to include padding area
       this.canvas = document.createElement('canvas');
@@ -65,19 +82,32 @@ namespace Jamble {
       return gameState === 'idle';
     }
     
-    update(_deltaTime: number): void {
-      // No per-frame updates needed beyond render
-    }
-
     /**
-     * Show the tap indicator at the player's position
+     * Update visibility and position based on game state
+     * Called every frame from game loop
      */
-    showAt(playerX: number, playerY: number): void {
+    update(_deltaTime: number): void {
+      // Update visibility and position based on state
+      // Hide if in editor mode or not idle
+      const isEditorActive = this.editorModeManager.getCurrentMode() !== 'none';
+      if (this.stateManager.isIdle() && !isEditorActive) {
+        if (!this.isVisible) {
+          this.show();
+        }
+        // Render will be called from render() method below
+      } else {
+        if (this.isVisible) {
+          this.hide();
+        }
+      }
+    }
+    
+    /**
+     * Show the tap indicator
+     */
+    show(): void {
       this.isVisible = true;
-      this.playerX = playerX;
-      this.playerY = playerY;
       this.canvas.style.display = 'block';
-      this.render();
     }
 
     /**
@@ -90,15 +120,6 @@ namespace Jamble {
     }
 
     /**
-     * Update player position (call each frame while visible)
-     */
-    updatePosition(playerX: number, playerY: number): void {
-      if (!this.isVisible) return;
-      this.playerX = playerX;
-      this.playerY = playerY;
-    }
-
-    /**
      * Set callback for when the indicator is tapped
      */
     setOnTap(callback: () => void): void {
@@ -106,10 +127,13 @@ namespace Jamble {
     }
 
     /**
-     * Render the blue dotted circle
+     * Render the blue dotted circle at player position
      */
     render(): void {
       if (!this.isVisible) return;
+      
+      const playerX = this.player.transform.x;
+      const playerY = this.player.transform.y - 10; // Center 10px above anchor
       
       this.clear();
       
@@ -119,7 +143,7 @@ namespace Jamble {
       this.ctx.setLineDash([4, 4]); // Dotted pattern
       
       this.ctx.beginPath();
-      this.ctx.arc(this.playerX, this.playerY, this.circleRadius, 0, Math.PI * 2);
+      this.ctx.arc(playerX, playerY, this.circleRadius, 0, Math.PI * 2);
       this.ctx.stroke();
       
       // Reset line dash
@@ -146,9 +170,13 @@ namespace Jamble {
       const clickX = (event.clientX - rect.left) * scaleX;
       const clickY = (event.clientY - rect.top) * scaleY;
       
+      // Get current player position
+      const playerX = this.player.transform.x;
+      const playerCenterY = this.player.transform.y - 10;
+      
       // Check if click is within the circle
-      const dx = clickX - this.playerX;
-      const dy = clickY - this.playerY;
+      const dx = clickX - playerX;
+      const dy = clickY - playerCenterY;
       const distance = Math.sqrt(dx * dx + dy * dy);
       
       if (distance <= this.circleRadius) {

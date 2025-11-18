@@ -39,6 +39,7 @@ namespace Jamble {
     private inputManager: InputManager;
     private inputHandler!: InputHandler; // Initialized after player and home are created
     private levelManager: LevelManager;
+    private editorModeManager: EditorModeManager;
     private slotManager: SlotManager;
     private skillManager: SkillManager;
     private debugSystem: DebugSystem | null;
@@ -46,7 +47,7 @@ namespace Jamble {
     private activeNPC: Soma;  // Current active NPC (Soma for now)
     private hudManager: InstrumentContainer;
     private treePlacementOverlay: EntityPlacementOverlay;
-    private tapIndicator: TapPrompt;
+    private tapPrompt: TapPrompt;
     private jumpInstructionPanel: JumpPrompt;
     
     private player!: Player; // Will be initialized in createPlayer()
@@ -98,6 +99,7 @@ namespace Jamble {
         this.stateManager = new StateManager();
         this.inputManager = new InputManager();
         this.levelManager = new LevelManager();
+        this.editorModeManager = EditorModeManager.getInstance();
         this.slotManager = new SlotManager(this.gameWidth, this.gameHeight);
         this.skillManager = new SkillManager();
         this.activeNPC = new Soma();  // Initialize our active NPC
@@ -111,14 +113,26 @@ namespace Jamble {
           this.gameWidth,
           this.gameHeight
         );
-        this.tapIndicator = new TapPrompt(this.canvasWrapper, this.gameWidth, this.gameHeight);
         
-        // Setup tap indicator callback
-        this.tapIndicator.setOnTap(() => {
+        // Create player first (needed by TapPrompt)
+        this.createPlayer();
+        
+        // Create tap prompt (self-manages positioning and visibility)
+        this.tapPrompt = new TapPrompt(
+          this.canvasWrapper,
+          this.gameWidth,
+          this.gameHeight,
+          this.player,
+          this.stateManager,
+          this.editorModeManager
+        );
+        
+        // Setup tap callback
+        this.tapPrompt.setOnTap(() => {
           if (this.stateManager.isIdle()) {
             // Tap detected! Start running to the right
             this.stateManager.startRun();
-            this.tapIndicator.hide();
+            this.tapPrompt.hide();
             // Re-enable jump when entering run state
             this.skillManager.setSkillEnabled('jump', true);
           }
@@ -150,7 +164,6 @@ namespace Jamble {
         }
 
         this.setupGameElement();
-        this.createPlayer();
         
         // Connect player to control panel so sliders can update player attributes
         this.hudManager.getControlPanel().setPlayer(this.player);
@@ -517,21 +530,8 @@ namespace Jamble {
       this.jumpInstructionPanel.updateVisibility(); // Update jump instruction panel visibility
       this.hudManager.update(deltaTime);
       
-      // Update tap indicator visibility and position
-      // Hide tap indicator when in editor mode
-      if (this.stateManager.isIdle() && !this.stateManager.isInEditorMode()) {
-        // Center the tap circle on the player's center (10px above anchor)
-        const playerCenterY = this.player.transform.y - 10;
-        if (!this.tapIndicator.isShown()) {
-          this.tapIndicator.showAt(this.player.transform.x, playerCenterY);
-        } else {
-          this.tapIndicator.updatePosition(this.player.transform.x, playerCenterY);
-        }
-      } else {
-        if (this.tapIndicator.isShown()) {
-          this.tapIndicator.hide();
-        }
-      }
+      // Update tap prompt (self-manages visibility and positioning)
+      this.tapPrompt.update(deltaTime);
     }
 
     // Render debug overlays and visuals
@@ -547,10 +547,8 @@ namespace Jamble {
       );
       this.hudManager.render();
       
-      // Render tap indicator
-      if (this.tapIndicator.isShown()) {
-        this.tapIndicator.render();
-      }
+      // Render tap prompt (self-managed, but still needs render call)
+      this.tapPrompt.render();
     }
 
     start() {
