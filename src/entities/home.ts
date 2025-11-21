@@ -1,5 +1,5 @@
 /// <reference path="../core/game-object.ts" />
-/// <reference path="./sensor.ts" />
+/// <reference path="../core/sensor.ts" />
 
 namespace Jamble {
   export class Home extends GameObject {

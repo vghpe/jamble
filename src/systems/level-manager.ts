@@ -2,7 +2,7 @@
 /// <reference path="../entities/home.ts" />
 /// <reference path="../entities/knob/knob.ts" />
 /// <reference path="../entities/platform.ts" />
-/// <reference path="../entities/sensor.ts" />
+/// <reference path="../core/sensor.ts" />
 /// <reference path="../slots/slot-manager.ts" />
 /// <reference path="../core/game-object.ts" />
 

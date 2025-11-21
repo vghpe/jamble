@@ -1,6 +1,6 @@
 /// <reference path="../../core/game-object.ts" />
 /// <reference path="../../slots/slot-manager.ts" />
-/// <reference path="../sensor.ts" />
+/// <reference path="../../core/sensor.ts" />
 /// <reference path="tree-anim.ts" />
 
 namespace Jamble {
