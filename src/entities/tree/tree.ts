@@ -188,6 +188,10 @@ namespace Jamble {
       return this.leafSensor;
     }
     
+    getChildren(): GameObject[] {
+      return [this.leafSensor];
+    }
+    
     /**
      * Despawn tree (remove from game)
      */

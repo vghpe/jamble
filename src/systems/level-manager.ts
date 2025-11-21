@@ -228,7 +228,7 @@ namespace Jamble {
 
       // Spawn home (leftmost ground slot) - includes its child sensor
       const home = this.spawnHome(slotManager, gameWidth, gameHeight);
-      allEntities.push(home, home.getSensor());
+      allEntities.push(home, ...home.getChildren());
 
       // Trees are placed via tree placement overlay (no default spawn)
 

@@ -79,6 +79,15 @@ namespace Jamble {
 
     abstract update(deltaTime: number): void;
     
+    /**
+     * Override in subclasses that have child objects (like sensors, visual effects, etc.)
+     * Returns array of child GameObjects that should be added to the scene.
+     * Default implementation returns empty array.
+     */
+    getChildren(): GameObject[] {
+      return [];
+    }
+    
     getBounds() {
       // Use collision box for bounds if available, otherwise just the position
       if (this.collisionBox) {

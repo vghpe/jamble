@@ -46,5 +46,9 @@ namespace Jamble {
     getSensor(): Sensor {
       return this.sensor;
     }
+    
+    getChildren(): GameObject[] {
+      return [this.sensor];
+    }
   }
 }

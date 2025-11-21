@@ -415,9 +415,8 @@ namespace Jamble {
       const treeId = `tree_${this.treeIdCounter++}`;
       const tree = new Tree(treeId, x, y, this.slotManager, slotId, this.treeAnimDebugPanel);
       
-      // Add tree and its child sensor to game objects
-      this.gameObjects.push(tree);
-      this.gameObjects.push(tree.getSensor());
+      // Add tree and its children (sensor) to game objects
+      this.gameObjects.push(tree, ...tree.getChildren());
       
       this.trees.set(slotId, tree);
       this.slotManager.occupySlot(slotId, treeId);
